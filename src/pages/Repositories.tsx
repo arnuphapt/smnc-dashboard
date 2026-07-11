@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useLookups } from '../context/LookupContext'
 import { useAuth } from '../context/AuthContext'
-import { Search, Filter, FileText, Image as ImageIcon, Download, Globe, Lock, Calendar, User, Eye, X, BookOpen, Lightbulb, FileCheck, Award, Share2 } from 'lucide-react'
+import { Search, FileText, Download, X, BookOpen, Lightbulb, FileCheck, Award, Share2, Eye, RotateCcw } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
 
 interface RepositoriesProps {
@@ -17,11 +17,23 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
   const [items, setItems] = useState<WisdomItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Filters state
+  // Dynamic filter states
   const [search, setSearch] = useState('')
-  const [selectedDept, setSelectedDept] = useState('')
-  const [selectedType, setSelectedType] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [selectedAuthor, setSelectedAuthor] = useState('')
+  const [selectedScope, setSelectedScope] = useState('')
+  const [selectedRank, setSelectedRank] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedIpType, setSelectedIpType] = useState('')
+  const [selectedCreatorType, setSelectedCreatorType] = useState('')
+  const [selectedInnoType, setSelectedInnoType] = useState('')
+  const [selectedAwardLevel, setSelectedAwardLevel] = useState('')
+  const [selectedUtType, setSelectedUtType] = useState('')
   const [showOnlyPublic, setShowOnlyPublic] = useState(false)
+
+  // Sorting state
+  const [sortField, setSortField] = useState<string>('year')
+  const [sortAsc, setSortAsc] = useState<boolean>(false)
 
   // Detail Modal state
   const [selectedItem, setSelectedItem] = useState<WisdomItem | null>(null)
@@ -35,11 +47,6 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
         .from('wisdom_items')
         .select('*')
         .eq('category', activeCategory)
-        .order('created_at', { ascending: false })
-
-      if (!user) {
-        query = query.eq('is_public', true)
-      }
 
       const { data, error } = await query
       if (error) throw error
@@ -68,17 +75,48 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeCategory, user])
+  }, [activeCategory])
 
   useEffect(() => {
     setActiveCategory(initialCategory)
   }, [initialCategory])
 
+  // Reset filters when activeCategory changes
   useEffect(() => {
-    setSearch('')
-    setSelectedDept('')
-    setSelectedType('')
+    handleResetFilters()
   }, [activeCategory])
+
+  const handleResetFilters = () => {
+    setSearch('')
+    setSelectedYear('')
+    setSelectedAuthor('')
+    setSelectedScope('')
+    setSelectedRank('')
+    setSelectedStatus('')
+    setSelectedIpType('')
+    setSelectedCreatorType('')
+    setSelectedInnoType('')
+    setSelectedAwardLevel('')
+    setSelectedUtType('')
+    setShowOnlyPublic(false)
+  }
+
+  // Get unique options list from currently loaded items
+  const getUniqueMetadataValues = (key: string) => {
+    const vals = items
+      .map(item => item.metadata?.[key])
+      .filter(Boolean)
+      .map(val => String(val))
+    return Array.from(new Set(vals)).sort()
+  }
+
+  const getUniqueAuthors = () => {
+    const vals = items
+      .map(item => item.authors)
+      .filter(Boolean)
+      .map(val => String(val))
+    return Array.from(new Set(vals)).sort()
+  }
 
   const getSubtypeCategory = () => {
     switch (activeCategory) {
@@ -89,46 +127,107 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
       case 'utilization': return 'utilization_type'
       default: return ''
     }
-  };
-
-  const getSubtypeLabel = () => {
-    switch (activeCategory) {
-      case 'research': return 'ประเภทวิจัย'
-      case 'innovation': return 'ประเภทนวัตกรรม'
-      case 'intellectual_property': return 'ประเภททรัพย์สินทางปัญญา'
-      case 'award': return 'ระดับรางวัล'
-      case 'utilization': return 'ประเภทการนำไปใช้'
-      default: return 'ประเภทย่อย'
-    }
   }
 
+  const getSubtypeOptionLabel = (_category: string, value: string) => {
+    const list = getOptionsByCategory(getSubtypeCategory())
+    return list.find(o => o.value === value)?.label || value
+  }
+
+  const getDeptOptionLabel = (value: string) => {
+    const list = getOptionsByCategory('department')
+    return list.find(o => o.value === value)?.label || value
+  }
+
+  const formatExcelDate = (serial: any) => {
+    if (!serial) return ''
+    if (isNaN(Number(serial))) return String(serial)
+    const excelSerial = Number(serial)
+    const date = new Date((excelSerial - 25569) * 86400 * 1000)
+    if (isNaN(date.getTime())) return String(serial)
+    
+    const dd = String(date.getDate()).padStart(2, '0')
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const yy = String(date.getFullYear()).slice(-2)
+    return `${dd}/${mm}/${yy}`
+  }
+
+  // Filtering Logic
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(search.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(search.toLowerCase())) ||
       (item.authors && item.authors.toLowerCase().includes(search.toLowerCase()))
 
-    const matchesDept = !selectedDept || item.metadata.department === selectedDept
-
-    const matchesType = !selectedType || 
-      item.metadata.research_type === selectedType || 
-      item.metadata.ip_type === selectedType || 
-      item.metadata.award_level === selectedType || 
-      item.metadata.utilization_type === selectedType
+    const matchesYear = !selectedYear || String(item.metadata?.year) === selectedYear
+    const matchesAuthor = !selectedAuthor || item.authors === selectedAuthor
+    const matchesScope = !selectedScope || item.metadata?.scope === selectedScope
+    const matchesRank = !selectedRank || item.metadata?.journal_rank === selectedRank
+    const matchesStatus = !selectedStatus || item.metadata?.status === selectedStatus
+    
+    // IP type mapping check
+    const matchesIpType = !selectedIpType || item.metadata?.ip_type === selectedIpType
+    const matchesCreatorType = !selectedCreatorType || item.metadata?.creator_type === selectedCreatorType
+    const matchesInnoType = !selectedInnoType || item.metadata?.innovation_type === selectedInnoType
+    const matchesAwardLevel = !selectedAwardLevel || item.metadata?.award_level === selectedAwardLevel
+    const matchesUtType = !selectedUtType || item.metadata?.utilization_type === selectedUtType
 
     const matchesPublic = !showOnlyPublic || item.is_public
 
-    return matchesSearch && matchesDept && matchesType && matchesPublic
+    return (
+      matchesSearch &&
+      matchesYear &&
+      matchesAuthor &&
+      matchesScope &&
+      matchesRank &&
+      matchesStatus &&
+      matchesIpType &&
+      matchesCreatorType &&
+      matchesInnoType &&
+      matchesAwardLevel &&
+      matchesUtType &&
+      matchesPublic
+    )
   })
 
-  const getMediaUrl = (urlOrPath: string, isPublic: boolean) => {
-    if (!urlOrPath) return ''
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
-      return urlOrPath
+  // Sorting Handler
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortField(field)
+      setSortAsc(false)
     }
-    const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
-    const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
-    return data.publicUrl
+  }
+
+  const resolveFieldValue = (item: WisdomItem, field: string) => {
+    if (field === 'title') return item.title || ''
+    if (field === 'authors') return item.authors || ''
+    if (field === 'created_at') return item.created_at || ''
+    return item.metadata?.[field] || ''
+  }
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    let valA = resolveFieldValue(a, sortField)
+    let valB = resolveFieldValue(b, sortField)
+
+    // Handle number values (like year or index numbers)
+    if (valA && valB && !isNaN(Number(valA)) && !isNaN(Number(valB))) {
+      return sortAsc ? Number(valA) - Number(valB) : Number(valB) - Number(valA)
+    }
+
+    valA = String(valA || '').toLowerCase()
+    valB = String(valB || '').toLowerCase()
+    if (valA < valB) return sortAsc ? -1 : 1
+    if (valA > valB) return sortAsc ? 1 : -1
+    return 0
+  })
+
+  const renderSortIndicator = (field: string) => {
+    if (sortField !== field) return <span className="text-slate-400 font-mono text-[9px] ml-1">⇅</span>
+    return sortAsc 
+      ? <span className="text-white font-mono text-[9px] ml-1">▲</span>
+      : <span className="text-white font-mono text-[9px] ml-1">▼</span>
   }
 
   const handleOpenDetail = async (item: WisdomItem) => {
@@ -151,26 +250,27 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
     }
   }
 
+  const getMediaUrl = (urlOrPath: string, isPublic: boolean) => {
+    if (!urlOrPath) return ''
+    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+      return urlOrPath
+    }
+    const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
+    const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
+    return data.publicUrl
+  }
+
   const categories = [
-    { id: 'research', label: 'คลังวิจัย', icon: BookOpen },
+    { id: 'research', label: 'คลังผลงานวิจัย', icon: BookOpen },
+    { id: 'intellectual_property', label: 'คลังทรัพย์สินทางปัญญา', icon: FileCheck },
     { id: 'innovation', label: 'คลังนวัตกรรม', icon: Lightbulb },
-    { id: 'intellectual_property', label: 'ทรัพย์สินทางปัญญา', icon: FileCheck },
-    { id: 'award', label: 'รางวัลเกียรติยศ', icon: Award },
+    { id: 'award', label: 'คลังรางวัลและความสำเร็จ', icon: Award },
     { id: 'utilization', label: 'การนำไปใช้ประโยชน์', icon: Share2 },
   ]
 
-  const getSubtypeOptionLabel = (_category: string, value: string) => {
-    const list = getOptionsByCategory(getSubtypeCategory())
-    return list.find(o => o.value === value)?.label || value
-  }
-
-  const getDeptOptionLabel = (value: string) => {
-    const list = getOptionsByCategory('department')
-    return list.find(o => o.value === value)?.label || value
-  }
-
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn text-slate-800">
+      
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-px">
         {categories.map((cat) => {
@@ -181,7 +281,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               onClick={() => setActiveCategory(cat.id)}
               className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 -mb-px transition ${
                 activeCategory === cat.id
-                  ? 'border-cyan-700 text-cyan-800 bg-cyan-50/50'
+                  ? 'border-blue-900 text-blue-900 bg-blue-50/20'
                   : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
               }`}
             >
@@ -192,163 +292,435 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
         })}
       </div>
 
-      {/* Filters Bar */}
-      <div className="light-card rounded-xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center shadow-sm">
-        {/* Search */}
-        <div className="relative md:col-span-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหาชื่อผลงาน, คำสำคัญ, ผู้แต่ง..."
-            className="w-full pl-9 pr-4 py-2 rounded-lg light-input text-xs"
-          />
-        </div>
+      {/* Dynamic Filters Bar */}
+      <div className="light-card rounded-xl p-4 bg-white border border-slate-200 shadow-sm flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex flex-wrap gap-3 items-center flex-grow">
+          {/* Search */}
+          <div className="relative min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ชื่อเรื่อง, นักวิจัย, วารสาร..."
+              className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-900"
+            />
+          </div>
 
-        {/* Department Filter */}
-        <div className="relative">
+          {/* Year dropdown (Common) */}
           <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="w-full pl-3 pr-8 py-2 rounded-lg light-input text-xs appearance-none cursor-pointer"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none focus:border-blue-900"
           >
-            <option value="">ทุกสาขาวิชา / ทุกหน่วยงาน</option>
-            {getOptionsByCategory('department').map((opt) => (
-              <option key={opt.id} value={opt.value}>
-                {opt.label}
-              </option>
+            <option value="">ปีทั้งหมด</option>
+            {getUniqueMetadataValues('year').map(yr => (
+              <option key={yr} value={yr}>{yr}</option>
             ))}
           </select>
-          <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+
+          {/* Researcher dropdown (Common) */}
+          <select
+            value={selectedAuthor}
+            onChange={(e) => setSelectedAuthor(e.target.value)}
+            className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none focus:border-blue-900 max-w-[150px] truncate"
+          >
+            <option value="">นักวิจัยทั้งหมด</option>
+            {getUniqueAuthors().map(auth => (
+              <option key={auth} value={auth}>{auth}</option>
+            ))}
+          </select>
+
+          {/* Category-Specific Filters */}
+          {activeCategory === 'research' && (
+            <>
+              {/* Scope filter */}
+              <select
+                value={selectedScope}
+                onChange={(e) => setSelectedScope(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ขอบเขตทั้งหมด</option>
+                {getUniqueMetadataValues('scope').map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+
+              {/* Rank filter */}
+              <select
+                value={selectedRank}
+                onChange={(e) => setSelectedRank(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ระดับฐานทั้งหมด</option>
+                {getUniqueMetadataValues('journal_rank').map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {activeCategory === 'intellectual_property' && (
+            <>
+              {/* IP Type filter */}
+              <select
+                value={selectedIpType}
+                onChange={(e) => setSelectedIpType(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ประเภทสิทธิ์ทั้งหมด</option>
+                <option value="PettyPatent">อนุสิทธิบัตร</option>
+                <option value="Copyright">ลิขสิทธิ์</option>
+                <option value="Patent">สิทธิบัตร</option>
+                <option value="Trademark">เครื่องหมายการค้า</option>
+              </select>
+
+              {/* Current Status filter */}
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">สถานะทั้งหมด</option>
+                {getUniqueMetadataValues('status').map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {activeCategory === 'innovation' && (
+            <>
+              {/* Creator Type filter */}
+              <select
+                value={selectedCreatorType}
+                onChange={(e) => setSelectedCreatorType(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ผู้สร้างสรรค์ทั้งหมด</option>
+                {getUniqueMetadataValues('creator_type').map(ct => (
+                  <option key={ct} value={ct}>{ct}</option>
+                ))}
+              </select>
+
+              {/* Innovation Type filter */}
+              <select
+                value={selectedInnoType}
+                onChange={(e) => setSelectedInnoType(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ประเภทนวัตกรรมทั้งหมด</option>
+                {getUniqueMetadataValues('innovation_type').map(it => (
+                  <option key={it} value={it}>{it}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {activeCategory === 'award' && (
+            <>
+              {/* Award Level filter */}
+              <select
+                value={selectedAwardLevel}
+                onChange={(e) => setSelectedAwardLevel(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ระดับเวทีทั้งหมด</option>
+                <option value="National">ชาติ</option>
+                <option value="International">นานาชาติ</option>
+                <option value="Institutional">สถาบัน</option>
+              </select>
+
+              {/* Award Name filter */}
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">รางวัลทั้งหมด</option>
+                {getUniqueMetadataValues('award_name').map(aw => (
+                  <option key={aw} value={aw}>{aw}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {activeCategory === 'utilization' && (
+            <>
+              {/* Utilization Type filter */}
+              <select
+                value={selectedUtType}
+                onChange={(e) => setSelectedUtType(e.target.value)}
+                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+              >
+                <option value="">ประเภทการใช้ประโยชน์ทั้งหมด</option>
+                <option value="Public">ชุมชน/สาธารณะ</option>
+                <option value="Policy">เชิงนโยบาย</option>
+                <option value="Commercial">เชิงพาณิชย์</option>
+                <option value="Academic">เชิงวิชาการ</option>
+              </select>
+            </>
+          )}
+
+          {/* Reset button */}
+          <button
+            onClick={handleResetFilters}
+            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition text-xs font-bold text-slate-600 flex items-center gap-1 cursor-pointer"
+            title="ล้างตัวกรอง"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            รีเซ็ต
+          </button>
         </div>
 
-        {/* Category Specific Subtype Filter */}
-        {getSubtypeCategory() && (
-          <div className="relative">
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full pl-3 pr-8 py-2 rounded-lg light-input text-xs appearance-none cursor-pointer"
-            >
-              <option value="">{`ทุก${getSubtypeLabel()}`}</option>
-              {getOptionsByCategory(getSubtypeCategory()).map((opt) => (
-                <option key={opt.id} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-        )}
-
-        {/* Public filter toggle */}
-        {user && (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="publicOnly"
-              checked={showOnlyPublic}
-              onChange={(e) => setShowOnlyPublic(e.target.checked)}
-              className="w-4 h-4 rounded accent-cyan-700 border-slate-300 bg-white cursor-pointer"
-            />
-            <label htmlFor="publicOnly" className="text-xs text-slate-500 font-semibold cursor-pointer select-none">
-              แสดงเฉพาะผลงานสาธารณะ
-            </label>
-          </div>
-        )}
+        {/* Counts */}
+        <div className="text-[10px] text-slate-500 font-bold bg-slate-50 border border-slate-150 px-2.5 py-1 rounded">
+          แสดง {sortedItems.length} / {items.length} รายการ
+        </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content Table Area */}
       {loading ? (
         <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-3 border-cyan-700 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-3 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xs text-slate-400 font-semibold">กำลังโหลดรายการผลงาน...</p>
         </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="py-20 light-card rounded-2xl text-center text-slate-500 text-xs font-semibold">
-          ไม่พบข้อมูลผลงานในคลังหัวข้อนี้
+      ) : sortedItems.length === 0 ? (
+        <div className="py-20 bg-white border border-slate-200 rounded-2xl text-center text-slate-500 text-xs font-semibold">
+          ไม่พบข้อมูลผลงานในคลังหัวข้อนี้ตามตัวกรอง
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
-            const hasImage = !!item.image_url
-            const deptLabel = item.metadata.department ? getDeptOptionLabel(item.metadata.department) : ''
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px] text-xs">
             
-            const categorySubtype = item.metadata.research_type || 
-                                    item.metadata.ip_type || 
-                                    item.metadata.award_level || 
-                                    item.metadata.utilization_type
+            {/* Header Columns */}
+            <thead>
+              <tr className="bg-blue-900 text-white font-bold">
+                {activeCategory === 'research' && (
+                  <>
+                    <th onClick={() => handleSort('year')} className="p-3.5 cursor-pointer select-none">ปี {renderSortIndicator('year')}</th>
+                    <th className="p-3.5">#</th>
+                    <th onClick={() => handleSort('title')} className="p-3.5 cursor-pointer select-none">ชื่อเรื่อง {renderSortIndicator('title')}</th>
+                    <th onClick={() => handleSort('authors')} className="p-3.5 cursor-pointer select-none">นักวิจัย {renderSortIndicator('authors')}</th>
+                    <th onClick={() => handleSort('contribution')} className="p-3.5 cursor-pointer select-none">บทบาท {renderSortIndicator('contribution')}</th>
+                    <th onClick={() => handleSort('scope')} className="p-3.5 cursor-pointer select-none">ขอบเขต {renderSortIndicator('scope')}</th>
+                    <th onClick={() => handleSort('funding')} className="p-3.5 cursor-pointer select-none">ทุนวิจัย {renderSortIndicator('funding')}</th>
+                    <th onClick={() => handleSort('journal_rank')} className="p-3.5 cursor-pointer select-none">ฐาน {renderSortIndicator('journal_rank')}</th>
+                    <th onClick={() => handleSort('journal_name')} className="p-3.5 cursor-pointer select-none">วารสาร {renderSortIndicator('journal_name')}</th>
+                  </>
+                )}
 
-            const subtypeLabel = categorySubtype ? getSubtypeOptionLabel(activeCategory, categorySubtype) : ''
+                {activeCategory === 'intellectual_property' && (
+                  <>
+                    <th className="p-3.5">#</th>
+                    <th onClick={() => handleSort('title')} className="p-3.5 cursor-pointer select-none">ชื่อผลงาน {renderSortIndicator('title')}</th>
+                    <th onClick={() => handleSort('authors')} className="p-3.5 cursor-pointer select-none">เจ้าของผลงานหลัก {renderSortIndicator('authors')}</th>
+                    <th onClick={() => handleSort('ip_type')} className="p-3.5 cursor-pointer select-none">ประเภทของงาน {renderSortIndicator('ip_type')}</th>
+                    <th onClick={() => handleSort('creator_type')} className="p-3.5 cursor-pointer select-none">ผู้สร้างสรรค์ {renderSortIndicator('creator_type')}</th>
+                    <th onClick={() => handleSort('source')} className="p-3.5 cursor-pointer select-none">ที่มาของผลงาน {renderSortIndicator('source')}</th>
+                    <th onClick={() => handleSort('export_date')} className="p-3.5 cursor-pointer select-none">วันที่ส่งออก {renderSortIndicator('export_date')}</th>
+                    <th onClick={() => handleSort('application_status')} className="p-3.5 cursor-pointer select-none">สถานะเลขคำขอ {renderSortIndicator('application_status')}</th>
+                    <th onClick={() => handleSort('registration_number')} className="p-3.5 cursor-pointer select-none">เลขที่คำขอ {renderSortIndicator('registration_number')}</th>
+                    <th onClick={() => handleSort('status')} className="p-3.5 cursor-pointer select-none">สถานะปัจจุบัน {renderSortIndicator('status')}</th>
+                  </>
+                )}
 
-            return (
-              <div
-                key={item.id}
-                className="light-card rounded-xl overflow-hidden flex flex-col h-[390px] border border-slate-200 relative group shadow-sm hover:border-cyan-700/30 transition duration-300"
-              >
-                {/* Image Cover */}
-                <div className="h-40 w-full relative bg-slate-50 overflow-hidden shrink-0 border-b border-slate-100 flex items-center justify-center">
-                  {hasImage ? (
-                    <img
-                      src={getMediaUrl(item.image_url!, item.is_public)}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1.5 text-slate-300 group-hover:text-cyan-700/40 transition">
-                      <ImageIcon className="w-10 h-10 stroke-[1.5]" />
-                      <span className="text-[9px] font-bold">ไม่มีภาพประกอบ</span>
-                    </div>
-                  )}
-                  {/* Public/Private badge */}
-                  <div className="absolute top-3 right-3 z-10 flex gap-1">
-                    {item.is_public ? (
-                      <span className="flex items-center gap-0.5 text-[9px] font-bold text-cyan-700 bg-white/90 border border-cyan-200/50 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm">
-                        <Globe className="w-2.5 h-2.5" /> สาธารณะ
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-700 bg-white/90 border border-amber-200/50 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm">
-                        <Lock className="w-2.5 h-2.5" /> ภายในสถาบัน
-                      </span>
+                {activeCategory === 'innovation' && (
+                  <>
+                    <th onClick={() => handleSort('year')} className="p-3.5 cursor-pointer select-none">ปี {renderSortIndicator('year')}</th>
+                    <th className="p-3.5">#</th>
+                    <th onClick={() => handleSort('title')} className="p-3.5 cursor-pointer select-none">ชื่อผลงาน {renderSortIndicator('title')}</th>
+                    <th onClick={() => handleSort('authors')} className="p-3.5 cursor-pointer select-none">เจ้าของผลงานหลัก {renderSortIndicator('authors')}</th>
+                    <th onClick={() => handleSort('creator_type')} className="p-3.5 cursor-pointer select-none">ผู้สร้างสรรค์ {renderSortIndicator('creator_type')}</th>
+                    <th onClick={() => handleSort('scope')} className="p-3.5 cursor-pointer select-none">ขอบเขตผลงาน {renderSortIndicator('scope')}</th>
+                    <th onClick={() => handleSort('source')} className="p-3.5 cursor-pointer select-none">ที่มาของชิ้นงาน {renderSortIndicator('source')}</th>
+                    <th onClick={() => handleSort('innovation_type')} className="p-3.5 cursor-pointer select-none">ประเภทของนวัตกรรม {renderSortIndicator('innovation_type')}</th>
+                    <th onClick={() => handleSort('ip_status')} className="p-3.5 cursor-pointer select-none">ยื่นขอจดทรัพย์สินทางปัญญา {renderSortIndicator('ip_status')}</th>
+                    <th onClick={() => handleSort('published')} className="p-3.5 cursor-pointer select-none">ตีพิมพ์ {renderSortIndicator('published')}</th>
+                    <th onClick={() => handleSort('presented')} className="p-3.5 cursor-pointer select-none">นำเสนอผลงาน {renderSortIndicator('presented')}</th>
+                  </>
+                )}
+
+                {activeCategory === 'award' && (
+                  <>
+                    <th onClick={() => handleSort('year')} className="p-3.5 cursor-pointer select-none">ปี {renderSortIndicator('year')}</th>
+                    <th className="p-3.5">#</th>
+                    <th onClick={() => handleSort('title')} className="p-3.5 cursor-pointer select-none">ชื่อผลงาน {renderSortIndicator('title')}</th>
+                    <th onClick={() => handleSort('scope')} className="p-3.5 cursor-pointer select-none">ขอบเขตผลงาน {renderSortIndicator('scope')}</th>
+                    <th onClick={() => handleSort('authors')} className="p-3.5 cursor-pointer select-none">เจ้าของผลงาน {renderSortIndicator('authors')}</th>
+                    <th onClick={() => handleSort('presenter')} className="p-3.5 cursor-pointer select-none">ผู้นำเสนอ {renderSortIndicator('presenter')}</th>
+                    <th onClick={() => handleSort('award_level')} className="p-3.5 cursor-pointer select-none">ระดับเวทีการนำเสนอ {renderSortIndicator('award_level')}</th>
+                    <th onClick={() => handleSort('organizer')} className="p-3.5 cursor-pointer select-none">เวทีการนำเสนอ {renderSortIndicator('organizer')}</th>
+                    <th onClick={() => handleSort('award_name')} className="p-3.5 cursor-pointer select-none">รางวัล {renderSortIndicator('award_name')}</th>
+                  </>
+                )}
+
+                {activeCategory === 'utilization' && (
+                  <>
+                    <th onClick={() => handleSort('year')} className="p-3.5 cursor-pointer select-none">ปี {renderSortIndicator('year')}</th>
+                    <th className="p-3.5">#</th>
+                    <th onClick={() => handleSort('title')} className="p-3.5 cursor-pointer select-none">ผลงาน {renderSortIndicator('title')}</th>
+                    <th onClick={() => handleSort('utilization_type')} className="p-3.5 cursor-pointer select-none">ประเภทผลงาน {renderSortIndicator('utilization_type')}</th>
+                  </>
+                )}
+                <th className="p-3.5 text-center">Link</th>
+              </tr>
+            </thead>
+
+            {/* Table Rows Body */}
+            <tbody className="divide-y divide-slate-100">
+              {sortedItems.map((item, idx) => {
+                const isEven = idx % 2 === 0
+                const rowBg = isEven ? 'bg-white' : 'bg-slate-50/50 hover:bg-slate-50'
+                
+                return (
+                  <tr key={item.id} className={`${rowBg} hover:bg-cyan-50/10 transition-colors`}>
+                    {activeCategory === 'research' && (
+                      <>
+                        <td className="p-3 font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</td>
+                        <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-semibold text-slate-800 max-w-[280px] break-words">{item.title}</td>
+                        <td className="p-3 font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</td>
+                        <td className="p-3">
+                          {item.metadata?.contribution && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200/50">
+                              {item.metadata.contribution}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {item.metadata?.scope && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                              {item.metadata.scope}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500">{item.metadata?.funding || 'ไม่มี'}</td>
+                        <td className="p-3">
+                          {item.metadata?.journal_rank && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200/50">
+                              {item.metadata.journal_rank}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500 italic max-w-[180px] truncate" title={item.metadata?.journal_name}>
+                          {item.metadata?.journal_name || '-'}
+                        </td>
+                      </>
                     )}
-                  </div>
-                </div>
 
-                {/* Card Details */}
-                <div className="p-5 flex flex-col justify-between flex-grow overflow-hidden bg-white">
-                  <div className="space-y-2 overflow-hidden flex-grow">
-                    <div className="flex items-center gap-1.5 text-[9px] text-cyan-800 font-bold uppercase tracking-wider">
-                      {subtypeLabel && <span>{subtypeLabel}</span>}
-                      {subtypeLabel && deptLabel && <span>•</span>}
-                      {deptLabel && <span className="text-slate-500">{deptLabel}</span>}
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors">
-                      {item.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 line-clamp-3 leading-relaxed">
-                      {item.description || 'ไม่มีคำอธิบายหรือบทคัดย่อสำหรับรายการนี้'}
-                    </p>
-                  </div>
+                    {activeCategory === 'intellectual_property' && (
+                      <>
+                        <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-semibold text-slate-800 max-w-[260px] break-words">{item.title}</td>
+                        <td className="p-3 font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</td>
+                        <td className="p-3">
+                          <span className={`whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold ${item.metadata?.ip_type === 'PettyPatent' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-cyan-50 text-cyan-800 border border-cyan-200'}`}>
+                            {item.metadata?.ip_type === 'PettyPatent' ? 'อนุสิทธิบัตร' : 'ลิขสิทธิ์'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-500">{item.metadata?.creator_type || '-'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.source || '-'}</td>
+                        <td className="p-3 font-mono text-slate-500">{formatExcelDate(item.metadata?.export_date)}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.application_status || '-'}</td>
+                        <td className="p-3 font-mono text-slate-500">{item.metadata?.registration_number || '-'}</td>
+                        <td className="p-3">
+                          {item.metadata?.status && (
+                            <span className={`whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold ${item.metadata.status === 'รอพิจารณา' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                              {item.metadata.status}
+                            </span>
+                          )}
+                        </td>
+                      </>
+                    )}
 
-                  {/* Authors & Footer */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
-                    <span className="flex items-center gap-1 max-w-[70%] truncate">
-                      <User className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                      <span className="truncate">{item.authors || 'ไม่ระบุผู้แต่ง'}</span>
-                    </span>
-                    <button
-                      onClick={() => handleOpenDetail(item)}
-                      className="px-3 py-1 rounded bg-cyan-50 hover:bg-cyan-700 text-cyan-700 hover:text-white font-bold transition flex items-center gap-1 cursor-pointer shadow-sm border border-cyan-200/30"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      เปิดดู
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+                    {activeCategory === 'innovation' && (
+                      <>
+                        <td className="p-3 font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</td>
+                        <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-semibold text-slate-800 max-w-[250px] break-words">{item.title}</td>
+                        <td className="p-3 font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.creator_type || '-'}</td>
+                        <td className="p-3 text-slate-500">
+                          {item.metadata?.scope && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                              {item.metadata.scope}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500">{item.metadata?.source || '-'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.innovation_type || '-'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.ip_status || '-'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.published || '-'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.presented || '-'}</td>
+                      </>
+                    )}
+
+                    {activeCategory === 'award' && (
+                      <>
+                        <td className="p-3 font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</td>
+                        <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-semibold text-slate-800 max-w-[250px] break-words">{item.title}</td>
+                        <td className="p-3 text-slate-500">
+                          {item.metadata?.scope && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                              {item.metadata.scope}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</td>
+                        <td className="p-3 text-slate-500">{item.metadata?.presenter || '-'}</td>
+                        <td className="p-3">
+                          {item.metadata?.award_level && (
+                            <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-150">
+                              {item.metadata.award_level === 'National' ? 'ชาติ' : item.metadata.award_level === 'International' ? 'นานาชาติ' : 'สถาบัน'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500 max-w-[200px] truncate" title={item.metadata?.organizer}>
+                          {item.metadata?.organizer || '-'}
+                        </td>
+                        <td className="p-3">
+                          {item.metadata?.award_name && (
+                            <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">
+                              🏆 {item.metadata.award_name}
+                            </span>
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {activeCategory === 'utilization' && (
+                      <>
+                        <td className="p-3 font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</td>
+                        <td className="p-3 font-mono text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-semibold text-slate-800 max-w-[450px] break-words">{item.title}</td>
+                        <td className="p-3">
+                          {item.metadata?.utilization_type && (
+                            <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {item.metadata.utilization_type === 'Public' ? 'ชุมชน/สาธารณะ' : item.metadata.utilization_type === 'Policy' ? 'เชิงนโยบาย' : item.metadata.utilization_type === 'Commercial' ? 'เชิงพาณิชย์' : 'เชิงวิชาการ'}
+                            </span>
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {/* Action Column */}
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleOpenDetail(item)}
+                        className="whitespace-nowrap px-2.5 py-1 rounded bg-slate-50 border border-slate-200 hover:border-blue-900 text-slate-600 hover:text-blue-900 font-bold transition flex items-center justify-center gap-1 mx-auto cursor-pointer shadow-sm text-[10px]"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        เปิดดู
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+
+          </table>
         </div>
       )}
 
@@ -376,21 +748,11 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
 
             {/* Content Scrollable */}
             <div className="p-6 overflow-y-auto space-y-6 text-xs leading-relaxed text-slate-700">
-              {/* Image Banner */}
-              {selectedItem.image_url && (
-                <div className="w-full h-64 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60">
-                  <img
-                    src={getMediaUrl(selectedItem.image_url, selectedItem.is_public)}
-                    alt={selectedItem.title}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              )}
-
+              
               {/* Author & Info grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-cyan-700 shrink-0" />
+                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">👤</span>
                   <div>
                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">คณะผู้จัดทำ</div>
                     <div className="text-xs text-slate-800 font-semibold">{selectedItem.authors || 'ไม่ระบุ'}</div>
@@ -398,9 +760,9 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-cyan-700 shrink-0" />
+                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">📅</span>
                   <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">วันที่จัดเก็บคลัง</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">วันที่บันทึกระบบ</div>
                     <div className="text-xs text-slate-800 font-semibold font-mono">
                       {new Date(selectedItem.created_at).toLocaleDateString('th-TH', {
                         year: 'numeric',
@@ -411,9 +773,9 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                   </div>
                 </div>
 
-                {selectedItem.metadata.department && (
+                {selectedItem.metadata?.department && (
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan-700 shrink-0" />
+                    <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">🏫</span>
                     <div>
                       <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">สาขาวิชา/หน่วยงาน</div>
                       <div className="text-xs text-slate-800 font-semibold">{getDeptOptionLabel(selectedItem.metadata.department)}</div>
@@ -422,7 +784,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                 )}
 
                 {/* Subtype metadata fields */}
-                {Object.entries(selectedItem.metadata).map(([key, val]) => {
+                {Object.entries(selectedItem.metadata || {}).map(([key, val]) => {
                   if (key === 'department' || !val) return null
                   const labelMap: Record<string, string> = {
                     research_type: 'ประเภทงานวิจัย',
@@ -430,23 +792,50 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                     award_level: 'ระดับรางวัลเชิดชูเกียรติ',
                     utilization_type: 'ประเภทการใช้ประโยชน์',
                     journal_name: 'ตีพิมพ์ในวารสาร',
-                    registration_number: 'เลขทะเบียนเอกสารสิทธิ์',
+                    registration_number: 'เลขทะเบียนเอกสารสิทธิ์ / เลขที่คำขอ',
                     registration_date: 'วันที่จดทะเบียนสิทธิ์',
-                    organizer: 'ผู้มอบรางวัล/ผู้ประสานจัดงาน',
+                    organizer: 'หน่วยงานผู้มอบ/เวทีการนำเสนอ',
                     organization_used: 'หน่วยงานที่อ้างอิงนำไปใช้',
                     impact_summary: 'ประโยชน์เชิงประจักษ์',
                     year: 'ปีจัดทำ/ปีงบประมาณ',
+                    scope: 'ขอบเขตของผลงาน',
+                    creator_type: 'กลุ่มผู้สร้างสรรค์',
+                    source: 'ที่มาของผลงาน',
+                    ip_subtype: 'ประเภททรัพย์สินทางปัญญาย่อย',
+                    export_date: 'วันที่ส่งออกเอกสาร',
+                    application_status: 'สถานะเลขคำขอ',
+                    status: 'สถานะการยื่นขอสิทธิ์ปัจจุบัน',
+                    contribution: 'การมีส่วนร่วมในผลงาน',
+                    funding: 'ทุนวิจัยที่ได้รับ',
+                    journal_rank: 'ระดับฐานข้อมูลวารสาร',
+                    presenter: 'ผู้นำเสนอผลงาน',
+                    award_name: 'รางวัลที่ได้รับ',
+                    innovation_type: 'ประเภทนวัตกรรม',
+                    ip_status: 'การยื่นขอทรัพย์สินทางปัญญา',
+                    published: 'การตีพิมพ์เผยแพร่',
+                    presented: 'การนำเสนอผลงานวิชาการ',
+                    drive_link: 'ลิงก์ไดรฟ์รายละเอียดผลงาน',
                   }
                   
                   const label = labelMap[key] || key
                   let displayVal = val as string
                   if (key.endsWith('_type') || key === 'award_level') {
                     displayVal = getSubtypeOptionLabel(selectedItem.category, val as string)
+                  } else if (key === 'export_date' && val && !isNaN(Number(val))) {
+                    const excelSerial = Number(val)
+                    const date = new Date((excelSerial - 25569) * 86400 * 1000)
+                    if (!isNaN(date.getTime())) {
+                      displayVal = date.toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                    }
                   }
 
                   return (
                     <div key={key} className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-cyan-700 shrink-0" />
+                      <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">📄</span>
                       <div>
                         <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{label}</div>
                         <div className="text-xs text-slate-800 font-semibold">{displayVal}</div>
@@ -512,8 +901,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                     )
                   ) : (
                     <div className="text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-200/60 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-                      <Lock className="w-3.5 h-3.5" />
-                      ล็อกอินก่อนเพื่อรับสิทธิ์ดาวน์โหลด
+                      🔒 ล็อกอินก่อนเพื่อรับสิทธิ์ดาวน์โหลด
                     </div>
                   )}
                 </div>
