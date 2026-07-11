@@ -342,33 +342,33 @@ export const AdminPanel: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn text-slate-800">
       {/* Tab Switcher - Light clinical theme */}
-      <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 max-w-lg shadow-sm">
+      <div className="flex bg-slate-100/70 p-1.5 rounded-xl border border-slate-200/80 max-w-xl shadow-sm flex-wrap sm:flex-nowrap gap-1">
         <button
           onClick={() => setActiveSubTab('items')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition ${
-            activeSubTab === 'items' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'items' ? 'bg-blue-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 shrink-0" />
           จัดการผลงาน
         </button>
         <button
           onClick={() => setActiveSubTab('lookups')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition ${
-            activeSubTab === 'lookups' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'lookups' ? 'bg-blue-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Settings className="w-4 h-4" />
-          จัดการตัวเลือก (Dropdowns)
+          <Settings className="w-4 h-4 shrink-0" />
+          จัดการตัวเลือกคัดกรอง
         </button>
         <button
           onClick={() => setActiveSubTab('users')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition ${
-            activeSubTab === 'users' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+            activeSubTab === 'users' ? 'bg-blue-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Users className="w-4 h-4" />
-          จัดการสิทธิ์ผู้ใช้
+          <Users className="w-4 h-4 shrink-0" />
+          จัดการสิทธิ์ผู้ใช้งาน
         </button>
       </div>
 

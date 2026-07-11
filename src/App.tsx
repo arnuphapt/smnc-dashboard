@@ -5,12 +5,13 @@ import { AuthScreen } from './pages/AuthScreen'
 import { Dashboard } from './pages/Dashboard'
 import { Repositories } from './pages/Repositories'
 import { AdminPanel } from './pages/AdminPanel'
-import { Shield, BookOpen, LayoutDashboard, LogIn, LogOut, Settings } from 'lucide-react'
+import { Shield, BookOpen, LayoutDashboard, LogIn, LogOut, Settings, ChevronDown } from 'lucide-react'
 
 const AppContent: React.FC = () => {
   const { user, profile, loading, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<string>('dashboard')
   const [showAuthScreen, setShowAuthScreen] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
   if (loading) {
     return (
@@ -84,22 +85,22 @@ const AppContent: React.FC = () => {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-cyan-700 flex items-center justify-center shadow shadow-cyan-600/10">
+          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setActiveTab('dashboard')}>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-900 to-cyan-600 flex items-center justify-center shadow-md shadow-blue-900/10">
               <Shield className="w-5 h-5 text-white stroke-[2.5]" />
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-950 block leading-none">คลังปัญญา SMNC</span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">Digital Research Workspace</span>
+              <span className="text-sm font-extrabold text-slate-950 block leading-none tracking-tight">คลังปัญญา SMNC</span>
+              <span className="text-[10px] text-slate-500 block mt-1 font-bold tracking-wide uppercase">Digital Research Workspace</span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1.5">
+          <nav className="hidden md:flex items-center gap-2">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'dashboard' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeTab === 'dashboard' ? 'bg-blue-50 text-blue-900 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
@@ -107,9 +108,9 @@ const AppContent: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('research')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                 ['research', 'innovation', 'intellectual_property', 'award', 'utilization'].includes(activeTab)
-                  ? 'bg-cyan-50 text-cyan-700'
+                  ? 'bg-blue-50 text-blue-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
               }`}
             >
@@ -119,8 +120,8 @@ const AppContent: React.FC = () => {
             {profile?.role === 'admin' && (
               <button
                 onClick={() => setActiveTab('admin')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === 'admin' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  activeTab === 'admin' ? 'bg-blue-50 text-blue-900 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
                 }`}
               >
                 <Settings className="w-4 h-4" />
@@ -129,28 +130,92 @@ const AppContent: React.FC = () => {
             )}
           </nav>
 
-          {/* User Auth Badge */}
-          <div className="flex items-center gap-3">
+          {/* User Auth Badge with Dropdown */}
+          <div className="relative">
             {user ? (
-              <div className="flex items-center gap-3 bg-slate-100/50 px-3 py-1.5 rounded-xl border border-slate-200/80">
-                <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-700 max-w-[120px] truncate">{user.email}</div>
-                  <span className={`inline-block text-[9px] font-extrabold uppercase tracking-wider px-1.5 rounded mt-0.5 ${getRoleBadgeColor(profile?.role)}`}>
-                    {profile?.role || 'TEACHER'}
-                  </span>
-                </div>
+              <>
+                {/* Trigger Button */}
                 <button
-                  onClick={signOut}
-                  className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-red-650 transition"
-                  title="ออกจากระบบ"
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center gap-2.5 bg-transparent hover:bg-slate-50 px-3 py-1.5 rounded-xl transition cursor-pointer select-none"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <div className="text-right leading-none">
+                    <div className="text-xs font-extrabold text-slate-800 max-w-[130px] truncate" title={user.email}>
+                      {user.email}
+                    </div>
+                    <span className={`inline-block text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1.5 ${getRoleBadgeColor(profile?.role)}`}>
+                      {profile?.role || 'TEACHER'}
+                    </span>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-900 to-cyan-600 text-white font-extrabold text-xs flex items-center justify-center shadow-sm shrink-0">
+                    {user.email ? user.email.slice(0, 2).toUpperCase() : 'U'}
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
                 </button>
-              </div>
+
+                {/* Overlay to close when clicking outside */}
+                {showProfileDropdown && (
+                  <div 
+                    className="fixed inset-0 z-40 cursor-default" 
+                    onClick={() => setShowProfileDropdown(false)} 
+                  />
+                )}
+
+                {/* Floating Dropdown Card */}
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50 animate-fadeIn text-xs text-slate-700">
+                    <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100">
+                      <div className="font-bold text-slate-900 truncate" title={user.email}>{user.email}</div>
+                      <div className="text-[9px] font-extrabold uppercase text-slate-400 mt-1">สิทธิ์: {profile?.role || 'TEACHER'}</div>
+                    </div>
+                    
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setActiveTab('dashboard')
+                          setShowProfileDropdown(false)
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-slate-400" />
+                        สรุปภาพรวม (Dashboard)
+                      </button>
+                      
+                      {profile?.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            setActiveTab('admin')
+                            setShowProfileDropdown(false)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                        >
+                          <Settings className="w-4 h-4 text-slate-400" />
+                          หลังบ้าน Admin
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="border-t border-slate-150 my-1"></div>
+                    
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          signOut()
+                          setShowProfileDropdown(false)
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-red-50 font-bold text-red-600 flex items-center gap-2 cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        ออกจากระบบ
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <button
                 onClick={() => setShowAuthScreen(true)}
-                className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                className="px-4 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
               >
                 <LogIn className="w-4 h-4 text-white stroke-[2.5]" />
                 เข้าสู่ระบบ / สมัครสมาชิก
