@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { BookOpen, Lightbulb, Award, Lock, Shield, FileText } from 'lucide-react'
+import { formatExcelDate, getCategoryLabel, getCategoryColor } from '../utils/format'
 
 export interface WisdomItem {
   id: string
@@ -49,7 +50,7 @@ const DonutChart: React.FC<DonutChartProps> = ({ title, centerLabel, data }) => 
     <div className="light-card rounded-2xl p-6 bg-white border border-slate-200 flex flex-col justify-between items-center shadow-sm h-full">
       <div className="w-full text-center mb-2">
         <h4 className="text-sm font-bold text-slate-800 flex items-center justify-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-cyan-700"></span>
+          <span className="w-2 h-2 rounded-full" style={{ background: '#0EA5A0' }}></span>
           {title}
         </h4>
       </div>
@@ -178,20 +179,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
     }
   }, [])
 
-  // Helper to format Excel serial dates to DD/MM/YY
-  const formatExcelDate = (serial: any) => {
-    if (!serial) return ''
-    if (isNaN(Number(serial))) return String(serial)
-    const excelSerial = Number(serial)
-    const date = new Date((excelSerial - 25569) * 86400 * 1000)
-    if (isNaN(date.getTime())) return String(serial)
-    
-    const dd = String(date.getDate()).padStart(2, '0')
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const yy = String(date.getFullYear()).slice(-2)
-    return `${dd}/${mm}/${yy}`
-  }
-
   // Calculate Last 6 Months trend data
   const getTrendData = () => {
     const data = []
@@ -311,53 +298,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
     return 'bg-amber-50 text-amber-700 border border-amber-200'
   }
 
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'research': return 'วิจัย'
-      case 'innovation': return 'นวัตกรรม'
-      case 'intellectual_property': return 'ทรัพย์สินทางปัญญา'
-      case 'award': return 'รางวัล'
-      case 'utilization': return 'การใช้ประโยชน์'
-      default: return category
-    }
-  }
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'research': return 'bg-cyan-50 text-cyan-700 border border-cyan-200/50'
-      case 'innovation': return 'bg-amber-50 text-amber-700 border border-amber-200/50'
-      case 'intellectual_property': return 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
-      case 'award': return 'bg-purple-50 text-purple-700 border border-purple-200/50'
-      case 'utilization': return 'bg-pink-50 text-pink-700 border border-pink-200/50'
-      default: return 'bg-slate-50 text-slate-600 border border-slate-200'
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 border-4 border-cyan-700 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-500 text-sm animate-pulse">กำลังดึงข้อมูลสถิติและแปลความคุ้มครองระบบ...</p>
+        <div className="spinner-teal"></div>
+        <p className="text-sm animate-pulse" style={{ color: '#64748B' }}>กำลังดึงข้อมูลสถิติ...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn text-slate-800">
+    <div className="space-y-8 animate-fadeIn">
       
-      {/* Top Header Row with Title and Role */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">
-            ระบบวิเคราะห์และคลังปัญญาดิจิทัล SMNC
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">สถิติและข้อมูลการคุ้มครองทรัพย์สินทางปัญญาแบบเรียลไทม์</p>
-        </div>
-        {userRole && (
-          <div className="self-start md:self-center text-xs font-bold text-cyan-800 bg-cyan-50/60 px-3.5 py-1.5 rounded-lg border border-cyan-200/50">
-            สิทธิ์การใช้งาน: {userRole === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : userRole === 'expert' ? 'ผู้ทรงคุณวุฒิ (Expert)' : 'อาจารย์ (Teacher)'}
+      {/* Page Header Band — matches Phase 2 pages */}
+      <div className="page-header-band px-8 py-7">
+        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <span className="eyebrow-badge mb-3 inline-block">Digital Research Workspace</span>
+            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">
+              ระบบวิเคราะห์และคลังปัญญาดิจิทัล SMNC
+            </h2>
+            <p className="text-sm font-medium mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              สถิติและข้อมูลการคุ้มครองทรัพย์สินทางปัญญาแบบเรียลไทม์
+            </p>
           </div>
-        )}
+          {userRole && (
+            <span
+              className="self-start md:self-end text-xs font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-full shrink-0"
+              style={{ background: 'rgba(14,165,160,0.18)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.4)' }}
+            >
+              {userRole === 'admin' ? 'ผู้ดูแลระบบ' : userRole === 'expert' ? 'ผู้ทรงคุณวุฒิ' : 'อาจารย์'}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 1. Summary Stats Cards Row (6 Columns) */}
@@ -365,20 +338,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
         {cardConfigs.map((card, idx) => {
           const Icon = card.icon
           return (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               onClick={() => onNavigate(card.tab)}
-              className={`bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between items-start relative overflow-hidden group cursor-pointer hover:border-cyan-700/30 hover:shadow-md transition-all duration-200 ${card.color}`}
+              className={`bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between items-start relative overflow-hidden group cursor-pointer hover:shadow-md transition-all duration-200 ${card.color}`}
+              style={{ ['--tw-shadow-color' as any]: 'rgba(14,165,160,0.08)' }}
             >
               <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: '#94A3B8' }}>
                   {card.label}
                 </span>
-                <span className="text-3xl font-extrabold text-slate-900 mt-1 block leading-tight">
+                <span className="text-3xl font-extrabold mt-1 block leading-tight" style={{ color: '#0B1D3A' }}>
                   {card.count}
                 </span>
               </div>
-              <div className="absolute right-4 bottom-4 text-slate-300 group-hover:text-slate-400 transition-colors pointer-events-none">
+              <div className="absolute right-4 bottom-4 text-slate-200 group-hover:text-slate-300 transition-colors pointer-events-none">
                 <Icon className="w-5 h-5 stroke-[1.8]" />
               </div>
             </div>
@@ -401,36 +375,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
         <div className="lg:col-span-1 space-y-6 h-full">
           {/* IP Progress Bars */}
           <div className="light-card rounded-2xl p-6 bg-white border border-slate-200 shadow-sm space-y-5">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
-              <span className="w-1.5 h-3.5 bg-cyan-700 rounded-full"></span>
+            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100" style={{ color: '#0B1D3A' }}>
+              <span className="w-1.5 h-3.5 rounded-full" style={{ background: '#0EA5A0' }}></span>
               ความคืบหน้าทรัพย์สินทางปัญญา
             </h3>
             
             <div className="space-y-4">
               {/* Progress 1 */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                <div className="flex justify-between text-[11px] font-bold" style={{ color: '#475569' }}>
                   <span>ได้เลขคำขอ / รอพิจารณา</span>
-                  <span className="text-cyan-800">{ipPending} รายการ ({progressPendingPct.toFixed(0)}%)</span>
+                  <span style={{ color: '#0EA5A0' }}>{ipPending} รายการ ({progressPendingPct.toFixed(0)}%)</span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    style={{ width: `${progressPendingPct}%` }} 
-                    className="h-full bg-cyan-700 rounded-full transition-all duration-500"
+                <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: '#E8F0F8' }}>
+                  <div
+                    style={{ width: `${progressPendingPct}%`, background: '#0EA5A0' }}
+                    className="h-full rounded-full transition-all duration-500"
                   />
                 </div>
               </div>
 
               {/* Progress 2 */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                <div className="flex justify-between text-[11px] font-bold" style={{ color: '#475569' }}>
                   <span>ส่งเอกสารออก (รอเลขคำขอ)</span>
-                  <span className="text-pink-600">{ipExported} รายการ ({progressExportedPct.toFixed(0)}%)</span>
+                  <span style={{ color: '#7C3AED' }}>{ipExported} รายการ ({progressExportedPct.toFixed(0)}%)</span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    style={{ width: `${progressExportedPct}%` }} 
-                    className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all duration-500"
+                <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: '#E8F0F8' }}>
+                  <div
+                    style={{ width: `${progressExportedPct}%` }}
+                    className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all duration-500"
                   />
                 </div>
               </div>
@@ -464,8 +438,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
         {/* Right Column: IP Timeline */}
         <div className="lg:col-span-2 light-card rounded-2xl p-6 bg-white border border-slate-200 shadow-sm">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-3 border-b border-slate-100 mb-6 flex items-center gap-1.5">
-            <span className="w-1.5 h-3.5 bg-cyan-700 rounded-full"></span>
+          <h3 className="text-xs font-bold uppercase tracking-wider pb-3 border-b border-slate-100 mb-6 flex items-center gap-1.5" style={{ color: '#0B1D3A' }}>
+            <span className="w-1.5 h-3.5 rounded-full" style={{ background: '#0EA5A0' }}></span>
             ไทม์ไลน์การยื่นขอทรัพย์สินทางปัญญา
           </h3>
 
@@ -486,8 +460,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
                   <span className={`absolute -left-[31px] top-1.5 w-4.5 h-4.5 rounded-full border-4 border-white shadow-sm transition-transform group-hover:scale-125 ${dotBg}`} />
 
                   {/* Timeline inner card */}
-                  <div className="p-4 bg-slate-50 hover:bg-cyan-50/20 border border-slate-200/60 rounded-xl transition duration-200 space-y-1">
-                    <h4 className="text-[11px] font-bold text-slate-800 group-hover:text-cyan-800 transition-colors leading-snug">
+                  <div className="p-4 border rounded-xl transition duration-200 space-y-1" style={{ background: '#F0F7FF', borderColor: '#DAEEFF' }}>
+                    <h4 className="text-[11px] font-bold leading-snug transition-colors" style={{ color: '#0B1D3A' }}>
                       {item.title}
                     </h4>
                     
@@ -513,12 +487,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
       <div className="light-card rounded-2xl p-6 bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              📈 แนวโน้มการเพิ่มข้อมูลคลังความรู้ย้อนหลัง 6 เดือน
+            <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: '#0B1D3A' }}>
+              <span className="w-1.5 h-3.5 rounded-full shrink-0" style={{ background: '#0EA5A0' }}></span>
+              แนวโน้มการเพิ่มข้อมูลคลังความรู้ย้อนหลัง 6 เดือน
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">จำนวนการบันทึกรายการเพิ่มเข้าคลังสะสมของทุกหมวดหมู่รายเดือน</p>
+            <p className="text-xs mt-0.5" style={{ color: '#94A3B8' }}>จำนวนการบันทึกรายการเพิ่มเข้าคลังสะสมของทุกหมวดหมู่รายเดือน</p>
           </div>
-          <span className="text-[10px] font-bold text-cyan-800 bg-cyan-50 px-2.5 py-1 rounded border border-cyan-150 font-mono">
+          <span className="text-[10px] font-bold font-mono px-2.5 py-1 rounded-full" style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.3)' }}>
             Month-on-Month
           </span>
         </div>

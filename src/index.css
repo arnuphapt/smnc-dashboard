@@ -1,52 +1,146 @@
 @import "tailwindcss";
 
+/* ── SMNC Design Tokens ────────────────────────────────────────────────────── */
+:root {
+  /* Primary palette */
+  --primary:     #0B1D3A;   /* Deep Midnight Navy — headers, active states */
+  --primary-mid: #1A3A5C;   /* Research Blue — gradient end */
+  --accent:      #0EA5A0;   /* Teal — CTAs, badges, rail accents */
+  --accent-dim:  rgba(14,165,160,0.12);
+
+  /* Surface palette */
+  --frost:       #F0F7FF;   /* Frost Blue — card bg */
+  --mist:        #DAEEFF;   /* Mist — card borders, dividers */
+  --page-bg:     #f8fafc;   /* slate-50 */
+
+  /* Text */
+  --text-strong: #0B1D3A;
+  --text-body:   #334155;
+  --text-muted:  #64748B;
+  --text-faint:  #94A3B8;
+}
+
 @layer base {
   html {
     font-size: 17.5px;
   }
   body {
-    background-color: #f8fafc; /* slate-50 */
-    color: #0f172a; /* slate-900 */
+    background-color: var(--page-bg);
+    color: var(--text-body);
     font-family: 'Sarabun', 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Light Card styles */
+/* ── Shared Card styles ──────────────────────────────────────────────────── */
 .light-card {
   background-color: #ffffff;
-  border: 1px solid #e2e8f0; /* slate-200 */
+  border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .light-card-hover:hover {
-  border-color: #0e7490; /* cyan-700 / primary */
-  box-shadow: 0 10px 25px -5px rgba(14, 116, 144, 0.08), 0 8px 10px -6px rgba(14, 116, 144, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 10px 25px -5px rgba(14, 165, 160, 0.08), 0 8px 10px -6px rgba(14, 165, 160, 0.08);
   transform: translateY(-2.5px);
 }
 
-/* Form inputs for light theme */
-.light-input {
+/* ── Frost Card — used across Phase 2 pages ──────────────────────────────── */
+.frost-card {
+  background-color: var(--frost);
+  border: 1px solid var(--mist);
+  border-radius: 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.frost-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Content Panel with teal left rail ───────────────────────────────────── */
+.content-panel {
   background-color: #ffffff;
-  border: 1px solid #cbd5e1; /* slate-300 */
-  color: #0f172a; /* slate-900 */
+  border: 1px solid #E2EDF8;
+  border-left: 4px solid var(--accent);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04);
+}
+
+/* ── Navy page header band ───────────────────────────────────────────────── */
+.page-header-band {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 60%, #0E3251 100%);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.page-header-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  background-image:
+    radial-gradient(ellipse at 80% 20%, rgba(14,165,160,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 10% 80%, rgba(14,165,160,0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ── Form inputs ─────────────────────────────────────────────────────────── */
+.light-input {
+  background-color: #FAFCFF;
+  border: 1.5px solid #CBD5E1;
+  color: var(--text-strong);
+  border-radius: 0.75rem;
   transition: all 0.15s ease-in-out;
 }
 
 .light-input:focus {
   outline: none;
-  border-color: #0e7490; /* cyan-700 */
-  box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 160, 0.15);
 }
 
-/* EKG pulse wave SVG animation */
+/* ── Status / Eyebrow badge ──────────────────────────────────────────────── */
+.eyebrow-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(14,165,160,0.18);
+  color: var(--accent);
+  border: 1px solid rgba(14,165,160,0.4);
+}
+
+/* ── Primary CTA button ──────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 100%);
+  color: #ffffff;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  font-size: 0.857rem;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ── EKG animation ───────────────────────────────────────────────────────── */
 @keyframes ekg-draw {
-  0% {
-    stroke-dashoffset: 1000;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
+  0%   { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
 }
 
 .ekg-line {
@@ -55,36 +149,41 @@
   animation: ekg-draw 3.5s linear infinite;
 }
 
-/* Custom scrollbars for light theme */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
+/* ── Animations ──────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Teal spinner ────────────────────────────────────────────────────────── */
+.spinner-teal {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgba(14,165,160,0.2);
+  border-top-color: var(--accent);
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

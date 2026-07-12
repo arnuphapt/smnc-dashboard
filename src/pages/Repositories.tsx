@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { useLookups } from '../context/LookupContext'
 import { useAuth } from '../context/AuthContext'
 import { Search, FileText, Download, X, BookOpen, Lightbulb, FileCheck, Award, Share2, Eye, RotateCcw } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
+import { formatExcelDate } from '../utils/format'
 
-interface RepositoriesProps {
-  initialCategory?: string
-}
+const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
-export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'research' }) => {
+export const Repositories: React.FC = () => {
   const { user } = useAuth()
   const { getOptionsByCategory } = useLookups()
+  const { category } = useParams<{ category: string }>()
+  const navigate = useNavigate()
 
-  const [activeCategory, setActiveCategory] = useState<string>(initialCategory)
+  const activeCategory = category && VALID_CATEGORIES.includes(category) ? category : 'research'
   const [items, setItems] = useState<WisdomItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -77,10 +79,6 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
     }
   }, [activeCategory])
 
-  useEffect(() => {
-    setActiveCategory(initialCategory)
-  }, [initialCategory])
-
   // Reset filters when activeCategory changes
   useEffect(() => {
     handleResetFilters()
@@ -137,19 +135,6 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
   const getDeptOptionLabel = (value: string) => {
     const list = getOptionsByCategory('department')
     return list.find(o => o.value === value)?.label || value
-  }
-
-  const formatExcelDate = (serial: any) => {
-    if (!serial) return ''
-    if (isNaN(Number(serial))) return String(serial)
-    const excelSerial = Number(serial)
-    const date = new Date((excelSerial - 25569) * 86400 * 1000)
-    if (isNaN(date.getTime())) return String(serial)
-    
-    const dd = String(date.getDate()).padStart(2, '0')
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const yy = String(date.getFullYear()).slice(-2)
-    return `${dd}/${mm}/${yy}`
   }
 
   // Filtering Logic
@@ -268,42 +253,66 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
     { id: 'utilization', label: 'การนำไปใช้ประโยชน์', icon: Share2 },
   ]
 
+  const categoryMeta: Record<string, { label: string; subtitle: string }> = {
+    research: { label: 'คลังผลงานวิจัย', subtitle: 'Research Repository' },
+    intellectual_property: { label: 'คลังทรัพย์สินทางปัญญา', subtitle: 'Intellectual Property' },
+    innovation: { label: 'คลังนวัตกรรม', subtitle: 'Innovation Repository' },
+    award: { label: 'คลังรางวัลและความสำเร็จ', subtitle: 'Awards & Recognition' },
+    utilization: { label: 'การนำไปใช้ประโยชน์', subtitle: 'Research Utilization' },
+  }
+  const currentMeta = categoryMeta[activeCategory] ?? { label: 'คลังปัญญา 5 ด้าน', subtitle: 'Wisdom Repositories' }
+
   return (
-    <div className="space-y-6 animate-fadeIn text-slate-800">
+    <div className="space-y-6 animate-fadeIn">
       
-      {/* Category Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-px">
-        {categories.map((cat) => {
-          const Icon = cat.icon
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 -mb-px transition ${
-                activeCategory === cat.id
-                  ? 'border-blue-900 text-blue-900 bg-blue-50/20'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {cat.label}
-            </button>
-          )
-        })}
+      {/* Page Header Band — matches Clinic/Ethics/IP pattern */}
+      <div className="page-header-band">
+        <div className="relative px-8 pt-8 pb-0">
+          <span className="eyebrow-badge mb-3 inline-block">Knowledge Repository</span>
+          <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-1">
+            {currentMeta.label}
+          </h1>
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
+          </p>
+
+          {/* Tab Pills */}
+          <div className="flex gap-2 mt-7 overflow-x-auto pb-px">
+            {categories.map((cat) => {
+              const Icon = cat.icon
+              const isActive = activeCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => navigate(`/repositories/${cat.id}`)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all duration-200 shrink-0"
+                  style={{
+                    background: isActive ? '#F0F7FF' : 'rgba(255,255,255,0.07)',
+                    color: isActive ? '#0B1D3A' : 'rgba(255,255,255,0.65)',
+                    borderBottom: isActive ? '2px solid #0EA5A0' : '2px solid transparent',
+                  }}
+                >
+                  <Icon className="w-4 h-4" />
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Dynamic Filters Bar */}
-      <div className="light-card rounded-xl p-4 bg-white border border-slate-200 shadow-sm flex flex-wrap gap-3 items-center justify-between">
+      <div className="content-panel p-4 flex flex-wrap gap-3 items-center justify-between">
         <div className="flex flex-wrap gap-3 items-center flex-grow">
           {/* Search */}
           <div className="relative min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94A3B8' }} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ชื่อเรื่อง, นักวิจัย, วารสาร..."
-              className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-blue-900"
+              className="w-full pl-9 pr-4 py-1.5 rounded-xl text-xs light-input"
             />
           </div>
 
@@ -311,7 +320,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none focus:border-blue-900"
+            className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
           >
             <option value="">ปีทั้งหมด</option>
             {getUniqueMetadataValues('year').map(yr => (
@@ -323,7 +332,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
           <select
             value={selectedAuthor}
             onChange={(e) => setSelectedAuthor(e.target.value)}
-            className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none focus:border-blue-900 max-w-[150px] truncate"
+            className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input max-w-[150px] truncate"
           >
             <option value="">นักวิจัยทั้งหมด</option>
             {getUniqueAuthors().map(auth => (
@@ -338,7 +347,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedScope}
                 onChange={(e) => setSelectedScope(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ขอบเขตทั้งหมด</option>
                 {getUniqueMetadataValues('scope').map(s => (
@@ -350,7 +359,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedRank}
                 onChange={(e) => setSelectedRank(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ระดับฐานทั้งหมด</option>
                 {getUniqueMetadataValues('journal_rank').map(r => (
@@ -366,7 +375,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedIpType}
                 onChange={(e) => setSelectedIpType(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ประเภทสิทธิ์ทั้งหมด</option>
                 <option value="PettyPatent">อนุสิทธิบัตร</option>
@@ -379,7 +388,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">สถานะทั้งหมด</option>
                 {getUniqueMetadataValues('status').map(st => (
@@ -395,7 +404,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedCreatorType}
                 onChange={(e) => setSelectedCreatorType(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ผู้สร้างสรรค์ทั้งหมด</option>
                 {getUniqueMetadataValues('creator_type').map(ct => (
@@ -407,7 +416,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedInnoType}
                 onChange={(e) => setSelectedInnoType(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ประเภทนวัตกรรมทั้งหมด</option>
                 {getUniqueMetadataValues('innovation_type').map(it => (
@@ -423,7 +432,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedAwardLevel}
                 onChange={(e) => setSelectedAwardLevel(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ระดับเวทีทั้งหมด</option>
                 <option value="National">ชาติ</option>
@@ -435,7 +444,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">รางวัลทั้งหมด</option>
                 {getUniqueMetadataValues('award_name').map(aw => (
@@ -451,7 +460,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               <select
                 value={selectedUtType}
                 onChange={(e) => setSelectedUtType(e.target.value)}
-                className="pl-3 pr-8 py-1.5 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer focus:outline-none"
+                className="pl-3 pr-8 py-1.5 rounded-xl text-xs cursor-pointer light-input"
               >
                 <option value="">ประเภทการใช้ประโยชน์ทั้งหมด</option>
                 <option value="Public">ชุมชน/สาธารณะ</option>
@@ -465,7 +474,8 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
           {/* Reset button */}
           <button
             onClick={handleResetFilters}
-            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 transition text-xs font-bold text-slate-600 flex items-center gap-1 cursor-pointer"
+            className="p-1.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
+            style={{ background: '#F0F7FF', color: '#0B1D3A', border: '1px solid #DAEEFF' }}
             title="ล้างตัวกรอง"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -474,7 +484,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
         </div>
 
         {/* Counts */}
-        <div className="text-[10px] text-slate-500 font-bold bg-slate-50 border border-slate-150 px-2.5 py-1 rounded">
+        <div className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.2)' }}>
           แสดง {sortedItems.length} / {items.length} รายการ
         </div>
       </div>
@@ -482,8 +492,8 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
       {/* Content Table Area */}
       {loading ? (
         <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-3 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs text-slate-400 font-semibold">กำลังโหลดรายการผลงาน...</p>
+          <div className="spinner-teal mx-auto"></div>
+          <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>กำลังโหลดรายการผลงาน...</p>
         </div>
       ) : sortedItems.length === 0 ? (
         <div className="py-20 bg-white border border-slate-200 rounded-2xl text-center text-slate-500 text-xs font-semibold">
@@ -495,7 +505,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
             
             {/* Header Columns */}
             <thead>
-              <tr className="bg-blue-900 text-white font-bold">
+              <tr className="text-white font-bold" style={{ background: '#0B1D3A' }}>
                 {activeCategory === 'research' && (
                   <>
                     <th onClick={() => handleSort('year')} className="p-3.5 cursor-pointer select-none">ปี {renderSortIndicator('year')}</th>
@@ -574,7 +584,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                 const rowBg = isEven ? 'bg-white' : 'bg-slate-50/50 hover:bg-slate-50'
                 
                 return (
-                  <tr key={item.id} className={`${rowBg} hover:bg-cyan-50/10 transition-colors`}>
+                  <tr key={item.id} className={`${rowBg} hover:bg-[rgba(14,165,160,0.05)] transition-colors`}>
                     {activeCategory === 'research' && (
                       <>
                         <td className="p-3 font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</td>
@@ -731,7 +741,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex justify-between items-start shrink-0">
               <div>
-                <span className="px-2.5 py-0.5 rounded text-[9px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200/40 uppercase tracking-wider">
+                <span className="eyebrow-badge">
                   {categories.find(c => c.id === selectedItem.category)?.label}
                 </span>
                 <h3 className="text-base font-bold text-slate-900 mt-1.5 leading-snug">
@@ -752,7 +762,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
               {/* Author & Info grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
                 <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">👤</span>
+                  <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>👤</span>
                   <div>
                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">คณะผู้จัดทำ</div>
                     <div className="text-xs text-slate-800 font-semibold">{selectedItem.authors || 'ไม่ระบุ'}</div>
@@ -760,7 +770,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">📅</span>
+                  <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>📅</span>
                   <div>
                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">วันที่บันทึกระบบ</div>
                     <div className="text-xs text-slate-800 font-semibold font-mono">
@@ -775,7 +785,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
 
                 {selectedItem.metadata?.department && (
                   <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">🏫</span>
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>🏫</span>
                     <div>
                       <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">สาขาวิชา/หน่วยงาน</div>
                       <div className="text-xs text-slate-800 font-semibold">{getDeptOptionLabel(selectedItem.metadata.department)}</div>
@@ -835,7 +845,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
 
                   return (
                     <div key={key} className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">📄</span>
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>📄</span>
                       <div>
                         <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{label}</div>
                         <div className="text-xs text-slate-800 font-semibold">{displayVal}</div>
@@ -855,9 +865,9 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
 
               {/* Download File File Section */}
               {selectedItem.file_url && (
-                <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200/60 flex items-center justify-between">
+                <div className="p-4 rounded-xl flex items-center justify-between" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-cyan-100 text-cyan-700 rounded-lg flex items-center justify-center shadow-sm">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm" style={{ background: 'rgba(14,165,160,0.15)', color: '#0EA5A0' }}>
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
@@ -873,7 +883,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                       href={getMediaUrl(selectedItem.file_url, true)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4"
                     >
                       <Download className="w-4 h-4" />
                       ดาวน์โหลด
@@ -889,7 +899,7 @@ export const Repositories: React.FC<RepositoriesProps> = ({ initialCategory = 'r
                         href={signedUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4"
                       >
                         <Download className="w-4 h-4" />
                         ดาวน์โหลดเอกสาร (Private)
