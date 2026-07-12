@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
-import { 
-  Info, 
-  CalendarPlus, 
-  Calendar, 
-  History, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  HelpCircle,
+import {
+  Info,
+  CalendarPlus,
+  Calendar,
+  History,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   MapPin,
   Users,
   AlertCircle
 } from 'lucide-react'
+import { StatusBadge } from '../components/StatusBadge'
+import { PageHeader, ContentPanel } from '../components/PageHeader'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface ClinicEvent {
   id: string
@@ -36,90 +39,6 @@ interface Appointment {
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
   admin_notes?: string
   created_at: string
-}
-
-const PageHeader: React.FC<{
-  title: string
-  subtitle: string
-  tabs: { key: string; icon: React.ReactNode; label: string }[]
-  activeTab: string
-  onTabChange: (tab: string) => void
-  extraBadge?: string
-}> = ({ title, subtitle, tabs, activeTab, onTabChange, extraBadge }) => (
-  <div
-    className="relative overflow-hidden rounded-2xl mb-8"
-    style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 60%, #0E3251 100%)' }}
-  >
-    {/* Subtle mesh overlay */}
-    <div
-      className="absolute inset-0 opacity-30"
-      style={{
-        backgroundImage:
-          'radial-gradient(ellipse at 80% 20%, rgba(14,165,160,0.25) 0%, transparent 60%), radial-gradient(ellipse at 10% 80%, rgba(14,165,160,0.12) 0%, transparent 50%)',
-      }}
-    />
-    <div className="relative px-8 pt-8 pb-0">
-      {extraBadge && (
-        <span
-          className="inline-block mb-3 text-[10px] font-extrabold uppercase tracking-[0.18em] px-3 py-1 rounded-full"
-          style={{ background: 'rgba(14,165,160,0.18)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.4)' }}
-        >
-          {extraBadge}
-        </span>
-      )}
-      <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-1">{title}</h1>
-      <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>{subtitle}</p>
-
-      {/* Tab Pills — float on bottom edge of header */}
-      <div className="flex gap-2 mt-7 overflow-x-auto pb-px">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              onClick={() => onTabChange(tab.key)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all duration-200 shrink-0"
-              style={{
-                background: isActive ? '#F0F7FF' : 'rgba(255,255,255,0.07)',
-                color: isActive ? '#0B1D3A' : 'rgba(255,255,255,0.65)',
-                borderBottom: isActive ? '2px solid #0EA5A0' : '2px solid transparent',
-              }}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  </div>
-)
-
-const ContentPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div
-    className="bg-white rounded-2xl shadow-sm"
-    style={{ border: '1px solid #E2EDF8', borderLeft: '4px solid #0EA5A0' }}
-  >
-    <div className="p-8">{children}</div>
-  </div>
-)
-
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
-    pending: { bg: '#FFF8EC', color: '#B45309', icon: <Clock className="w-3.5 h-3.5" />, label: 'รอการยืนยัน' },
-    confirmed: { bg: '#ECFDF5', color: '#065F46', icon: <CheckCircle className="w-3.5 h-3.5" />, label: 'ยืนยันแล้ว' },
-    cancelled: { bg: '#FFF1F2', color: '#9F1239', icon: <XCircle className="w-3.5 h-3.5" />, label: 'ยกเลิก' },
-    completed: { bg: '#EFF6FF', color: '#1E40AF', icon: <CheckCircle className="w-3.5 h-3.5" />, label: 'เสร็จสิ้น' },
-  }
-  const s = map[status] ?? { bg: '#F8FAFC', color: '#475569', icon: <HelpCircle className="w-3.5 h-3.5" />, label: status }
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
-      style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}22` }}
-    >
-      {s.icon} {s.label}
-    </span>
-  )
 }
 
 export const Clinic: React.FC = () => {
@@ -492,7 +411,7 @@ export const Clinic: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>หัวข้อที่ขอปรึกษา *</label>
-                    <input
+                    <Input
                       type="text"
                       placeholder="เช่น ขอบข่ายทฤษฎีวิจัย หรือ การใช้โปรแกรม SPSS..."
                       value={topic}
@@ -503,7 +422,7 @@ export const Clinic: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดเพิ่มเติม</label>
-                    <textarea
+                    <Textarea
                       rows={3}
                       placeholder="เขียนรายละเอียดเพิ่มเติมเพื่อให้ทีมเตรียมตัวได้ล่วงหน้า..."
                       value={notes}
@@ -515,7 +434,7 @@ export const Clinic: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>วันที่ขอนัด *</label>
-                      <input
+                      <Input
                         type="date"
                         value={date}
                         min={new Date().toISOString().split('T')[0]}
@@ -526,31 +445,42 @@ export const Clinic: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ช่วงเวลา *</label>
-                      <select
+                      <Select
                         value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className={inputBase + ' cursor-pointer'}
-                        style={{ ...inputBorder, background: '#FAFCFF' }}
+                        onValueChange={(v) => setTime(v ?? '09:00')}
+                        items={[
+                          { value: '09:00', label: '09:00 – 10:00 (เช้า)' },
+                          { value: '10:00', label: '10:00 – 11:00 (เช้า)' },
+                          { value: '11:00', label: '11:00 – 12:00 (เช้า)' },
+                          { value: '13:00', label: '13:00 – 14:00 (บ่าย)' },
+                          { value: '14:00', label: '14:00 – 15:00 (บ่าย)' },
+                          { value: '15:00', label: '15:00 – 16:00 (บ่าย)' },
+                        ]}
                       >
-                        <option value="09:00">09:00 – 10:00 (เช้า)</option>
-                        <option value="10:00">10:00 – 11:00 (เช้า)</option>
-                        <option value="11:00">11:00 – 12:00 (เช้า)</option>
-                        <option value="13:00">13:00 – 14:00 (บ่าย)</option>
-                        <option value="14:00">14:00 – 15:00 (บ่าย)</option>
-                        <option value="15:00">15:00 – 16:00 (บ่าย)</option>
-                      </select>
+                        <SelectTrigger className={inputBase + ' w-full'} style={{ ...inputBorder, background: '#FAFCFF' }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="09:00">09:00 – 10:00 (เช้า)</SelectItem>
+                          <SelectItem value="10:00">10:00 – 11:00 (เช้า)</SelectItem>
+                          <SelectItem value="11:00">11:00 – 12:00 (เช้า)</SelectItem>
+                          <SelectItem value="13:00">13:00 – 14:00 (บ่าย)</SelectItem>
+                          <SelectItem value="14:00">14:00 – 15:00 (บ่าย)</SelectItem>
+                          <SelectItem value="15:00">15:00 – 16:00 (บ่าย)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 disabled:opacity-50"
+                  className="w-full py-3 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
                 >
                   {isSubmitting ? 'กำลังส่ง...' : 'ส่งคำขอนัดหมาย →'}
-                </button>
+                </Button>
               </form>
             )}
           </div>

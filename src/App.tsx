@@ -84,9 +84,9 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 grid grid-cols-3 items-center">
           {/* Logo Brand */}
-          <Link to="/" className="flex items-center gap-3 cursor-pointer select-none">
+          <Link to="/" className="flex items-center gap-3 cursor-pointer select-none justify-self-start">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #0EA5A0 100%)' }}>
               <Shield className="w-5 h-5 text-white stroke-[2.5]" />
             </div>
@@ -97,7 +97,7 @@ const AppContent: React.FC = () => {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden md:flex items-center justify-center gap-2">
             <Link to="/" className={navLinkClass(location.pathname === '/')} style={navLinkStyle(location.pathname === '/')}>
               <LayoutDashboard className="w-4 h-4" />
               สรุปภาพรวม (Dashboard)
@@ -119,7 +119,7 @@ const AppContent: React.FC = () => {
               ทรัพย์สินทางปัญญา
             </Link>
             {profile?.role === 'admin' && (
-              <Link to="/admin" className={navLinkClass(location.pathname === '/admin')} style={navLinkStyle(location.pathname === '/admin')}>
+              <Link to="/admin" className={navLinkClass(location.pathname.startsWith('/admin'))} style={navLinkStyle(location.pathname.startsWith('/admin'))}>
                 <Settings className="w-4 h-4" />
                 หลังบ้าน Admin
               </Link>
@@ -127,7 +127,7 @@ const AppContent: React.FC = () => {
           </nav>
 
           {/* User Auth Badge with Dropdown */}
-          <div className="relative">
+          <div className="relative justify-self-end">
             {user ? (
               <>
                 {/* Trigger Button */}
@@ -253,7 +253,7 @@ const AppContent: React.FC = () => {
           <Route path="/clinic" element={<Clinic />} />
           <Route path="/ethics" element={<Ethics />} />
           <Route path="/ip-application" element={<IPApplication />} />
-          <Route path="/admin" element={profile?.role === 'admin' ? <AdminPanel /> : <AccessDenied />} />
+          <Route path="/admin/*" element={profile?.role === 'admin' ? <AdminPanel /> : <AccessDenied />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

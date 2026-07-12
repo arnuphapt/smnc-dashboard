@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { supabase } from '../services/supabase'
 import { Shield, Mail, Lock, CheckCircle, AlertCircle, Sparkles } from 'lucide-react'
 import { isValidSmncEmail } from '../utils/validation'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export const AuthScreen: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -125,14 +127,14 @@ export const AuthScreen: React.FC = () => {
                   อีเมลวิทยาลัย (@smnc.ac.th)
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94A3B8' }} />
-                  <input
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#94A3B8' }} />
+                  <Input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="username@smnc.ac.th"
-                    className="w-full py-2.5 pl-10 pr-4 text-sm light-input"
+                    className="w-full py-2.5 pl-10 pr-4 h-auto text-sm light-input"
                   />
                 </div>
               </div>
@@ -142,14 +144,14 @@ export const AuthScreen: React.FC = () => {
                   รหัสผ่าน (Password)
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94A3B8' }} />
-                  <input
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#94A3B8' }} />
+                  <Input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full py-2.5 pl-10 pr-4 text-sm light-input"
+                    className="w-full py-2.5 pl-10 pr-4 h-auto text-sm light-input"
                   />
                 </div>
               </div>
@@ -164,15 +166,15 @@ export const AuthScreen: React.FC = () => {
                 </div>
               )}
 
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
+                className="btn-primary w-full h-auto flex items-center justify-center gap-2 mt-2"
               >
                 {loading ? (
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : isLogin ? 'เข้าสู่ระบบ →' : 'สร้างบัญชีผู้ใช้ →'}
-              </button>
+              </Button>
             </form>
           </div>
         </div>

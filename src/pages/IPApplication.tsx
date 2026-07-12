@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
-import { 
-  FileText, 
-  UploadCloud, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  FileText,
+  UploadCloud,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   ExternalLink,
   Award
 } from 'lucide-react'
+import { StatusBadge } from '../components/StatusBadge'
+import { PageHeader, ContentPanel } from '../components/PageHeader'
+import { EmptyState } from '../components/EmptyState'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface DownloadableForm {
   id: string
@@ -31,95 +37,6 @@ interface IPApp {
   created_at: string
 }
 
-// ── Shared PageHeader (same design language as Clinic / Ethics) ────────────────
-const PageHeader: React.FC<{
-  title: string
-  subtitle: string
-  extraBadge?: string
-  tabs: { key: string; icon: React.ReactNode; label: string }[]
-  activeTab: string
-  onTabChange: (tab: string) => void
-}> = ({ title, subtitle, extraBadge, tabs, activeTab, onTabChange }) => (
-  <div
-    className="relative overflow-hidden rounded-2xl mb-8"
-    style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 60%, #0E3251 100%)' }}
-  >
-    <div
-      className="absolute inset-0 opacity-30"
-      style={{
-        backgroundImage:
-          'radial-gradient(ellipse at 80% 20%, rgba(14,165,160,0.25) 0%, transparent 60%), radial-gradient(ellipse at 10% 80%, rgba(14,165,160,0.12) 0%, transparent 50%)',
-      }}
-    />
-    <div className="relative px-8 pt-8 pb-0">
-      {extraBadge && (
-        <span
-          className="inline-block mb-3 text-[10px] font-extrabold uppercase tracking-[0.18em] px-3 py-1 rounded-full"
-          style={{ background: 'rgba(14,165,160,0.18)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.4)' }}
-        >
-          {extraBadge}
-        </span>
-      )}
-      <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-1">{title}</h1>
-      <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>{subtitle}</p>
-      <div className="flex gap-2 mt-7 overflow-x-auto pb-px">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              onClick={() => onTabChange(tab.key)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all duration-200 shrink-0"
-              style={{
-                background: isActive ? '#F0F7FF' : 'rgba(255,255,255,0.07)',
-                color: isActive ? '#0B1D3A' : 'rgba(255,255,255,0.65)',
-                borderBottom: isActive ? '2px solid #0EA5A0' : '2px solid transparent',
-              }}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  </div>
-)
-
-const ContentPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="bg-white rounded-2xl shadow-sm" style={{ border: '1px solid #E2EDF8', borderLeft: '4px solid #0EA5A0' }}>
-    <div className="p-8">{children}</div>
-  </div>
-)
-
-const EmptyState: React.FC<{ icon: React.ReactNode; title: string; body?: string; dashed?: boolean }> = ({ icon, title, body, dashed }) => (
-  <div
-    className="flex flex-col items-center justify-center gap-4 py-16 text-center"
-    style={dashed ? { border: '2px dashed #CBD5E1', borderRadius: '1rem' } : undefined}
-  >
-    <div style={{ color: '#CBD5E1' }}>{icon}</div>
-    <div>
-      <p className="text-sm font-bold" style={{ color: '#0B1D3A' }}>{title}</p>
-      {body && <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>{body}</p>}
-    </div>
-  </div>
-)
-
-const IPStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { bg: string; color: string; border: string; icon: React.ReactNode }> = {
-    'ยื่นคำขอ': { bg: '#F8FAFC', color: '#475569', border: '#CBD5E1', icon: <Clock className="w-3.5 h-3.5" /> },
-    'กำลังตรวจสอบ': { bg: '#FAF5FF', color: '#7E22CE', border: '#D8B4FE', icon: <Clock className="w-3.5 h-3.5" /> },
-    'รอเอกสารเพิ่ม': { bg: '#FFFBEB', color: '#92400E', border: '#FDE68A', icon: <AlertCircle className="w-3.5 h-3.5" /> },
-    'อนุมัติ': { bg: '#ECFDF5', color: '#065F46', border: '#6EE7B7', icon: <CheckCircle className="w-3.5 h-3.5" /> },
-    'ไม่อนุมัติ': { bg: '#FFF1F2', color: '#9F1239', border: '#FECDD3', icon: <XCircle className="w-3.5 h-3.5" /> },
-  }
-  const s = map[status] ?? { bg: '#F8FAFC', color: '#475569', border: '#CBD5E1', icon: null }
-  return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
-      {s.icon} {status}
-    </span>
-  )
-}
 
 const TimelineSteps: React.FC<{ status: string }> = ({ status }) => {
   const steps = ['ยื่นคำขอ', 'กำลังตรวจสอบ', 'รอเอกสารเพิ่ม', 'อนุมัติ']
@@ -331,7 +248,7 @@ export const IPApplication: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อผลงานทรัพย์สินทางปัญญา *</label>
-                    <input
+                    <Input
                       type="text" required
                       placeholder="ระบุชื่อผลงาน นวัตกรรม หรือสิ่งประดิษฐ์..."
                       value={title} onChange={(e) => setTitle(e.target.value)}
@@ -340,25 +257,36 @@ export const IPApplication: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ประเภทผลงาน *</label>
-                    <select
-                      value={ipType} onChange={(e) => setIpType(e.target.value)}
-                      className={inputBase + ' cursor-pointer'} style={inputSty}
+                    <Select
+                      value={ipType}
+                      onValueChange={(v) => setIpType(v ?? 'อนุสิทธิบัตร')}
+                      items={[
+                        { value: 'อนุสิทธิบัตร', label: 'อนุสิทธิบัตร (Petty Patent)' },
+                        { value: 'สิทธิบัตร', label: 'สิทธิบัตรการประดิษฐ์ (Patent)' },
+                        { value: 'ลิขสิทธิ์', label: 'ลิขสิทธิ์ (Copyright)' },
+                        { value: 'เครื่องหมายการค้า', label: 'เครื่องหมายการค้า (Trademark)' },
+                      ]}
                     >
-                      <option value="อนุสิทธิบัตร">อนุสิทธิบัตร (Petty Patent)</option>
-                      <option value="สิทธิบัตร">สิทธิบัตรการประดิษฐ์ (Patent)</option>
-                      <option value="ลิขสิทธิ์">ลิขสิทธิ์ (Copyright)</option>
-                      <option value="เครื่องหมายการค้า">เครื่องหมายการค้า (Trademark)</option>
-                    </select>
+                      <SelectTrigger className={inputBase + ' w-full'} style={inputSty}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="อนุสิทธิบัตร">อนุสิทธิบัตร (Petty Patent)</SelectItem>
+                        <SelectItem value="สิทธิบัตร">สิทธิบัตรการประดิษฐ์ (Patent)</SelectItem>
+                        <SelectItem value="ลิขสิทธิ์">ลิขสิทธิ์ (Copyright)</SelectItem>
+                        <SelectItem value="เครื่องหมายการค้า">เครื่องหมายการค้า (Trademark)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit" disabled={isSubmitting}
-                  className="w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 disabled:opacity-50"
+                  className="w-full py-3 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
                 >
                   {isSubmitting ? 'กำลังยื่นเรื่อง...' : 'ส่งคำขอขึ้นทะเบียน IP →'}
-                </button>
+                </Button>
               </form>
             )}
           </div>
@@ -396,7 +324,7 @@ export const IPApplication: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <IPStatusBadge status={app.status} />
+                        <StatusBadge status={app.status} />
                         {app.request_number && (
                           <div className="text-[10px] font-bold mt-1.5" style={{ color: '#64748B' }}>
                             เลขคำขอ: <span className="font-mono">{app.request_number}</span>
