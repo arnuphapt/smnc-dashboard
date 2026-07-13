@@ -211,16 +211,6 @@ export const Repositories: React.FC = () => {
     return 0
   })
 
-  // Absolute row numbers (not page-relative) so the "#" column stays correct
-  // once DataTable's own pagination kicks in.
-  const indexById = new Map(sortedItems.map((item, i) => [item.id, i + 1]))
-
-  const numberColumn: DataTableColumn<WisdomItem> = {
-    key: '__index',
-    header: '#',
-    render: (item) => <span className="font-mono text-slate-400">{indexById.get(item.id)}</span>,
-  }
-
   const linkColumn: DataTableColumn<WisdomItem> = {
     key: '__link',
     header: 'Link',
@@ -239,7 +229,6 @@ export const Repositories: React.FC = () => {
   const getColumns = (): DataTableColumn<WisdomItem>[] => {
     if (activeCategory === 'research') {
       return [
-        numberColumn,
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อเรื่อง', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[280px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'นักวิจัย', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
@@ -262,12 +251,11 @@ export const Repositories: React.FC = () => {
 
     if (activeCategory === 'intellectual_property') {
       return [
-        numberColumn,
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[260px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
-        { key: 'ip_type', header: 'ประเภทของงาน', sortable: true, render: (item) => (
-          <span className={`whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold ${item.metadata?.ip_type === 'PettyPatent' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-cyan-50 text-cyan-800 border border-cyan-200'}`}>
-            {item.metadata?.ip_type === 'PettyPatent' ? 'อนุสิทธิบัตร' : 'ลิขสิทธิ์'}
+        { key: 'ip_type', header: 'ประเภทของงาน', sortable: true, render: (item) => item.metadata?.ip_type && (
+          <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
+            {item.metadata.ip_type}
           </span>
         ) },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope && (
@@ -290,7 +278,6 @@ export const Repositories: React.FC = () => {
 
     if (activeCategory === 'innovation') {
       return [
-        numberColumn,
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[250px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
@@ -312,7 +299,6 @@ export const Repositories: React.FC = () => {
 
     if (activeCategory === 'award') {
       return [
-        numberColumn,
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[250px] break-words block">{item.title}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope && (
@@ -322,7 +308,7 @@ export const Repositories: React.FC = () => {
         { key: 'presenter', header: 'ผู้นำเสนอ', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.presenter || '-'}</span> },
         { key: 'award_level', header: 'ระดับเวทีการนำเสนอ', sortable: true, render: (item) => item.metadata?.award_level && (
           <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-150">
-            {item.metadata.award_level === 'National' ? 'ชาติ' : item.metadata.award_level === 'International' ? 'นานาชาติ' : 'สถาบัน'}
+            {item.metadata.award_level}
           </span>
         ) },
         { key: 'organizer', header: 'เวทีการนำเสนอ', sortable: true, render: (item) => (
@@ -337,13 +323,12 @@ export const Repositories: React.FC = () => {
 
     // utilization
     return [
-      numberColumn,
       { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
       { key: 'title', header: 'ผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[450px] break-words block">{item.title}</span> },
       { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
       { key: 'utilization_type', header: 'ประเภทผลงาน', sortable: true, render: (item) => item.metadata?.utilization_type && (
         <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-          {item.metadata.utilization_type === 'Public' ? 'ชุมชน/สาธารณะ' : item.metadata.utilization_type === 'Policy' ? 'เชิงนโยบาย' : item.metadata.utilization_type === 'Commercial' ? 'เชิงพาณิชย์' : 'เชิงวิชาการ'}
+          {item.metadata.utilization_type}
         </span>
       ) },
       { key: 'organization_used', header: 'หน่วยงานที่นำไปใช้ประโยชน์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.organization_used || '-'}</span> },
@@ -399,12 +384,7 @@ export const Repositories: React.FC = () => {
           value: selectedIpType,
           onChange: setSelectedIpType,
           placeholder: 'ประเภทสิทธิ์ทั้งหมด',
-          options: [
-            { value: 'PettyPatent', label: 'อนุสิทธิบัตร' },
-            { value: 'Copyright', label: 'ลิขสิทธิ์' },
-            { value: 'Patent', label: 'สิทธิบัตร' },
-            { value: 'Trademark', label: 'เครื่องหมายการค้า' },
-          ],
+          options: getUniqueMetadataValues('ip_type').map((v) => ({ value: v, label: v })),
         },
         {
           key: 'status',
@@ -444,11 +424,7 @@ export const Repositories: React.FC = () => {
           value: selectedAwardLevel,
           onChange: setSelectedAwardLevel,
           placeholder: 'ระดับเวทีทั้งหมด',
-          options: [
-            { value: 'National', label: 'ชาติ' },
-            { value: 'International', label: 'นานาชาติ' },
-            { value: 'Institutional', label: 'สถาบัน' },
-          ],
+          options: getUniqueMetadataValues('award_level').map((v) => ({ value: v, label: v })),
         },
         {
           key: 'award_name',
@@ -468,12 +444,7 @@ export const Repositories: React.FC = () => {
         value: selectedUtType,
         onChange: setSelectedUtType,
         placeholder: 'ประเภทการใช้ประโยชน์ทั้งหมด',
-        options: [
-          { value: 'Public', label: 'ชุมชน/สาธารณะ' },
-          { value: 'Policy', label: 'เชิงนโยบาย' },
-          { value: 'Commercial', label: 'เชิงพาณิชย์' },
-          { value: 'Academic', label: 'เชิงวิชาการ' },
-        ],
+        options: getUniqueMetadataValues('utilization_type').map((v) => ({ value: v, label: v })),
       },
     ]
   }

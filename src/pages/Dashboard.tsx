@@ -148,8 +148,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
         if (item.category === 'intellectual_property') {
           newStats.intellectual_property++
           const ipType = item.metadata?.ip_type
-          if (ipType === 'PettyPatent') newStats.petty_patent++
-          if (ipType === 'Copyright') newStats.copyright++
+          if (ipType === 'Petty Patent (อนุสิทธิบัตร)') newStats.petty_patent++
+          if (ipType === 'Copyright (ลิขสิทธิ์)') newStats.copyright++
         }
         if (item.category === 'innovation') newStats.innovation++
         if (item.category === 'award') newStats.award++
@@ -226,13 +226,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
   // 1. Types Donut Data
   const ipItems = allItems.filter(item => item.category === 'intellectual_property')
-  const pettyPatentCount = ipItems.filter(item => item.metadata?.ip_type === 'PettyPatent').length
-  const copyrightCount = ipItems.filter(item => item.metadata?.ip_type === 'Copyright').length
-  
-  const donutTypeData: DonutData[] = [
-    { label: 'อนุสิทธิบัตร', value: pettyPatentCount, color: '#0f4c81' },
-    { label: 'ลิขสิทธิ์', value: copyrightCount, color: '#06b6d4' }
-  ]
+  const ipTypeMap: Record<string, number> = {}
+  ipItems.forEach(item => {
+    const type = item.metadata?.ip_type || 'ไม่ระบุ'
+    ipTypeMap[type] = (ipTypeMap[type] || 0) + 1
+  })
+  const donutTypeData: DonutData[] = Object.entries(ipTypeMap).map(([label, val], idx) => {
+    const colors = ['#0f4c81', '#06b6d4', '#10b981', '#a855f7']
+    return { label, value: val, color: colors[idx % colors.length] }
+  })
 
   // 2. Creators Donut Data
   const creatorsMap: Record<string, number> = {}
@@ -450,7 +452,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
           <div className="relative pl-6 border-l-2 border-slate-200 space-y-6">
             {timelineIpItems.map((item, idx) => {
-              const isPetty = item.metadata?.ip_type === 'PettyPatent'
+              const isPetty = item.metadata?.ip_type === 'Petty Patent (อนุสิทธิบัตร)'
               const dateStr = formatExcelDate(item.metadata?.export_date)
               const status = item.metadata?.status || 'ส่งเอกสารออก'
               const badgeClass = getStatusBadgeClass(status)
