@@ -82,6 +82,12 @@ export function DataTable<T>({
       <Table className="text-xs">
         <TableHeader>
           <TableRow className="border-b-0 hover:bg-transparent" style={headerRowStyle}>
+            <TableHead
+              className="h-auto whitespace-normal p-4 font-extrabold uppercase text-[10px] tracking-wider text-center w-12"
+              style={{ color: headerTextColor }}
+            >
+              ลำดับ
+            </TableHead>
             {columns.map((col) => {
               const isSorted = col.sortable && sortField === col.key
               return (
@@ -105,7 +111,7 @@ export function DataTable<T>({
         <TableBody className="[&_tr:last-child]:border-0">
           {data.length === 0 ? (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={columns.length} className="text-center py-14 text-slate-400">
+              <TableCell colSpan={columns.length + 1} className="text-center py-14 text-slate-400">
                 <div className="flex flex-col items-center justify-center gap-2">
                   <div className="text-slate-300">
                     {empty.icon}
@@ -116,8 +122,11 @@ export function DataTable<T>({
               </TableCell>
             </TableRow>
           ) : (
-            pageRows.map((row) => (
+            pageRows.map((row, idx) => (
               <TableRow key={getRowKey(row)} className="border-b hover:bg-slate-50/60" style={{ borderColor: '#F1F5F9' }}>
+                <TableCell className="whitespace-normal p-4 text-center font-semibold" style={{ color: '#94A3B8' }}>
+                  {start + idx + 1}
+                </TableCell>
                 {columns.map((col) => (
                   <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : ''}`}>
                     {col.render(row)}

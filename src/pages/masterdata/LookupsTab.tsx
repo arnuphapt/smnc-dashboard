@@ -15,6 +15,11 @@ const LOOKUP_CATEGORY_OPTIONS = [
   { value: 'utilization_type', label: 'ประเภทการนำไปใช้ประโยชน์ (utilization_type)' },
   { value: 'journal_rank', label: 'ระดับฐานวารสาร (journal_rank)' },
   { value: 'scope', label: 'ขอบเขตผลงาน (scope)' },
+  { value: 'innovation_type', label: 'ประเภทของผลนวัตกรรม (innovation_type)' },
+  { value: 'source', label: 'ที่มาของชิ้นงาน (source)' },
+  { value: 'ip_current_status', label: 'สถานะปัจจุบัน IP (ip_current_status)' },
+  { value: 'venue', label: 'เวทีการนำเสนอ (venue)' },
+  { value: 'year', label: 'ปีที่ตีพิมพ์ (year)' },
 ]
 
 interface LookupsTabProps {
@@ -23,8 +28,6 @@ interface LookupsTabProps {
   setLookupCategory: (value: string) => void
   lookupValue: string
   setLookupValue: (value: string) => void
-  lookupLabel: string
-  setLookupLabel: (value: string) => void
   onAddLookup: (e: React.FormEvent) => void
   onDeleteLookup: (id: string) => void
   defaultCategory?: string
@@ -36,8 +39,6 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
   setLookupCategory,
   lookupValue,
   setLookupValue,
-  lookupLabel,
-  setLookupLabel,
   onAddLookup,
   onDeleteLookup,
   defaultCategory = '',
@@ -58,8 +59,7 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
     ...(defaultCategory ? [] : [
       { key: 'category', header: 'หมวดหมู่', render: (opt: LookupOption) => <span className="text-slate-500 font-semibold">{opt.category}</span> } as DataTableColumn<LookupOption>,
     ]),
-    { key: 'value', header: 'ค่าระบบ', render: (opt) => <span className="font-mono text-[11px]" style={{ color: '#0EA5A0' }}>{opt.value}</span> },
-    { key: 'label', header: 'ชื่อตัวเลือก', render: (opt) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{opt.label}</span> },
+    { key: 'value', header: 'ค่าระบบ', render: (opt) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{opt.value}</span> },
     {
       key: 'actions',
       header: 'จัดการ',
@@ -80,8 +80,7 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
   const filteredOptions = options.filter((opt) => {
     const matchesSearch = !searchQuery.trim() ||
       opt.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opt.value.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+      opt.value.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesCategory = !selectedCategory || opt.category === selectedCategory
 
@@ -165,24 +164,12 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-500 font-bold mb-1">ค่าหลังบ้าน (Value - เช่น R2R, Patent)</label>
+              <label className="block text-slate-500 font-bold mb-1">ค่าระบบ (Value)</label>
               <Input
                 type="text"
                 required
                 value={lookupValue}
                 onChange={(e) => setLookupValue(e.target.value)}
-                placeholder="เช่น R2R"
-                className="w-full light-input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-bold mb-1">ชื่อตัวเลือกภาษาไทย/อังกฤษ (Label)</label>
-              <Input
-                type="text"
-                required
-                value={lookupLabel}
-                onChange={(e) => setLookupLabel(e.target.value)}
                 placeholder="เช่น Routine to Research (R2R)"
                 className="w-full light-input"
               />

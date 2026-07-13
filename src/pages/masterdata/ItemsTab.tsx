@@ -95,15 +95,18 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
   if (category === 'research') {
     pageTitle = 'จัดการผลงานวิจัย'
     pageBadge = 'ผลงานวิจัย'
-  } else if (category === 'academic') {
-    pageTitle = 'จัดการบริการวิชาการ'
-    pageBadge = 'บริการวิชาการ'
   } else if (category === 'innovation') {
     pageTitle = 'จัดการนวัตกรรม'
     pageBadge = 'นวัตกรรม'
-  } else if (category === 'creative') {
-    pageTitle = 'จัดการงานสร้างสรรค์'
-    pageBadge = 'งานสร้างสรรค์'
+  } else if (category === 'intellectual_property') {
+    pageTitle = 'จัดการทรัพย์สินทางปัญญา'
+    pageBadge = 'ทรัพย์สินทางปัญญา'
+  } else if (category === 'award') {
+    pageTitle = 'จัดการรางวัลและความสำเร็จ'
+    pageBadge = 'รางวัล'
+  } else if (category === 'utilization') {
+    pageTitle = 'จัดการการนำไปใช้ประโยชน์'
+    pageBadge = 'การนำไปใช้ประโยชน์'
   }
 
   // Filter items by category first if specified, then by search and publicity

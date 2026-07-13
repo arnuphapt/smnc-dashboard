@@ -57,9 +57,42 @@ interface ItemFormModalProps {
   setMetaScope: (value: string) => void
   metaJournalRank: string
   setMetaJournalRank: (value: string) => void
+  metaContribution: string
+  setMetaContribution: (value: string) => void
+  metaFundingHas: string
+  setMetaFundingHas: (value: string) => void
+  metaFundingDetail: string
+  setMetaFundingDetail: (value: string) => void
+  metaSource: string
+  setMetaSource: (value: string) => void
+  metaIpStatus: string
+  setMetaIpStatus: (value: string) => void
+  metaApplicationStatus: string
+  setMetaApplicationStatus: (value: string) => void
+  metaIpCurrentStatus: string
+  setMetaIpCurrentStatus: (value: string) => void
+  metaPatentNum: string
+  setMetaPatentNum: (value: string) => void
+  metaAwardName: string
+  setMetaAwardName: (value: string) => void
+  metaUtilizationDate: string
+  setMetaUtilizationDate: (value: string) => void
 }
 
-const SCOPE_CATEGORIES: Array<WisdomItem['category']> = ['research', 'innovation', 'award']
+const SCOPE_CATEGORIES: Array<WisdomItem['category']> = ['research', 'innovation', 'award', 'intellectual_property']
+const SOURCE_CATEGORIES: Array<WisdomItem['category']> = ['innovation', 'intellectual_property']
+
+const CONTRIBUTION_OPTIONS = [
+  { value: 'First author', label: 'First author' },
+  { value: 'Corresponding author', label: 'Corresponding author' },
+  { value: 'Co author', label: 'Co author' },
+]
+
+const IP_REGISTRATION_OPTIONS = [
+  { value: 'ได้รับการขึ้นทะเบียนแล้ว', label: 'ได้รับการขึ้นทะเบียนแล้ว' },
+  { value: 'อยู่ระหว่างดำเนินการ', label: 'อยู่ระหว่างดำเนินการ' },
+  { value: 'ไม่มี', label: 'ไม่มี' },
+]
 
 // The one add/edit surface for wisdom_items — every category's extra fields
 // (research/innovation/IP/award/utilization) live in this single form, switching
@@ -74,6 +107,10 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   metaJournal, setMetaJournal, metaRegNum, setMetaRegNum, metaRegDate, setMetaRegDate,
   metaOrganizer, setMetaOrganizer, metaOrgUsed, setMetaOrgUsed, metaImpact, setMetaImpact,
   metaScope, setMetaScope, metaJournalRank, setMetaJournalRank,
+  metaContribution, setMetaContribution, metaFundingHas, setMetaFundingHas, metaFundingDetail, setMetaFundingDetail,
+  metaSource, setMetaSource, metaIpStatus, setMetaIpStatus, metaApplicationStatus, setMetaApplicationStatus,
+  metaIpCurrentStatus, setMetaIpCurrentStatus, metaPatentNum, setMetaPatentNum, metaAwardName, setMetaAwardName,
+  metaUtilizationDate, setMetaUtilizationDate,
   // setFormCategory is not needed in the form body anymore since it is locked to page category
   // but we keep it in props to avoid breaking consumers
 }) => {
@@ -129,14 +166,14 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                 value={metaDept}
                 onValueChange={(v) => setMetaDept(v ?? '')}
                 required
-                items={getOptionsByCategory('department').map((opt) => ({ value: opt.value, label: opt.label }))}
+                items={getOptionsByCategory('department').map((opt) => ({ value: opt.value, label: opt.value }))}
               >
                 <SelectTrigger className="w-full light-input">
                   <SelectValue placeholder="เลือกหน่วยงาน..." />
                 </SelectTrigger>
                 <SelectContent>
                   {getOptionsByCategory('department').map((opt) => (
-                    <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -212,13 +249,20 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
             </div>
             <div>
               <label className="block text-slate-500 font-bold mb-1">ปีที่ตีพิมพ์</label>
-              <Input
-                type="text"
+              <Select
                 value={metaYear}
-                onChange={(e) => setMetaYear(e.target.value)}
-                placeholder="เช่น 2569"
-                className="w-full light-input"
-              />
+                onValueChange={(v) => setMetaYear(v ?? '')}
+                items={getOptionsByCategory('year').map((opt) => ({ value: opt.value, label: opt.value }))}
+              >
+                <SelectTrigger className="w-full light-input">
+                  <SelectValue placeholder="เลือกปีที่ตีพิมพ์..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {getOptionsByCategory('year').map((opt) => (
+                    <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -236,14 +280,14 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                     value={metaSubtype}
                     onValueChange={(v) => setMetaSubtype(v ?? '')}
                     required
-                    items={getOptionsByCategory(subtypeCategory).map((opt) => ({ value: opt.value, label: opt.label }))}
+                    items={getOptionsByCategory(subtypeCategory).map((opt) => ({ value: opt.value, label: opt.value }))}
                   >
                     <SelectTrigger className="w-full light-input">
                       <SelectValue placeholder={`เลือก${getSubtypeLabelForForm()}...`} />
                     </SelectTrigger>
                     <SelectContent>
                       {getOptionsByCategory(subtypeCategory).map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -256,14 +300,14 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                   <Select
                     value={metaScope}
                     onValueChange={(v) => setMetaScope(v ?? '')}
-                    items={getOptionsByCategory('scope').map((opt) => ({ value: opt.value, label: opt.label }))}
+                    items={getOptionsByCategory('scope').map((opt) => ({ value: opt.value, label: opt.value }))}
                   >
                     <SelectTrigger className="w-full light-input">
                       <SelectValue placeholder="เลือกขอบเขตผลงาน..." />
                     </SelectTrigger>
                     <SelectContent>
                       {getOptionsByCategory('scope').map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -273,18 +317,35 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               {formCategory === 'research' && (
                 <>
                   <div>
+                    <label className="block text-slate-500 font-bold mb-1">การมีส่วนร่วม</label>
+                    <Select
+                      value={metaContribution}
+                      onValueChange={(v) => setMetaContribution(v ?? '')}
+                      items={CONTRIBUTION_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกการมีส่วนร่วม..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONTRIBUTION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <label className="block text-slate-500 font-bold mb-1">ระดับฐาน</label>
                     <Select
                       value={metaJournalRank}
                       onValueChange={(v) => setMetaJournalRank(v ?? '')}
-                      items={getOptionsByCategory('journal_rank').map((opt) => ({ value: opt.value, label: opt.label }))}
+                      items={getOptionsByCategory('journal_rank').map((opt) => ({ value: opt.value, label: opt.value }))}
                     >
                       <SelectTrigger className="w-full light-input">
                         <SelectValue placeholder="เลือกระดับฐาน..." />
                       </SelectTrigger>
                       <SelectContent>
                         {getOptionsByCategory('journal_rank').map((opt) => (
-                          <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -299,18 +360,105 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                       className="w-full light-input"
                     />
                   </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">ทุนวิจัย</label>
+                    <Select
+                      value={metaFundingHas}
+                      onValueChange={(v) => setMetaFundingHas(v ?? '')}
+                      items={[{ value: 'มี', label: 'มี' }, { value: 'ไม่มี', label: 'ไม่มี' }]}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="มีทุนวิจัยหรือไม่..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="มี">มี</SelectItem>
+                        <SelectItem value="ไม่มี">ไม่มี</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {metaFundingHas === 'มี' && (
+                      <Input
+                        type="text"
+                        value={metaFundingDetail}
+                        onChange={(e) => setMetaFundingDetail(e.target.value)}
+                        placeholder="ระบุแหล่งทุน เช่น ทุนคณะพยาบาลศาสตร์"
+                        className="w-full light-input mt-2"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {SOURCE_CATEGORIES.includes(formCategory) && (
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1">ที่มาของชิ้นงาน</label>
+                  <Select
+                    value={metaSource}
+                    onValueChange={(v) => setMetaSource(v ?? '')}
+                    items={getOptionsByCategory('source').map((opt) => ({ value: opt.value, label: opt.value }))}
+                  >
+                    <SelectTrigger className="w-full light-input">
+                      <SelectValue placeholder="เลือกที่มาของชิ้นงาน..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getOptionsByCategory('source').map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formCategory === 'innovation' && (
+                <>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">การขอขึ้นทะเบียนทรัพย์สินทางปัญญา</label>
+                    <Select
+                      value={metaIpStatus}
+                      onValueChange={(v) => setMetaIpStatus(v ?? '')}
+                      items={IP_REGISTRATION_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกสถานะการขึ้นทะเบียน..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {IP_REGISTRATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">รางวัลที่ได้รับ (ถ้ามี)</label>
+                    <Input
+                      type="text"
+                      value={metaAwardName}
+                      onChange={(e) => setMetaAwardName(e.target.value)}
+                      placeholder="เช่น รางวัลชนะเลิศนวัตกรรมดีเด่น"
+                      className="w-full light-input"
+                    />
+                  </div>
                 </>
               )}
 
               {formCategory === 'intellectual_property' && (
                 <>
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">เลขทะเบียนจดสิทธิบัตร/อนุสิทธิบัตร</label>
+                    <label className="block text-slate-500 font-bold mb-1">เลขที่คำขอ</label>
                     <Input
                       type="text"
                       value={metaRegNum}
                       onChange={(e) => setMetaRegNum(e.target.value)}
                       placeholder="เช่น 2003001234"
+                      className="w-full light-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">เลขที่อนุสิทธิบัตร/สิทธิบัตร</label>
+                    <Input
+                      type="text"
+                      value={metaPatentNum}
+                      onChange={(e) => setMetaPatentNum(e.target.value)}
+                      placeholder="เช่น 21567"
                       className="w-full light-input"
                     />
                   </div>
@@ -324,17 +472,71 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                       className="w-full light-input"
                     />
                   </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">การขอขึ้นทะเบียนทรัพย์สินทางปัญญา</label>
+                    <Select
+                      value={metaApplicationStatus}
+                      onValueChange={(v) => setMetaApplicationStatus(v ?? '')}
+                      items={IP_REGISTRATION_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกสถานะการขึ้นทะเบียน..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {IP_REGISTRATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">สถานะปัจจุบัน</label>
+                    <Select
+                      value={metaIpCurrentStatus}
+                      onValueChange={(v) => setMetaIpCurrentStatus(v ?? '')}
+                      items={getOptionsByCategory('ip_current_status').map((opt) => ({ value: opt.value, label: opt.value }))}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกสถานะปัจจุบัน..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getOptionsByCategory('ip_current_status').map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               )}
 
               {formCategory === 'award' && (
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">หน่วยงานต้นสังกัดที่มอบรางวัล</label>
+                  <label className="block text-slate-500 font-bold mb-1">เวทีการนำเสนอ</label>
+                  <Select
+                    value={metaOrganizer}
+                    onValueChange={(v) => setMetaOrganizer(v ?? '')}
+                    items={getOptionsByCategory('venue').map((opt) => ({ value: opt.value, label: opt.value }))}
+                  >
+                    <SelectTrigger className="w-full light-input">
+                      <SelectValue placeholder="เลือกเวทีการนำเสนอ..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getOptionsByCategory('venue').map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formCategory === 'award' && (
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1">รางวัลที่ได้รับ</label>
                   <Input
                     type="text"
-                    value={metaOrganizer}
-                    onChange={(e) => setMetaOrganizer(e.target.value)}
-                    placeholder="เช่น สมาคมพยาบาลแห่งประเทศไทย"
+                    value={metaAwardName}
+                    onChange={(e) => setMetaAwardName(e.target.value)}
+                    placeholder="เช่น รางวัลชนะเลิศระดับชาติ"
                     className="w-full light-input"
                   />
                 </div>
@@ -349,6 +551,15 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                       value={metaOrgUsed}
                       onChange={(e) => setMetaOrgUsed(e.target.value)}
                       placeholder="เช่น ชุมชนตำบลเกิ้ง อ.เมือง มหาสารคาม"
+                      className="w-full light-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">วันที่ขอนำไปใช้ประโยชน์</label>
+                    <Input
+                      type="date"
+                      value={metaUtilizationDate}
+                      onChange={(e) => setMetaUtilizationDate(e.target.value)}
                       className="w-full light-input"
                     />
                   </div>

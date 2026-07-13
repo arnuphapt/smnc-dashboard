@@ -132,12 +132,12 @@ export const Repositories: React.FC = () => {
 
   const getSubtypeOptionLabel = (_category: string, value: string) => {
     const list = getOptionsByCategory(getSubtypeCategory())
-    return list.find(o => o.value === value)?.label || value
+    return list.find(o => o.value === value)?.value || value
   }
 
   const getDeptOptionLabel = (value: string) => {
     const list = getOptionsByCategory('department')
-    return list.find(o => o.value === value)?.label || value
+    return list.find(o => o.value === value)?.value || value
   }
 
   // Filtering Logic
@@ -270,11 +270,15 @@ export const Repositories: React.FC = () => {
             {item.metadata?.ip_type === 'PettyPatent' ? 'อนุสิทธิบัตร' : 'ลิขสิทธิ์'}
           </span>
         ) },
+        { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope && (
+          <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">{item.metadata.scope}</span>
+        ) },
         { key: 'creator_type', header: 'ผู้สร้างสรรค์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.creator_type || '-'}</span> },
         { key: 'source', header: 'ที่มาของผลงาน', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.source || '-'}</span> },
         { key: 'export_date', header: 'วันที่ส่งออก', sortable: true, render: (item) => <span className="font-mono text-slate-500">{formatExcelDate(item.metadata?.export_date)}</span> },
         { key: 'application_status', header: 'สถานะเลขคำขอ', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.application_status || '-'}</span> },
         { key: 'registration_number', header: 'เลขที่คำขอ', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.registration_number || '-'}</span> },
+        { key: 'patent_number', header: 'เลขที่อนุสิทธิบัตร/สิทธิบัตร', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.patent_number || '-'}</span> },
         { key: 'status', header: 'สถานะปัจจุบัน', sortable: true, render: (item) => item.metadata?.status && (
           <span className={`whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold ${item.metadata.status === 'รอพิจารณา' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
             {item.metadata.status}
@@ -297,6 +301,9 @@ export const Repositories: React.FC = () => {
         { key: 'source', header: 'ที่มาของชิ้นงาน', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.source || '-'}</span> },
         { key: 'innovation_type', header: 'ประเภทของนวัตกรรม', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.innovation_type || '-'}</span> },
         { key: 'ip_status', header: 'ยื่นขอจดทรัพย์สินทางปัญญา', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.ip_status || '-'}</span> },
+        { key: 'award_name', header: 'รางวัลที่ได้รับ', sortable: true, render: (item) => item.metadata?.award_name && (
+          <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">🏆 {item.metadata.award_name}</span>
+        ) },
         { key: 'published', header: 'ตีพิมพ์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.published || '-'}</span> },
         { key: 'presented', header: 'นำเสนอผลงาน', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.presented || '-'}</span> },
         linkColumn,
@@ -333,11 +340,14 @@ export const Repositories: React.FC = () => {
       numberColumn,
       { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
       { key: 'title', header: 'ผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[450px] break-words block">{item.title}</span> },
+      { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
       { key: 'utilization_type', header: 'ประเภทผลงาน', sortable: true, render: (item) => item.metadata?.utilization_type && (
         <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
           {item.metadata.utilization_type === 'Public' ? 'ชุมชน/สาธารณะ' : item.metadata.utilization_type === 'Policy' ? 'เชิงนโยบาย' : item.metadata.utilization_type === 'Commercial' ? 'เชิงพาณิชย์' : 'เชิงวิชาการ'}
         </span>
       ) },
+      { key: 'organization_used', header: 'หน่วยงานที่นำไปใช้ประโยชน์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.organization_used || '-'}</span> },
+      { key: 'utilization_date', header: 'วันที่ขอนำไปใช้ประโยชน์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.utilization_date || '-'}</span> },
       linkColumn,
     ]
   }

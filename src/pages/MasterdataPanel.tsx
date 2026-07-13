@@ -93,11 +93,20 @@ export const MasterdataPanel: React.FC = () => {
   const [metaImpact, setMetaImpact] = useState('')
   const [metaScope, setMetaScope] = useState('')
   const [metaJournalRank, setMetaJournalRank] = useState('')
+  const [metaContribution, setMetaContribution] = useState('')
+  const [metaFundingHas, setMetaFundingHas] = useState('')
+  const [metaFundingDetail, setMetaFundingDetail] = useState('')
+  const [metaSource, setMetaSource] = useState('')
+  const [metaIpStatus, setMetaIpStatus] = useState('')
+  const [metaApplicationStatus, setMetaApplicationStatus] = useState('')
+  const [metaIpCurrentStatus, setMetaIpCurrentStatus] = useState('')
+  const [metaPatentNum, setMetaPatentNum] = useState('')
+  const [metaAwardName, setMetaAwardName] = useState('')
+  const [metaUtilizationDate, setMetaUtilizationDate] = useState('')
 
   // Lookups Form State
   const [lookupCategory, setLookupCategory] = useState('research_type')
   const [lookupValue, setLookupValue] = useState('')
-  const [lookupLabel, setLookupLabel] = useState('')
 
   // Dynamic Confirm Dialog States
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -301,6 +310,16 @@ export const MasterdataPanel: React.FC = () => {
     setMetaImpact('')
     setMetaScope('')
     setMetaJournalRank('')
+    setMetaContribution('')
+    setMetaFundingHas('')
+    setMetaFundingDetail('')
+    setMetaSource('')
+    setMetaIpStatus('')
+    setMetaApplicationStatus('')
+    setMetaIpCurrentStatus('')
+    setMetaPatentNum('')
+    setMetaAwardName('')
+    setMetaUtilizationDate('')
 
     setIsFormOpen(true)
   }
@@ -317,9 +336,9 @@ export const MasterdataPanel: React.FC = () => {
 
     setMetaDept(item.metadata.department || '')
     setMetaSubtype(
-      item.metadata.research_type || 
-      item.metadata.ip_type || 
-      item.metadata.award_level || 
+      (item.category === 'innovation' ? item.metadata.innovation_type : item.metadata.research_type) ||
+      item.metadata.ip_type ||
+      item.metadata.award_level ||
       item.metadata.utilization_type || ''
     )
     setMetaYear(item.metadata.year || '')
@@ -331,6 +350,22 @@ export const MasterdataPanel: React.FC = () => {
     setMetaImpact(item.metadata.impact_summary || '')
     setMetaScope(item.metadata.scope || '')
     setMetaJournalRank(item.metadata.journal_rank || '')
+    setMetaContribution(item.metadata.contribution || '')
+    if (item.metadata.funding && item.metadata.funding !== 'ไม่มี') {
+      setMetaFundingHas('มี')
+      const detail = String(item.metadata.funding).replace(/^มี\s*-\s*/, '')
+      setMetaFundingDetail(detail === 'มี' ? '' : detail)
+    } else {
+      setMetaFundingHas(item.metadata.funding ? 'ไม่มี' : '')
+      setMetaFundingDetail('')
+    }
+    setMetaSource(item.metadata.source || '')
+    setMetaIpStatus(item.metadata.ip_status || '')
+    setMetaApplicationStatus(item.metadata.application_status || '')
+    setMetaIpCurrentStatus(item.metadata.status || '')
+    setMetaPatentNum(item.metadata.patent_number || '')
+    setMetaAwardName(item.metadata.award_name || '')
+    setMetaUtilizationDate(item.metadata.utilization_date || '')
 
     setIsFormOpen(true)
   }
@@ -374,21 +409,35 @@ export const MasterdataPanel: React.FC = () => {
         metadata.journal_name = metaJournal
         metadata.journal_rank = metaJournalRank
         metadata.scope = metaScope
+        metadata.contribution = metaContribution
+        metadata.funding = metaFundingHas === 'มี'
+          ? (metaFundingDetail.trim() ? `มี - ${metaFundingDetail.trim()}` : 'มี')
+          : 'ไม่มี'
       } else if (formCategory === 'innovation') {
-        metadata.research_type = metaSubtype
+        metadata.innovation_type = metaSubtype
         metadata.scope = metaScope
+        metadata.source = metaSource
+        metadata.ip_status = metaIpStatus
+        metadata.award_name = metaAwardName
       } else if (formCategory === 'intellectual_property') {
         metadata.ip_type = metaSubtype
         metadata.registration_number = metaRegNum
         metadata.registration_date = metaRegDate
+        metadata.scope = metaScope
+        metadata.source = metaSource
+        metadata.application_status = metaApplicationStatus
+        metadata.status = metaIpCurrentStatus
+        metadata.patent_number = metaPatentNum
       } else if (formCategory === 'award') {
         metadata.award_level = metaSubtype
         metadata.organizer = metaOrganizer
         metadata.scope = metaScope
+        metadata.award_name = metaAwardName
       } else if (formCategory === 'utilization') {
         metadata.utilization_type = metaSubtype
         metadata.organization_used = metaOrgUsed
         metadata.impact_summary = metaImpact
+        metadata.utilization_date = metaUtilizationDate
       }
 
       const rowData = {
@@ -448,7 +497,7 @@ export const MasterdataPanel: React.FC = () => {
 
   const handleAddLookup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!lookupValue || !lookupLabel) return
+    if (!lookupValue) return
     try {
       // Sort order is no longer a manual field — just append after whatever
       // already exists in this category so display order stays stable.
@@ -458,12 +507,10 @@ export const MasterdataPanel: React.FC = () => {
         .insert({
           category: lookupCategory,
           value: lookupValue,
-          label: lookupLabel,
           sort_order: nextSortOrder
         })
       if (error) throw error
       setLookupValue('')
-      setLookupLabel('')
       refreshOptions()
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถเพิ่มตัวเลือกคัดกรองได้: ${err.message}`, 'danger')
@@ -693,7 +740,7 @@ export const MasterdataPanel: React.FC = () => {
   const getSubtypeCategoryForForm = () => {
     switch (formCategory) {
       case 'research': return 'research_type'
-      case 'innovation': return 'research_type'
+      case 'innovation': return 'innovation_type'
       case 'intellectual_property': return 'ip_type'
       case 'award': return 'award_level'
       case 'utilization': return 'utilization_type'
@@ -715,9 +762,7 @@ export const MasterdataPanel: React.FC = () => {
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
       case 'research': return 'วิจัย'
-      case 'academic': return 'บริการวิชาการ'
       case 'innovation': return 'นวัตกรรม'
-      case 'creative': return 'งานสร้างสรรค์'
       case 'intellectual_property': return 'ทรัพย์สินทางปัญญา'
       case 'award': return 'รางวัล'
       case 'utilization': return 'การใช้ประโยชน์'
@@ -776,13 +821,6 @@ export const MasterdataPanel: React.FC = () => {
             recordCode: 'MST-ITEMS-RES'
           }
         }
-        if (subSlug === 'academic') {
-          return {
-            title: 'จัดการบริการวิชาการ',
-            subtitle: 'รายการข้อมูลและโครงการงานบริการวิชาการทั้งหมดในระบบคลังหลัก',
-            recordCode: 'MST-ITEMS-ACD'
-          }
-        }
         if (subSlug === 'innovation') {
           return {
             title: 'จัดการนวัตกรรม',
@@ -790,11 +828,25 @@ export const MasterdataPanel: React.FC = () => {
             recordCode: 'MST-ITEMS-INV'
           }
         }
-        if (subSlug === 'creative') {
+        if (subSlug === 'intellectual_property') {
           return {
-            title: 'จัดการงานสร้างสรรค์',
-            subtitle: 'รายการผลงานทางด้านศิลปะและงานสร้างสรรค์ทั้งหมดในระบบคลังหลัก',
-            recordCode: 'MST-ITEMS-CRT'
+            title: 'จัดการทรัพย์สินทางปัญญา',
+            subtitle: 'รายการผลงานทรัพย์สินทางปัญญาที่ขึ้นทะเบียนแล้วทั้งหมดในระบบคลังหลัก',
+            recordCode: 'MST-ITEMS-IP'
+          }
+        }
+        if (subSlug === 'award') {
+          return {
+            title: 'จัดการรางวัลและความสำเร็จ',
+            subtitle: 'รายการรางวัลและความสำเร็จทั้งหมดในระบบคลังหลัก',
+            recordCode: 'MST-ITEMS-AWD'
+          }
+        }
+        if (subSlug === 'utilization') {
+          return {
+            title: 'จัดการการนำไปใช้ประโยชน์',
+            subtitle: 'รายการการนำวิจัยและนวัตกรรมไปใช้ประโยชน์ทั้งหมดในระบบคลังหลัก',
+            recordCode: 'MST-ITEMS-UTL'
           }
         }
         return {
@@ -913,8 +965,6 @@ export const MasterdataPanel: React.FC = () => {
                   setLookupCategory={setLookupCategory}
                   lookupValue={lookupValue}
                   setLookupValue={setLookupValue}
-                  lookupLabel={lookupLabel}
-                  setLookupLabel={setLookupLabel}
                   onAddLookup={handleAddLookup}
                   onDeleteLookup={handleDeleteLookup}
                   defaultCategory={lookupPathCategory}
@@ -1062,6 +1112,26 @@ export const MasterdataPanel: React.FC = () => {
         setMetaScope={setMetaScope}
         metaJournalRank={metaJournalRank}
         setMetaJournalRank={setMetaJournalRank}
+        metaContribution={metaContribution}
+        setMetaContribution={setMetaContribution}
+        metaFundingHas={metaFundingHas}
+        setMetaFundingHas={setMetaFundingHas}
+        metaFundingDetail={metaFundingDetail}
+        setMetaFundingDetail={setMetaFundingDetail}
+        metaSource={metaSource}
+        setMetaSource={setMetaSource}
+        metaIpStatus={metaIpStatus}
+        setMetaIpStatus={setMetaIpStatus}
+        metaApplicationStatus={metaApplicationStatus}
+        setMetaApplicationStatus={setMetaApplicationStatus}
+        metaIpCurrentStatus={metaIpCurrentStatus}
+        setMetaIpCurrentStatus={setMetaIpCurrentStatus}
+        metaPatentNum={metaPatentNum}
+        setMetaPatentNum={setMetaPatentNum}
+        metaAwardName={metaAwardName}
+        setMetaAwardName={setMetaAwardName}
+        metaUtilizationDate={metaUtilizationDate}
+        setMetaUtilizationDate={setMetaUtilizationDate}
       />
 
       <ConfirmDialog

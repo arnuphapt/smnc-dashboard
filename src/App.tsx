@@ -31,6 +31,11 @@ const MASTERDATA_SUBNAV = [
   { slug: 'lookups/utilization_type', icon: Settings, label: 'Master Utilization Type' },
   { slug: 'lookups/journal_rank', icon: Settings, label: 'Master Journal Rank' },
   { slug: 'lookups/scope', icon: Settings, label: 'Master Scope' },
+  { slug: 'lookups/innovation_type', icon: Settings, label: 'Master Innovation Type' },
+  { slug: 'lookups/source', icon: Settings, label: 'Master Source' },
+  { slug: 'lookups/ip_current_status', icon: Settings, label: 'Master IP Status' },
+  { slug: 'lookups/venue', icon: Settings, label: 'Master Venue' },
+  { slug: 'lookups/year', icon: Settings, label: 'Master Year' },
   { slug: 'users', icon: Users, label: 'Master Users' },
   { slug: 'roles', icon: Shield, label: 'Master Roles' },
   { isHeader: true, label: 'Service Queues' },
@@ -39,9 +44,10 @@ const MASTERDATA_SUBNAV = [
   { slug: 'ip', icon: Award, label: 'Master IP' },
   { isHeader: true, label: 'Content Management' },
   { slug: 'items/research', icon: BookOpen, label: 'Master Research' },
-  { slug: 'items/academic', icon: Share2, label: 'Master Academic' },
   { slug: 'items/innovation', icon: Lightbulb, label: 'Master Innovation' },
-  { slug: 'items/creative', icon: Award, label: 'Master Creative' },
+  { slug: 'items/intellectual_property', icon: FileCheck, label: 'Master IP' },
+  { slug: 'items/award', icon: Award, label: 'Master Award' },
+  { slug: 'items/utilization', icon: Share2, label: 'Master Utilization' },
 ]
 
 const AccessDenied: React.FC = () => (

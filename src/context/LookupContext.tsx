@@ -5,7 +5,6 @@ export interface LookupOption {
   id: string
   category: string
   value: string
-  label: string
   sort_order: number
 }
 
