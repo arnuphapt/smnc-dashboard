@@ -37,17 +37,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <Link to="/admin/clinic" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
+      <Link to="/master/clinic" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
         <Calendar className="w-5 h-5 mb-3" style={{ color: '#0EA5A0' }} />
         <div className="text-2xl font-black font-mono" style={{ color: '#0B1D3A' }}>{pendingAppointmentsCount}</div>
         <div className="text-xs font-bold mt-0.5" style={{ color: '#475569' }}>นัดหมายรอยืนยัน</div>
       </Link>
-      <Link to="/admin/ethics" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
+      <Link to="/master/ethics" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
         <Clipboard className="w-5 h-5 mb-3" style={{ color: '#0EA5A0' }} />
         <div className="text-2xl font-black font-mono" style={{ color: '#0B1D3A' }}>{pendingEthicsCount}</div>
         <div className="text-xs font-bold mt-0.5" style={{ color: '#475569' }}>จริยธรรมรอมอบหมาย</div>
       </Link>
-      <Link to="/admin/ip" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
+      <Link to="/master/ip" className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
         <Award className="w-5 h-5 mb-3" style={{ color: '#0EA5A0' }} />
         <div className="text-2xl font-black font-mono" style={{ color: '#0B1D3A' }}>{pendingIpCount}</div>
         <div className="text-xs font-bold mt-0.5" style={{ color: '#475569' }}>คำขอ IP รอดำเนินการ</div>

@@ -5,7 +5,7 @@ import { LookupProvider } from './context/LookupContext'
 import { AuthScreen } from './pages/AuthScreen'
 import { Dashboard } from './pages/Dashboard'
 import { Repositories } from './pages/Repositories'
-import { AdminPanel } from './pages/AdminPanel'
+import { MasterdataPanel } from './pages/MasterdataPanel'
 import { Clinic } from './pages/Clinic'
 import { Ethics } from './pages/Ethics'
 import { IPApplication } from './pages/IPApplication'
@@ -21,14 +21,27 @@ const REPOSITORY_SUBNAV = [
   { slug: 'utilization', icon: Share2, label: 'การนำไปใช้ประโยชน์' },
 ]
 
-const ADMIN_SUBNAV = [
-  { slug: '', icon: LayoutGrid, label: 'โต๊ะทำงานวันนี้' },
-  { slug: 'items', icon: BookOpen, label: 'จัดการผลงาน' },
-  { slug: 'lookups', icon: Settings, label: 'ตัวเลือกคัดกรอง' },
-  { slug: 'users', icon: Users, label: 'ผู้ใช้งานและสิทธิ์' },
-  { slug: 'clinic', icon: Calendar, label: 'คลินิกวิจัย' },
-  { slug: 'ethics', icon: Clipboard, label: 'จริยธรรมการวิจัย' },
-  { slug: 'ip', icon: Award, label: 'ทรัพย์สินทางปัญญา' },
+const MASTERDATA_SUBNAV = [
+  { isHeader: true, label: 'Overview & Settings' },
+  { slug: '', icon: LayoutGrid, label: 'Master Overview' },
+  { slug: 'lookups/research_type', icon: Settings, label: 'Master Research Type' },
+  { slug: 'lookups/department', icon: Settings, label: 'Master Department' },
+  { slug: 'lookups/ip_type', icon: Settings, label: 'Master IP Type' },
+  { slug: 'lookups/award_level', icon: Settings, label: 'Master Award Level' },
+  { slug: 'lookups/utilization_type', icon: Settings, label: 'Master Utilization Type' },
+  { slug: 'lookups/journal_rank', icon: Settings, label: 'Master Journal Rank' },
+  { slug: 'lookups/scope', icon: Settings, label: 'Master Scope' },
+  { slug: 'users', icon: Users, label: 'Master Users' },
+  { slug: 'roles', icon: Shield, label: 'Master Roles' },
+  { isHeader: true, label: 'Service Queues' },
+  { slug: 'clinic', icon: Calendar, label: 'Master Clinic' },
+  { slug: 'ethics', icon: Clipboard, label: 'Master Ethics' },
+  { slug: 'ip', icon: Award, label: 'Master IP' },
+  { isHeader: true, label: 'Content Management' },
+  { slug: 'items/research', icon: BookOpen, label: 'Master Research' },
+  { slug: 'items/academic', icon: Share2, label: 'Master Academic' },
+  { slug: 'items/innovation', icon: Lightbulb, label: 'Master Innovation' },
+  { slug: 'items/creative', icon: Award, label: 'Master Creative' },
 ]
 
 const AccessDenied: React.FC = () => (
@@ -75,19 +88,18 @@ const AppContent: React.FC = () => {
   }
 
   const sidebarLinkClass = (active: boolean) =>
-    `px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-3 border-l-[3px] ${
-      active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 border-transparent'
+    `px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-3 border-l-[3px] ${active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 border-transparent'
     }`
 
   const sidebarLinkStyle = (active: boolean): React.CSSProperties | undefined =>
     active ? { background: 'rgba(14,165,160,0.12)', color: '#0B1D3A', borderLeftColor: '#0EA5A0' } : undefined
 
   const isRepositoriesActive = location.pathname.startsWith('/repositories')
-  const isAdminActive = location.pathname.startsWith('/admin')
+  const isMasterdataActive = location.pathname.startsWith('/master')
   const activeRepoCategory = location.pathname.split('/')[2] || 'research'
-  const activeAdminSlug = location.pathname === '/admin' ? '' : location.pathname.split('/')[2] || ''
+  const activeMasterdataSlug = location.pathname === '/master' ? '' : location.pathname.split('/')[2] || ''
 
-  interface SidebarChild { to: string; label: string; active: boolean }
+  interface SidebarChild { to: string; label: string; active: boolean; isHeader?: boolean }
   interface SidebarItem { key: string; to: string; icon: React.ReactNode; label: string; active: boolean; children?: SidebarChild[] }
 
   const navItems: SidebarItem[] = [
@@ -104,22 +116,51 @@ const AppContent: React.FC = () => {
         active: isRepositoriesActive && activeRepoCategory === cat.slug,
       })),
     },
-    { key: 'clinic', to: '/clinic', icon: <Calendar className="w-4 h-4 shrink-0" />, label: 'คลินิกวิจัย', active: location.pathname === '/clinic' },
-    { key: 'ethics', to: '/ethics', icon: <Clipboard className="w-4 h-4 shrink-0" />, label: 'จริยธรรมการวิจัย', active: location.pathname === '/ethics' },
-    { key: 'ip-application', to: '/ip-application', icon: <Award className="w-4 h-4 shrink-0" />, label: 'ทรัพย์สินทางปัญญา', active: location.pathname === '/ip-application' },
+    {
+      key: 'clinic',
+      to: '/clinic',
+      icon: <Calendar className="w-4 h-4 shrink-0" />,
+      label: 'คลินิกวิจัย',
+      active: location.pathname === '/clinic'
+    },
+    {
+      key: 'ethics',
+      to: '/ethics',
+      icon: <Clipboard className="w-4 h-4 shrink-0" />,
+      label: 'จริยธรรมการวิจัย',
+      active: location.pathname === '/ethics'
+    },
+    {
+      key: 'ip-application',
+      to: '/ip-application',
+      icon: <Award className="w-4 h-4 shrink-0" />,
+      label: 'ทรัพย์สินทางปัญญา',
+      active: location.pathname === '/ip-application'
+    },
     ...(profile?.role === 'admin'
       ? [{
-          key: 'admin',
-          to: '/admin',
-          icon: <Settings className="w-4 h-4 shrink-0" />,
-          label: 'หลังบ้าน Admin',
-          active: isAdminActive,
-          children: ADMIN_SUBNAV.map((sub) => ({
-            to: sub.slug ? `/admin/${sub.slug}` : '/admin',
+        key: 'masterdata',
+        to: '/master',
+        icon: <Settings className="w-4 h-4 shrink-0" />,
+        label: 'Masterdata',
+        active: isMasterdataActive,
+        children: MASTERDATA_SUBNAV.map((sub) => {
+          if (sub.isHeader) {
+            return {
+              isHeader: true,
+              label: sub.label,
+              to: '',
+              active: false
+            }
+          }
+          return {
+            isHeader: false,
+            to: sub.slug ? `/master/${sub.slug}` : '/master',
             label: sub.label,
-            active: isAdminActive && activeAdminSlug === sub.slug,
-          })),
-        } as SidebarItem]
+            active: isMasterdataActive && activeMasterdataSlug === sub.slug,
+          }
+        }),
+      } as SidebarItem]
       : []),
   ]
 
@@ -176,9 +217,8 @@ const AppContent: React.FC = () => {
                 >
                   <Link
                     to={item.to}
-                    className={`px-3 py-2.5 text-xs font-bold transition-all duration-200 flex items-center gap-3 flex-1 min-w-0 ${
-                      item.active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 rounded-xl'
-                    }`}
+                    className={`px-3 py-2.5 text-xs font-bold transition-all duration-200 flex items-center gap-3 flex-1 min-w-0 ${item.active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 rounded-xl'
+                      }`}
                     style={item.active ? { color: '#0B1D3A' } : undefined}
                   >
                     {item.icon}
@@ -196,18 +236,29 @@ const AppContent: React.FC = () => {
 
                 {expanded && (
                   <div className="mt-1 ml-4 pl-3 space-y-0.5 border-l border-slate-200">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.to}
-                        to={child.to}
-                        className={`block px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors duration-200 truncate ${
-                          child.active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
-                        }`}
-                        style={child.active ? { background: 'rgba(14,165,160,0.1)', color: '#0B1D3A' } : undefined}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
+                    {item.children.map((child, cIdx) => {
+                      if (child.isHeader) {
+                        return (
+                          <div
+                            key={cIdx}
+                            className="text-[9px] font-black uppercase tracking-widest text-slate-400/80 mt-3 mb-1 px-3 first:mt-1 select-none"
+                          >
+                            {child.label}
+                          </div>
+                        )
+                      }
+                      return (
+                        <Link
+                          key={child.to}
+                          to={child.to}
+                          className={`block px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors duration-200 truncate ${child.active ? '' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+                            }`}
+                          style={child.active ? { background: 'rgba(14,165,160,0.1)', color: '#0B1D3A' } : undefined}
+                        >
+                          {child.label}
+                        </Link>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -310,12 +361,12 @@ const AppContent: React.FC = () => {
 
                         {profile?.role === 'admin' && (
                           <Link
-                            to="/admin"
+                            to="/master"
                             onClick={() => setShowProfileDropdown(false)}
                             className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
                           >
                             <Settings className="w-4 h-4 text-slate-400" />
-                            หลังบ้าน Admin
+                            Masterdata Console
                           </Link>
                         )}
                       </div>
@@ -356,7 +407,7 @@ const AppContent: React.FC = () => {
             <Route path="/clinic" element={<Clinic />} />
             <Route path="/ethics" element={<Ethics />} />
             <Route path="/ip-application" element={<IPApplication />} />
-            <Route path="/admin/*" element={profile?.role === 'admin' ? <AdminPanel /> : <AccessDenied />} />
+            <Route path="/master/*" element={profile?.role === 'admin' ? <MasterdataPanel /> : <AccessDenied />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

@@ -10,6 +10,7 @@ const SEGMENT_TRANSLATIONS: Record<string, string> = {
   'ip-application': 'ทรัพย์สินทางปัญญา',
   repositories: 'คลังปัญญา 5 ด้าน',
   admin: 'ระบบหลังบ้าน',
+  masterdata: 'จัดการข้อมูลกลาง (Masterdata)',
   login: 'เข้าสู่ระบบ',
 
   // Repositories Categories

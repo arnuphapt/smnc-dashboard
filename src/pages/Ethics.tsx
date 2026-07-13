@@ -10,7 +10,8 @@ import {
   ExternalLink,
   Clipboard,
   Briefcase,
-  UserCheck
+  UserCheck,
+  Trash2
 } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
 import { PageHeader, ContentPanel, SectionHeader } from '../components/PageHeader'
@@ -20,6 +21,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  EVALUATION_CRITERIA,
+  parseReviewerNotes,
+  serializeReviewerNotes,
+  handleExportEvaluation
+} from './masterdata/EthicsTab'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 
 interface DownloadableForm {
   id: string
@@ -65,9 +73,43 @@ export const Ethics: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
 
-  const [editingSubId, setEditingSubId] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
   const [reviewStatus, setReviewStatus] = useState('กำลังตรวจ')
+
+  // Revision modal states
+  const [revisionModalOpen, setRevisionModalOpen] = useState(false)
+  const [selectedSubForRevision, setSelectedSubForRevision] = useState<any | null>(null)
+  const [revisionFiles, setRevisionFiles] = useState<FileList | null>(null)
+  const [revisionNotes, setRevisionNotes] = useState('')
+  const [revisionSubmitting, setRevisionSubmitting] = useState(false)
+  const [revisionError, setRevisionError] = useState('')
+  const [revisionSuccess, setRevisionSuccess] = useState('')
+
+  // Delete confirm modal states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [subIdToDelete, setSubIdToDelete] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Custom Alert Dialog States
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false)
+  const [alertConfig, setAlertConfig] = useState<{ title: string; description: string; variant?: 'primary' | 'danger' | 'warning' } | null>(null)
+
+  const triggerAlert = (title: string, description: string, variant: 'primary' | 'danger' | 'warning' = 'primary') => {
+    setAlertConfig({ title, description, variant })
+    setAlertDialogOpen(true)
+  }
+
+  // Expert review modal states
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [selectedSubForReview, setSelectedSubForReview] = useState<any | null>(null)
+  const [scores, setScores] = useState<Record<string, 'pass' | 'fail' | 'na'>>({
+    obj: 'pass',
+    method: 'pass',
+    privacy: 'pass',
+    consent: 'pass',
+    risk: 'pass',
+    benefit: 'pass',
+  })
 
   const fetchForms = async () => {
     try {
@@ -89,7 +131,7 @@ export const Ethics: React.FC = () => {
   const fetchReviewSubmissions = async () => {
     if (!user) return
     try {
-      let query = supabase.from('ethics_submissions').select('*').order('created_at', { ascending: false })
+      let query = supabase.from('ethics_submissions').select('*, profiles:submitter_id(email)').order('created_at', { ascending: false })
       if (profile?.role === 'expert') query = query.eq('assigned_reviewer_id', user.id)
       const { data, error } = await query
       if (error) throw error
@@ -140,7 +182,13 @@ export const Ethics: React.FC = () => {
       if (files && files.length > 0) {
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
-          const storagePath = `ethics/${user.id}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+          const extIndex = file.name.lastIndexOf('.')
+          const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
+          const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
+          const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
+          const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
+          const storagePath = `ethics/${user.id}/${Date.now()}_${safeName}${ext}`
+
           const { error: uploadError } = await supabase.storage.from('wisdom-private').upload(storagePath, file)
           if (uploadError) throw uploadError
           const { error: attachError } = await supabase.from('ethics_attachments').insert({ submission_id: submissionId, file_url: storagePath, file_name: file.name, file_type: file.type })
@@ -159,16 +207,129 @@ export const Ethics: React.FC = () => {
       const { data, error } = await supabase.storage.from('wisdom-private').createSignedUrl(path, 60)
       if (error) throw error
       if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-    } catch (err: any) { alert(`ไม่สามารถเปิดไฟล์แนบนี้ได้: ${err.message}`) }
+    } catch (err: any) { triggerAlert('ไม่สามารถเปิดไฟล์แนบได้', err.message, 'danger') }
   }
 
-  const handleSaveReview = async (subId: string) => {
+  const handleSaveReview = async (subId: string, status: string, notes: string) => {
     try {
-      const { error } = await supabase.from('ethics_submissions').update({ status: reviewStatus, reviewer_notes: reviewNotes }).eq('id', subId)
+      const { error } = await supabase.from('ethics_submissions').update({ status, reviewer_notes: notes }).eq('id', subId)
       if (error) throw error
-      setEditingSubId(null); fetchReviewSubmissions()
-      alert('บันทึกผลการพิจารณาเรียบร้อยแล้ว!')
-    } catch (err: any) { alert(`เกิดข้อผิดพลาด: ${err.message}`) }
+      fetchReviewSubmissions()
+      fetchSubmissions()
+      triggerAlert('บันทึกสำเร็จ', 'บันทึกผลการพิจารณาเรียบร้อยแล้ว!', 'primary')
+    } catch (err: any) { triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger') }
+  }
+
+  const handleDeleteSubmission = (subId: string) => {
+    setSubIdToDelete(subId)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!subIdToDelete) return
+    setDeleteLoading(true)
+    try {
+      const { error: attError } = await supabase
+        .from('ethics_attachments')
+        .delete()
+        .eq('submission_id', subIdToDelete)
+      if (attError) throw attError
+
+      const { error: subError } = await supabase
+        .from('ethics_submissions')
+        .delete()
+        .eq('id', subIdToDelete)
+      if (subError) throw subError
+
+      setDeleteConfirmOpen(false)
+      setSubIdToDelete(null)
+      fetchSubmissions()
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถลบคำขอได้: ${err.message}`, 'danger')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const handleExportClick = async (sub: any) => {
+    let reviewerEmail = 'ผู้ทรงคุณวุฒิ'
+    if (sub.assigned_reviewer_id) {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', sub.assigned_reviewer_id)
+          .single()
+        if (data) reviewerEmail = data.email
+      } catch (err) { console.error(err) }
+    }
+    const submitterEmail = sub.profiles?.email || user?.email || ''
+    handleExportEvaluation(sub, reviewerEmail, submitterEmail)
+  }
+
+  const handleOpenRevisionModal = (sub: any) => {
+    setSelectedSubForRevision(sub)
+    setRevisionFiles(null)
+    setRevisionNotes('')
+    setRevisionError('')
+    setRevisionSuccess('')
+    setRevisionModalOpen(true)
+  }
+
+  const handleSubmitRevision = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !selectedSubForRevision) return
+    setRevisionError(''); setRevisionSuccess(''); setRevisionSubmitting(true)
+
+    if (!revisionFiles || revisionFiles.length === 0) {
+      setRevisionError('กรุณาอัปโหลดเอกสารปรับปรุงแก้ไข')
+      setRevisionSubmitting(false)
+      return
+    }
+
+    try {
+      for (let i = 0; i < revisionFiles.length; i++) {
+        const file = revisionFiles[i]
+        const extIndex = file.name.lastIndexOf('.')
+        const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
+        const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
+        const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
+        const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
+        const storagePath = `ethics/${user.id}/revised_${Date.now()}_${safeName}${ext}`
+
+        const { error: uploadError } = await supabase.storage.from('wisdom-private').upload(storagePath, file)
+        if (uploadError) throw uploadError
+        const { error: attachError } = await supabase.from('ethics_attachments').insert({
+          submission_id: selectedSubForRevision.id,
+          file_url: storagePath,
+          file_name: `[ฉบับแก้ไข] ${file.name}`,
+          file_type: file.type
+        })
+        if (attachError) throw attachError
+      }
+
+      const timestamp = new Date().toLocaleString('th-TH')
+      const appendedNote = `\n\n[ระบบ: ผู้ยื่นส่งเล่มปรับปรุงใหม่เมื่อ ${timestamp}]\nบันทึกแก้ไขของผู้ยื่น: ${revisionNotes.trim() || 'ไม่มีระบุ'}\n-----------------------------------\n`
+      const newReviewerNotes = (selectedSubForRevision.reviewer_notes || '') + appendedNote
+
+      const { error: updateError } = await supabase.from('ethics_submissions').update({
+        status: 'ยื่นแล้ว',
+        reviewer_notes: newReviewerNotes
+      }).eq('id', selectedSubForRevision.id)
+
+      if (updateError) throw updateError
+
+      setRevisionSuccess('ยื่นเล่มเอกสารปรับปรุงเรียบร้อยแล้ว!')
+      setTimeout(() => {
+        setRevisionModalOpen(false)
+        fetchSubmissions()
+        fetchAttachments()
+      }, 1500)
+    } catch (err: any) {
+      setRevisionError(err.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล')
+    } finally {
+      setRevisionSubmitting(false)
+    }
   }
 
   const isReviewTabVisible = profile?.role === 'expert' || profile?.role === 'admin'
@@ -246,7 +407,7 @@ export const Ethics: React.FC = () => {
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
-                    {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น'].map(h => (
+                    {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น', 'จัดการ'].map(h => (
                       <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
                     ))}
                   </tr>
@@ -270,8 +431,46 @@ export const Ethics: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap"><StatusBadge status={sub.status} /></td>
-                        <td className="py-3 px-4 italic font-medium" style={{ color: '#64748B' }}>{sub.reviewer_notes || '—'}</td>
-                        <td className="py-3 px-4 font-semibold" style={{ color: '#94A3B8' }}>{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
+                        <td className="py-3 px-4 max-w-[200px]">
+                          <div className="italic font-medium text-slate-500 truncate" title={sub.reviewer_notes}>
+                            {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-semibold whitespace-nowrap" style={{ color: '#94A3B8' }}>{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col sm:flex-row gap-1">
+                            {sub.reviewer_notes && (
+                              <button
+                                onClick={() => handleExportClick(sub)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+                                style={{ background: '#FFFFFF', color: '#475569' }}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                รายงานผล
+                              </button>
+                            )}
+
+                            {sub.status === 'รอแก้ไข' && (
+                              <button
+                                onClick={() => handleOpenRevisionModal(sub)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer text-white"
+                                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                              >
+                                <UploadCloud className="w-3.5 h-3.5" />
+                                ส่งเล่มปรับปรุง
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleDeleteSubmission(sub.id)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+                              style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              ลบคำขอ
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     )
                   })}
@@ -281,7 +480,7 @@ export const Ethics: React.FC = () => {
           )}
         </div>
       </ContentPanel>
-
+ 
       {/* SECTION: REVIEW (EXPERT/ADMIN ONLY) */}
       {isReviewTabVisible && (
         <ContentPanel>
@@ -297,7 +496,7 @@ export const Ethics: React.FC = () => {
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
-                      {['โครงร่างวิจัย / เอกสาร', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
+                      {['โครงร่างวิจัย / เอกสาร', 'ผู้ยื่นคำขอ', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
                         <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
                       ))}
                     </tr>
@@ -305,7 +504,6 @@ export const Ethics: React.FC = () => {
                   <tbody className="divide-y bg-white" style={{ borderColor: '#E8F0F8' }}>
                     {reviewSubmissions.map((sub) => {
                       const subAttach = attachments.filter(a => a.submission_id === sub.id)
-                      const isEditing = editingSubId === sub.id
                       return (
                         <tr key={sub.id} className="transition-colors hover:bg-blue-50/30">
                           <td className="py-3 px-4 max-w-[280px]">
@@ -321,42 +519,45 @@ export const Ethics: React.FC = () => {
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            {isEditing ? (
-                              <Select
-                                value={reviewStatus}
-                                onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
-                                items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
-                              >
-                                <SelectTrigger className="text-xs font-bold" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF', color: '#0B1D3A' }}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <StatusBadge status={sub.status} />
-                            )}
+                          <td className="py-3 px-4 font-bold" style={{ color: '#0B1D3A' }}>
+                            {sub.profiles?.email || 'ไม่ระบุผู้ยื่น'}
                           </td>
-                          <td className="py-3 px-4">
-                            {isEditing ? (
-                              <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="เขียนความเห็น คำแนะนำ หรือจุดที่ต้องแก้ไข..." className="w-full px-3 py-2 rounded-xl text-xs resize-none" rows={2} style={{ border: '1.5px solid #CBD5E1', background: '#FAFCFF' }} />
-                            ) : (
-                              <span className="italic font-medium" style={{ color: '#64748B' }}>{sub.reviewer_notes || '—'}</span>
-                            )}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <StatusBadge status={sub.status} />
+                          </td>
+                          <td className="py-3 px-4 max-w-[200px]">
+                            <div className="italic font-medium text-slate-500 truncate" title={sub.reviewer_notes}>
+                              {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-center whitespace-nowrap">
-                            {isEditing ? (
-                              <div className="flex gap-1.5 justify-center">
-                                <Button onClick={() => handleSaveReview(sub.id)} className="px-3 py-1.5 h-auto rounded-lg text-[10px] font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #6EE7B7' }}>บันทึก</Button>
-                                <Button variant="outline" onClick={() => setEditingSubId(null)} className="px-3 py-1.5 h-auto rounded-lg text-[10px] font-bold" style={{ background: '#F8FAFC', color: '#475569', border: '1px solid #CBD5E1' }}>ยกเลิก</Button>
-                              </div>
-                            ) : (
-                              <Button onClick={() => { setEditingSubId(sub.id); setReviewStatus(sub.status); setReviewNotes(sub.reviewer_notes || '') }} className="px-3 py-1.5 h-auto rounded-lg text-[10px] font-bold hover:-translate-y-0.5" style={{ background: '#FAF5FF', color: '#7E22CE', border: '1px solid #D8B4FE' }}>
+                            <div className="flex gap-1.5 justify-center">
+                              <Button
+                                onClick={() => {
+                                  setSelectedSubForReview(sub)
+                                  setReviewStatus(sub.status)
+                                  const parsed = parseReviewerNotes(sub.reviewer_notes || '')
+                                  setScores(parsed.scores)
+                                  setReviewNotes(parsed.comments)
+                                  setReviewModalOpen(true)
+                                }}
+                                className="px-3 py-1.5 h-auto rounded-lg text-[10px] font-bold hover:-translate-y-0.5"
+                                style={{ background: '#FAF5FF', color: '#7E22CE', border: '1px solid #D8B4FE' }}
+                              >
                                 พิจารณาผล
                               </Button>
-                            )}
+
+                              {sub.reviewer_notes && (
+                                <button
+                                  onClick={() => handleExportClick(sub)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border border-slate-200 transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+                                  style={{ background: '#FFFFFF', color: '#475569' }}
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  พิมพ์รายงาน
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )
@@ -368,6 +569,7 @@ export const Ethics: React.FC = () => {
           </div>
         </ContentPanel>
       )}
+
       {/* MODAL: submit a new Ethics submission */}
       <Dialog open={submitModalOpen} onOpenChange={setSubmitModalOpen}>
         <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
@@ -423,6 +625,191 @@ export const Ethics: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: Researcher submits revised proposal documents */}
+      <Dialog open={revisionModalOpen} onOpenChange={setRevisionModalOpen}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>แก้ไขส่งปรับปรุง</p>
+            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>
+              ส่งเล่มโครงร่างวิจัยฉบับแก้ไข
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5">
+            {selectedSubForRevision && (
+              <form onSubmit={handleSubmitRevision} className="space-y-4">
+                <p className="text-xs font-medium text-slate-500">
+                  อัปโหลดไฟล์เล่มเสนอแนะปรับปรุง หรือเอกสารเพิ่มเติมตามคำแนะนำของผู้ทรงคุณวุฒิ
+                </p>
+
+                {revisionError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {revisionError}
+                  </div>
+                )}
+                {revisionSuccess && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {revisionSuccess}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อโครงร่างวิจัย</label>
+                    <Input type="text" disabled value={selectedSubForRevision.project_title} className="w-full text-xs px-4 py-2.5 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed" style={inputSty} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>บันทึกแจ้งการแก้ไข / สรุปรายการแก้ *</label>
+                    <Textarea rows={3} required placeholder="ระบุรายการจุดที่ปรับแก้ เช่น แก้แบบชี้แจงยินยอมฉบับที่ 2 แล้ว..." value={revisionNotes} onChange={(e) => setRevisionNotes(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>อัปโหลดเอกสารปรับปรุง * <span className="font-normal text-slate-400">(เลือกได้หลายไฟล์)</span></label>
+                    <Input type="file" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setRevisionFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
+                    <p className="text-[10px] mt-1 text-slate-400">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={revisionSubmitting}
+                  className="w-full py-2.5 h-auto rounded-xl text-xs font-bold disabled:opacity-50 mt-2"
+                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                >
+                  {revisionSubmitting ? 'กำลังอัปโหลดเอกสารแก้ไข...' : 'ยืนยันส่งเอกสารปรับปรุง →'}
+                </Button>
+              </form>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: Expert review evaluation checklist scorecard */}
+      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#7E22CE' }}>พิจารณาข้อเสนอ</p>
+            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>
+              ประเมินจริยธรรมโครงร่างวิจัย
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-4">
+            {selectedSubForReview && (
+              <>
+                <div>
+                  <div className="text-xs font-bold text-slate-400">ชื่อโครงร่างวิจัย</div>
+                  <div className="text-sm font-bold mt-0.5" style={{ color: '#0B1D3A' }}>
+                    {selectedSubForReview.project_title}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold" style={{ color: '#0B1D3A' }}>ผลประเมินตามรายเกณฑ์</label>
+                  <div className="space-y-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                    {EVALUATION_CRITERIA.map((criterion) => (
+                      <div key={criterion.key} className="space-y-1">
+                        <div className="text-[10px] font-bold text-slate-700 leading-snug">{criterion.label}</div>
+                        <div className="grid grid-cols-3 gap-1 bg-slate-200/50 p-0.5 rounded-lg">
+                          {[
+                            { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-emerald-500 peer-checked:text-white text-emerald-700' },
+                            { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-amber-500 peer-checked:text-white text-amber-700' },
+                            { val: 'na', label: 'N/A', color: 'peer-checked:bg-slate-400 peer-checked:text-white text-slate-600' }
+                          ].map(opt => (
+                            <label key={opt.val} className="cursor-pointer text-[10px] font-bold text-center">
+                              <input
+                                type="radio"
+                                name={`expert-score-${criterion.key}`}
+                                value={opt.val}
+                                checked={scores[criterion.key] === opt.val}
+                                onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
+                                className="sr-only peer"
+                              />
+                              <div className={`py-1 rounded-md transition peer-checked:shadow-sm ${opt.color} hover:bg-slate-200/30`}>
+                                {opt.label}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>สถานะผลประเมิน</label>
+                  <Select
+                    value={reviewStatus}
+                    onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
+                    items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
+                  >
+                    <SelectTrigger className="w-full light-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="กำลังตรวจ">กำลังตรวจ</SelectItem>
+                      <SelectItem value="รอแก้ไข">รอแก้ไข (ให้ปรับปรุงเล่ม)</SelectItem>
+                      <SelectItem value="อนุมัติ">อนุมัติ</SelectItem>
+                      <SelectItem value="ไม่อนุมัติ">ไม่อนุมัติ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
+                  <Textarea
+                    rows={3}
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="เขียนรายละเอียดจุดแก้ไข หรือความเห็นเพิ่มเติม..."
+                    className={inputBase + ' resize-none'}
+                    style={inputSty}
+                  />
+                </div>
+
+                <Button
+                  onClick={() => {
+                    const serialized = serializeReviewerNotes(scores, reviewNotes)
+                    handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
+                    setReviewModalOpen(false)
+                  }}
+                  className="w-full py-2.5 h-auto rounded-xl text-xs font-bold mt-2"
+                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                >
+                  บันทึกคำพิจารณา
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setSubIdToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        title="ยืนยันการลบคำขอ?"
+        description="คุณต้องการลบคำขอรับการพิจารณาจริยธรรมนี้หรือไม่? เอกสารแนบทั้งหมดของคำขอนี้จะถูกลบออกถาวร"
+        confirmLabel="ลบเอกสาร"
+        variant="danger"
+        loading={deleteLoading}
+      />
+      <ConfirmDialog
+        isOpen={alertDialogOpen}
+        onClose={() => {
+          setAlertDialogOpen(false)
+          setAlertConfig(null)
+        }}
+        onConfirm={() => {}}
+        title={alertConfig?.title || ''}
+        description={alertConfig?.description || ''}
+        confirmLabel="ตกลง"
+        alertOnly
+        variant={alertConfig?.variant || 'primary'}
+      />
     </div>
   )
 }

@@ -8,11 +8,13 @@ import {
   XCircle,
   ExternalLink,
   Award,
-  Clipboard
+  Clipboard,
+  Trash2
 } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
 import { PageHeader, ContentPanel, SectionHeader } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 
 interface DownloadableForm {
   id: string
@@ -83,6 +85,20 @@ export const IPApplication: React.FC = () => {
   const [forms, setForms] = useState<DownloadableForm[]>([])
   const [applications, setApplications] = useState<IPApp[]>([])
 
+  // Delete confirm modal states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [appIdToDelete, setAppIdToDelete] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Custom Alert Dialog States
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false)
+  const [alertConfig, setAlertConfig] = useState<{ title: string; description: string; variant?: 'primary' | 'danger' | 'warning' } | null>(null)
+
+  const triggerAlert = (title: string, description: string, variant: 'primary' | 'danger' | 'warning' = 'primary') => {
+    setAlertConfig({ title, description, variant })
+    setAlertDialogOpen(true)
+  }
+
   const fetchForms = async () => {
     try {
       const { data, error } = await supabase.from('downloadable_forms').select('*').eq('category', 'ip').order('sort_order', { ascending: true })
@@ -98,6 +114,31 @@ export const IPApplication: React.FC = () => {
       if (error) throw error
       setApplications(data || [])
     } catch (err) { console.error(err) }
+  }
+
+  const handleDeleteApplication = (appId: string) => {
+    setAppIdToDelete(appId)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!appIdToDelete) return
+    setDeleteLoading(true)
+    try {
+      const { error } = await supabase
+        .from('ip_applications')
+        .delete()
+        .eq('id', appIdToDelete)
+      if (error) throw error
+
+      setDeleteConfirmOpen(false)
+      setAppIdToDelete(null)
+      fetchApplications()
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถลบคำขอได้: ${err.message}`, 'danger')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   useEffect(() => { fetchForms(); fetchApplications() }, [user])
@@ -251,12 +292,51 @@ export const IPApplication: React.FC = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Actions */}
+                  <div className="flex justify-end pt-1">
+                    <button
+                      onClick={() => handleDeleteApplication(app.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+                      style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      ลบคำขอ
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
       </ContentPanel>
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setAppIdToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        title="ยืนยันการลบคำขอ?"
+        description="คุณต้องการลบคำขอขึ้นทะเบียนทรัพย์สินทางปัญญานี้หรือไม่?"
+        confirmLabel="ลบเอกสาร"
+        variant="danger"
+        loading={deleteLoading}
+      />
+      <ConfirmDialog
+        isOpen={alertDialogOpen}
+        onClose={() => {
+          setAlertDialogOpen(false)
+          setAlertConfig(null)
+        }}
+        onConfirm={() => {}}
+        title={alertConfig?.title || ''}
+        description={alertConfig?.description || ''}
+        confirmLabel="ตกลง"
+        alertOnly
+        variant={alertConfig?.variant || 'primary'}
+      />
     </div>
   )
 }

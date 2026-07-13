@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { WisdomItem } from '../Dashboard'
 import { LookupOption } from '../../context/LookupContext'
+import { Profile } from '../../context/AuthContext'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,6 +20,7 @@ interface ItemFormModalProps {
   getCategoryLabel: (category: string) => string
   getSubtypeCategoryForForm: () => string
   getSubtypeLabelForForm: () => string
+  profiles: Profile[]
 
   formCategory: WisdomItem['category']
   setFormCategory: (value: WisdomItem['category']) => void
@@ -51,15 +53,13 @@ interface ItemFormModalProps {
   setMetaOrgUsed: (value: string) => void
   metaImpact: string
   setMetaImpact: (value: string) => void
+  metaScope: string
+  setMetaScope: (value: string) => void
+  metaJournalRank: string
+  setMetaJournalRank: (value: string) => void
 }
 
-const CATEGORY_OPTIONS: { value: WisdomItem['category']; label: string }[] = [
-  { value: 'research', label: 'คลังวิจัย' },
-  { value: 'innovation', label: 'คลังนวัตกรรม' },
-  { value: 'intellectual_property', label: 'คลังทรัพย์สินทางปัญญา' },
-  { value: 'award', label: 'คลังรางวัลเชิดชูเกียรติ' },
-  { value: 'utilization', label: 'คลังการนำไปใช้ประโยชน์' },
-]
+const SCOPE_CATEGORIES: Array<WisdomItem['category']> = ['research', 'innovation', 'award']
 
 // The one add/edit surface for wisdom_items — every category's extra fields
 // (research/innovation/IP/award/utilization) live in this single form, switching
@@ -67,13 +67,30 @@ const CATEGORY_OPTIONS: { value: WisdomItem['category']; label: string }[] = [
 export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   isFormOpen, setIsFormOpen, editingItem, submitLoading, onSubmit,
   getOptionsByCategory, getCategoryLabel, getSubtypeCategoryForForm, getSubtypeLabelForForm,
-  formCategory, setFormCategory, formTitle, setFormTitle, formDescription, setFormDescription,
+  profiles,
+  formCategory, formTitle, setFormTitle, formDescription, setFormDescription,
   formAuthors, setFormAuthors, formIsPublic, setFormIsPublic, setImageFile, setDocFile,
   metaDept, setMetaDept, metaSubtype, setMetaSubtype, metaYear, setMetaYear,
   metaJournal, setMetaJournal, metaRegNum, setMetaRegNum, metaRegDate, setMetaRegDate,
   metaOrganizer, setMetaOrganizer, metaOrgUsed, setMetaOrgUsed, metaImpact, setMetaImpact,
+  metaScope, setMetaScope, metaJournalRank, setMetaJournalRank,
+  // setFormCategory is not needed in the form body anymore since it is locked to page category
+  // but we keep it in props to avoid breaking consumers
 }) => {
   const subtypeCategory = getSubtypeCategoryForForm()
+  const [manualAuthor, setManualAuthor] = useState('')
+
+  // Authors are stored as one comma-separated string on the row, but picked
+  // from the researcher master list (or typed ad-hoc) as individual chips.
+  const authorList = formAuthors.split(',').map((a) => a.trim()).filter(Boolean)
+  const addAuthor = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed || authorList.includes(trimmed)) return
+    setFormAuthors([...authorList, trimmed].join(', '))
+  }
+  const removeAuthor = (name: string) => {
+    setFormAuthors(authorList.filter((a) => a !== name).join(', '))
+  }
 
   return (
     <Dialog open={isFormOpen} onOpenChange={(next) => { if (!next) setIsFormOpen(false) }}>
@@ -100,17 +117,10 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
           {/* Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-500 font-bold mb-1">เลือกหมวดหมู่คลังผลงาน (Category)</label>
-              <Select value={formCategory} onValueChange={(v) => setFormCategory(v as WisdomItem['category'])} items={CATEGORY_OPTIONS}>
-                <SelectTrigger className="w-full light-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="block text-slate-500 font-bold mb-1">หมวดหมู่คลังผลงาน (Category)</label>
+              <div className="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 flex items-center font-bold">
+                {getCategoryLabel(formCategory)}
+              </div>
             </div>
 
             <div>
@@ -149,18 +159,59 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
           {/* Authors & Year */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-slate-500 font-bold mb-1">คณะผู้จัดทำ (Authors - คั่นด้วยเครื่องหมายจุลภาค `,` )</label>
-              <Input
-                type="text"
-                required
-                value={formAuthors}
-                onChange={(e) => setFormAuthors(e.target.value)}
-                placeholder="เช่น ดร.สมศักดิ์ รักเรียน, ผศ.ดร.กานดา โพธิ์ดี"
-                className="w-full light-input"
-              />
+              <label className="block text-slate-500 font-bold mb-1">คณะผู้จัดทำ (Authors)</label>
+
+              {/* Hidden field just to keep native "required" validation working now that the visible control is a picker, not a text input. */}
+              <input type="text" required value={formAuthors} readOnly tabIndex={-1} aria-hidden className="sr-only" />
+
+              <div className="flex flex-wrap gap-1.5 mb-2 min-h-[1.5rem]">
+                {authorList.length === 0 ? (
+                  <span className="text-slate-400 italic">ยังไม่ได้เลือกคณะผู้จัดทำ</span>
+                ) : (
+                  authorList.map((name) => (
+                    <span key={name} className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-bold">
+                      {name}
+                      <button type="button" onClick={() => removeAuthor(name)} className="hover:text-red-600 cursor-pointer">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              <Select
+                value=""
+                onValueChange={(v) => v && addAuthor(v)}
+                items={profiles.map((p) => ({ value: p.email, label: p.email }))}
+              >
+                <SelectTrigger className="w-full light-input">
+                  <SelectValue placeholder="เลือกจากผู้ใช้งานในระบบ..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.email}>{p.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex gap-2 mt-2">
+                <Input
+                  type="text"
+                  value={manualAuthor}
+                  onChange={(e) => setManualAuthor(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addAuthor(manualAuthor); setManualAuthor('') }
+                  }}
+                  placeholder="หรือพิมพ์ชื่อที่ยังไม่มีในระบบ..."
+                  className="flex-1 light-input"
+                />
+                <Button type="button" variant="outline" onClick={() => { addAuthor(manualAuthor); setManualAuthor('') }}>
+                  เพิ่ม
+                </Button>
+              </div>
             </div>
             <div>
-              <label className="block text-slate-500 font-bold mb-1">ปีงบประมาณ / ปีที่จัดทำ</label>
+              <label className="block text-slate-500 font-bold mb-1">ปีที่ตีพิมพ์</label>
               <Input
                 type="text"
                 value={metaYear}
@@ -199,17 +250,56 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                 </div>
               )}
 
-              {formCategory === 'research' && (
+              {SCOPE_CATEGORIES.includes(formCategory) && (
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">ตีพิมพ์เผยแพร่ในวารสาร (ถ้ามี)</label>
-                  <Input
-                    type="text"
-                    value={metaJournal}
-                    onChange={(e) => setMetaJournal(e.target.value)}
-                    placeholder="เช่น วารสารพยาบาลศาสตร์"
-                    className="w-full light-input"
-                  />
+                  <label className="block text-slate-500 font-bold mb-1">ขอบเขตผลงาน</label>
+                  <Select
+                    value={metaScope}
+                    onValueChange={(v) => setMetaScope(v ?? '')}
+                    items={getOptionsByCategory('scope').map((opt) => ({ value: opt.value, label: opt.label }))}
+                  >
+                    <SelectTrigger className="w-full light-input">
+                      <SelectValue placeholder="เลือกขอบเขตผลงาน..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getOptionsByCategory('scope').map((opt) => (
+                        <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+              )}
+
+              {formCategory === 'research' && (
+                <>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">ระดับฐาน</label>
+                    <Select
+                      value={metaJournalRank}
+                      onValueChange={(v) => setMetaJournalRank(v ?? '')}
+                      items={getOptionsByCategory('journal_rank').map((opt) => ({ value: opt.value, label: opt.label }))}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกระดับฐาน..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getOptionsByCategory('journal_rank').map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">ตีพิมพ์เผยแพร่ในวารสาร (ถ้ามี)</label>
+                    <Input
+                      type="text"
+                      value={metaJournal}
+                      onChange={(e) => setMetaJournal(e.target.value)}
+                      placeholder="เช่น วารสารพยาบาลศาสตร์"
+                      className="w-full light-input"
+                    />
+                  </div>
+                </>
               )}
 
               {formCategory === 'intellectual_property' && (

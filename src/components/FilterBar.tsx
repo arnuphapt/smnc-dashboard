@@ -42,7 +42,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   <div className="content-panel p-4 flex flex-wrap gap-3 items-center justify-between">
     <div className="flex flex-wrap gap-3 items-center flex-grow">
       {/* Search */}
-      <div className="relative min-w-[200px]">
+      <div className="relative flex-grow max-w-md min-w-[260px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#94A3B8' }} />
         <Input
           type="text"

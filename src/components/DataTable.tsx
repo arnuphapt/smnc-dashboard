@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { EmptyState } from './EmptyState'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -70,10 +69,6 @@ export function DataTable<T>({
     )
   }
 
-  if (data.length === 0) {
-    return <EmptyState {...empty} />
-  }
-
   const start = (page - 1) * pageSize
   const pageRows = data.slice(start, start + pageSize)
 
@@ -108,15 +103,29 @@ export function DataTable<T>({
           </TableRow>
         </TableHeader>
         <TableBody className="[&_tr:last-child]:border-0">
-          {pageRows.map((row) => (
-            <TableRow key={getRowKey(row)} className="border-b hover:bg-slate-50/60" style={{ borderColor: '#F1F5F9' }}>
-              {columns.map((col) => (
-                <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : ''}`}>
-                  {col.render(row)}
-                </TableCell>
-              ))}
+          {data.length === 0 ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={columns.length} className="text-center py-14 text-slate-400">
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <div className="text-slate-300">
+                    {empty.icon}
+                  </div>
+                  <p className="font-bold text-xs text-slate-600">{empty.title}</p>
+                  {empty.body && <p className="text-[11px] text-slate-400 font-medium">{empty.body}</p>}
+                </div>
+              </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            pageRows.map((row) => (
+              <TableRow key={getRowKey(row)} className="border-b hover:bg-slate-50/60" style={{ borderColor: '#F1F5F9' }}>
+                {columns.map((col) => (
+                  <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : ''}`}>
+                    {col.render(row)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
 

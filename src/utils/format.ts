@@ -21,6 +21,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   intellectual_property: 'ทรัพย์สินทางปัญญา',
   award: 'รางวัล',
   utilization: 'การใช้ประโยชน์',
+  academic: 'บริการวิชาการ',
+  creative: 'งานสร้างสรรค์',
 }
 
 export const getCategoryLabel = (category: string): string => CATEGORY_LABELS[category] || category

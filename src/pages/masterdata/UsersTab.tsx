@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Users, GraduationCap, UserCheck, Shield, Settings } from 'lucide-react'
-import { DataTable, DataTableColumn } from '../../components/DataTable'
+import { DataTableColumn } from '../../components/DataTable'
+import { MasterDataTable } from '../../components/MasterDataTable'
 import { Profile } from '../../context/AuthContext'
 
 interface UsersTabProps {
@@ -13,6 +14,8 @@ interface UsersTabProps {
 export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUpdateRole }) => {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const [newRole, setNewRole] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
 
   const columns: DataTableColumn<Profile>[] = [
     { key: 'email', header: 'อีเมลผู้ใช้งาน', render: (p) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{p.email}</span> },
@@ -56,20 +59,47 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
     },
   ]
 
+  const filteredProfiles = profiles.filter((p) => {
+    const matchesSearch = !searchQuery.trim() ||
+      p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.role.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesRole = !selectedRole || p.role === selectedRole
+
+    return matchesSearch && matchesRole
+  })
+
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คน</p>
-        <h3 className="text-base font-black" style={{ color: '#0B1D3A' }}>รายชื่อผู้ใช้และสิทธิ์การเข้าใช้งาน</h3>
-      </div>
-
-      <DataTable
+      <MasterDataTable
+        badge="คน"
+        title="รายชื่อผู้ใช้และสิทธิ์การเข้าใช้งาน"
+        searchPlaceholder="ค้นหาผู้ใช้ (อีเมล/สิทธิ์)..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={[
+          {
+            key: 'role',
+            label: 'ระดับสิทธิ์',
+            value: selectedRole,
+            onChange: setSelectedRole,
+            options: [
+              { value: 'admin', label: 'ผู้ดูแลระบบ (Admin)' },
+              { value: 'expert', label: 'ผู้ทรงคุณวุฒิ (Expert)' },
+              { value: 'teacher', label: 'อาจารย์ (Teacher)' }
+            ]
+          }
+        ]}
         columns={columns}
-        data={profiles}
+        data={filteredProfiles}
         getRowKey={(p) => p.id}
         loading={usersLoading}
         loadingLabel="กำลังโหลดข้อมูลผู้ใช้..."
-        empty={{ icon: <Users className="w-9 h-9 stroke-[1.5]" />, title: 'ยังไม่มีผู้ใช้งานในระบบ' }}
+        empty={{
+          icon: <Users className="w-9 h-9 stroke-[1.5]" />,
+          title: 'ยังไม่มีผู้ใช้งานในระบบ',
+          dashed: true
+        }}
       />
 
       {/* Modal for editing role */}
