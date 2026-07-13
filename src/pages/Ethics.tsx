@@ -13,12 +13,13 @@ import {
   UserCheck
 } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
-import { PageHeader, ContentPanel } from '../components/PageHeader'
+import { PageHeader, ContentPanel, SectionHeader } from '../components/PageHeader'
 import { EmptyState } from '../components/EmptyState'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface DownloadableForm {
   id: string
@@ -50,8 +51,7 @@ const inputSty = { border: '1.5px solid #CBD5E1', background: '#FAFCFF' }
 
 export const Ethics: React.FC = () => {
   const { user, profile } = useAuth()
-  const [activeSubTab, setActiveSubTab] = useState<'forms' | 'submit' | 'status' | 'review'>('forms')
-  
+
   const [forms, setForms] = useState<DownloadableForm[]>([])
   const [submissions, setSubmissions] = useState<EthicsSubmission[]>([])
   const [attachments, setAttachments] = useState<EthicsAttachment[]>([])
@@ -63,6 +63,7 @@ export const Ethics: React.FC = () => {
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitModalOpen, setSubmitModalOpen] = useState(false)
 
   const [editingSubId, setEditingSubId] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
@@ -104,11 +105,12 @@ export const Ethics: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
-  useEffect(() => { fetchForms(); fetchAttachments() }, [user])
   useEffect(() => {
-    if (activeSubTab === 'status') fetchSubmissions()
-    if (activeSubTab === 'review') fetchReviewSubmissions()
-  }, [activeSubTab, user, profile])
+    fetchForms()
+    fetchAttachments()
+    fetchSubmissions()
+    fetchReviewSubmissions()
+  }, [user, profile])
 
   useEffect(() => {
     if (!user) return
@@ -116,6 +118,15 @@ export const Ethics: React.FC = () => {
     const a = supabase.channel('ethics-att-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_attachments' }, () => fetchAttachments()).subscribe()
     return () => { supabase.removeChannel(s); supabase.removeChannel(a) }
   }, [user, profile])
+
+  const handleOpenSubmitModal = () => {
+    setTitle('')
+    setDesc('')
+    setFiles(null)
+    setFormError('')
+    setFormSuccess('')
+    setSubmitModalOpen(true)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,7 +147,7 @@ export const Ethics: React.FC = () => {
           if (attachError) throw attachError
         }
       }
-      setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว! ติดตามสถานะได้ที่แท็บติดตามสถานะ')
+      setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว! ติดตามสถานะได้ที่หัวข้อติดตามสถานะด้านล่าง')
       setTitle(''); setDesc(''); setFiles(null)
       const fileInput = document.getElementById('ethics-files') as HTMLInputElement
       if (fileInput) fileInput.value = ''
@@ -162,178 +173,123 @@ export const Ethics: React.FC = () => {
 
   const isReviewTabVisible = profile?.role === 'expert' || profile?.role === 'admin'
 
-  const tabsConfig = [
-    { key: 'forms', icon: <FileText className="w-4 h-4" />, label: 'ดาวน์โหลดแบบฟอร์ม' },
-    { key: 'submit', icon: <UploadCloud className="w-4 h-4" />, label: 'ยื่นเอกสารออนไลน์' },
-    { key: 'status', icon: <Clock className="w-4 h-4" />, label: 'ติดตามสถานะคำขอ' },
-    ...(isReviewTabVisible ? [{ key: 'review', icon: <UserCheck className="w-4 h-4" />, label: `รีวิวจริยธรรม (${reviewSubmissions.length})` }] : []),
-  ]
-
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+    <div className="flex-1 space-y-6 animate-fadeIn">
       <PageHeader
         title="จริยธรรมการวิจัย"
         subtitle="Research Ethics — ยื่น ติดตาม และพิจารณาคำขอรับรองจริยธรรม"
         extraBadge="Ethics Review System"
-        tabs={tabsConfig}
-        activeTab={activeSubTab}
-        onTabChange={(t) => setActiveSubTab(t as any)}
+        recordCode="ETH-02"
       />
 
+      {/* SECTION: FORMS */}
       <ContentPanel>
-        {/* PANEL 1: FORMS */}
-        {activeSubTab === 'forms' && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>แบบฟอร์มทางการ</p>
-              <h3 className="text-base font-black" style={{ color: '#0B1D3A' }}>รายการแบบฟอร์มยื่นขอรับรองจริยธรรม</h3>
-            </div>
-            {forms.length === 0 ? (
-              <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีแบบฟอร์มอัปโหลด" body="ติดต่องานวิจัยสถาบันเพื่อรับแบบฟอร์มทางอีเมล" dashed />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {forms.map((form) => (
-                  <div
-                    key={form.id}
-                    className="flex items-center justify-between p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
-                    style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#0B1D3A' }}>
-                        <FileText className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs truncate" style={{ color: '#0B1D3A' }} title={form.title}>{form.title}</p>
-                        <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#94A3B8' }}>แบบฟอร์มอย่างเป็นทางการ</p>
-                      </div>
-                    </div>
-                    <a
-                      href={form.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-3 shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 hover:-translate-y-0.5"
-                      style={{ background: '#FFFFFF', color: '#0B1D3A', border: '1px solid #DAEEFF' }}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" /> ดาวน์โหลด
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PANEL 2: SUBMIT */}
-        {activeSubTab === 'submit' && (
-          <div className="max-w-xl mx-auto">
-            {!user ? (
-              <EmptyState icon={<UploadCloud className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อยื่นเอกสาร" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนอัปโหลดไฟล์และยื่นโครงร่างวิจัย" dashed />
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <h3 className="text-base font-black mb-1" style={{ color: '#0B1D3A' }}>ยื่นโครงร่างวิจัยขอรับการพิจารณา</h3>
-                  <p className="text-xs font-medium" style={{ color: '#64748B' }}>แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
-                </div>
-
-                {formError && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
-                    <AlertCircle className="w-4 h-4 shrink-0" /> {formError}
-                  </div>
-                )}
-                {formSuccess && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
-                    <CheckCircle className="w-4 h-4 shrink-0" /> {formSuccess}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อโครงร่างวิจัย *</label>
-                    <Input type="text" required placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..." value={title} onChange={(e) => setTitle(e.target.value)} className={inputBase} style={inputSty} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดสรุปย่อ / บทคัดย่อ</label>
-                    <Textarea rows={3} placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..." value={desc} onChange={(e) => setDesc(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>อัปโหลดเอกสารประกอบ * <span className="font-normal" style={{ color: '#94A3B8' }}>(เลือกได้หลายไฟล์)</span></label>
-                    <Input type="file" id="ethics-files" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                    <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+        <SectionHeader eyebrow="แบบฟอร์มทางการ" title="รายการแบบฟอร์มยื่นขอรับรองจริยธรรม" />
+        <div className="mt-4">
+          {forms.length === 0 ? (
+            <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีแบบฟอร์มอัปโหลด" body="ติดต่องานวิจัยสถาบันเพื่อรับแบบฟอร์มทางอีเมล" dashed />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {forms.map((form) => (
+                <div
+                  key={form.id}
+                  className="flex items-center justify-between p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+                  style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}
                 >
-                  {isSubmitting ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
-                </Button>
-              </form>
-            )}
-          </div>
-        )}
-
-        {/* PANEL 3: STATUS */}
-        {activeSubTab === 'status' && (
-          <div>
-            {!user ? (
-              <EmptyState icon={<Clock className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อติดตามสถานะ" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนดูประวัติคำขอ" dashed />
-            ) : submissions.length === 0 ? (
-              <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีประวัติการยื่นคำขอ" />
-            ) : (
-              <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #E8F0F8' }}>
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
-                      {['ชื่อโครงร่างวิจัย','เอกสารแนบ','สถานะ','ความเห็นผู้ทรงคุณวุฒิ','วันที่ยื่น'].map(h => (
-                        <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: '#E8F0F8' }}>
-                    {submissions.map((sub) => {
-                      const subAttach = attachments.filter(a => a.submission_id === sub.id)
-                      return (
-                        <tr key={sub.id} className="transition-colors hover:bg-blue-50/30">
-                          <td className="py-3 px-4">
-                            <div className="font-bold" style={{ color: '#0B1D3A' }}>{sub.project_title}</div>
-                            {sub.project_description && <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>{sub.project_description}</p>}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col gap-1.5 max-w-[180px]">
-                              {subAttach.map((at) => (
-                                <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1 text-[10px] font-bold text-left hover:underline truncate cursor-pointer" style={{ color: '#0EA5A0' }} title={at.file_name}>
-                                  <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap"><StatusBadge status={sub.status} /></td>
-                          <td className="py-3 px-4 italic font-medium" style={{ color: '#64748B' }}>{sub.reviewer_notes || '—'}</td>
-                          <td className="py-3 px-4 font-semibold" style={{ color: '#94A3B8' }}>{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PANEL 4: REVIEW (EXPERT/ADMIN) */}
-        {activeSubTab === 'review' && isReviewTabVisible && (
-          <div>
-            <div className="mb-5">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คิวงานพิจารณา</p>
-              <h3 className="text-base font-black flex items-center gap-2" style={{ color: '#0B1D3A' }}>
-                <Briefcase className="w-5 h-5" style={{ color: '#7E22CE' }} />
-                กล่องงานพิจารณาจริยธรรมของคุณ
-              </h3>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#0B1D3A' }}>
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs truncate" style={{ color: '#0B1D3A' }} title={form.title}>{form.title}</p>
+                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#94A3B8' }}>แบบฟอร์มอย่างเป็นทางการ</p>
+                    </div>
+                  </div>
+                  <a
+                    href={form.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-3 shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 hover:-translate-y-0.5"
+                    style={{ background: '#FFFFFF', color: '#0B1D3A', border: '1px solid #DAEEFF' }}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> ดาวน์โหลด
+                  </a>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+      </ContentPanel>
+
+      {/* SECTION: STATUS */}
+      <ContentPanel>
+        <div className="flex items-start justify-between gap-3">
+          <SectionHeader eyebrow="ของฉัน" title="ติดตามสถานะคำขอ" />
+          {user && (
+            <Button
+              onClick={handleOpenSubmitModal}
+              className="shrink-0 h-auto py-2 px-4 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer text-white"
+              style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              ยื่นคำขอรับการพิจารณา
+            </Button>
+          )}
+        </div>
+        <div className="mt-4">
+          {!user ? (
+            <EmptyState icon={<Clock className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อติดตามสถานะ" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนดูประวัติคำขอ" dashed />
+          ) : submissions.length === 0 ? (
+            <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีประวัติการยื่นคำขอ" />
+          ) : (
+            <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #E8F0F8' }}>
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
+                    {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น'].map(h => (
+                      <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: '#E8F0F8' }}>
+                  {submissions.map((sub) => {
+                    const subAttach = attachments.filter(a => a.submission_id === sub.id)
+                    return (
+                      <tr key={sub.id} className="transition-colors hover:bg-blue-50/30">
+                        <td className="py-3 px-4">
+                          <div className="font-bold" style={{ color: '#0B1D3A' }}>{sub.project_title}</div>
+                          {sub.project_description && <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>{sub.project_description}</p>}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-1.5 max-w-[180px]">
+                            {subAttach.map((at) => (
+                              <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1 text-[10px] font-bold text-left hover:underline truncate cursor-pointer" style={{ color: '#0EA5A0' }} title={at.file_name}>
+                                <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap"><StatusBadge status={sub.status} /></td>
+                        <td className="py-3 px-4 italic font-medium" style={{ color: '#64748B' }}>{sub.reviewer_notes || '—'}</td>
+                        <td className="py-3 px-4 font-semibold" style={{ color: '#94A3B8' }}>{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </ContentPanel>
+
+      {/* SECTION: REVIEW (EXPERT/ADMIN ONLY) */}
+      {isReviewTabVisible && (
+        <ContentPanel>
+          <div className="flex items-center gap-2">
+            <SectionHeader eyebrow="คิวงานพิจารณา" title="กล่องงานพิจารณาจริยธรรมของคุณ" />
+            <Briefcase className="w-5 h-5 ml-auto" style={{ color: '#7E22CE' }} />
+          </div>
+          <div className="mt-4">
             {reviewSubmissions.length === 0 ? (
               <EmptyState icon={<UserCheck className="w-10 h-10 stroke-[1.5]" />} title="ไม่มีรายการในคิวขณะนี้" body="เมื่อแอดมินมอบหมายงาน รายการจะปรากฏที่นี่" dashed />
             ) : (
@@ -341,7 +297,7 @@ export const Ethics: React.FC = () => {
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
-                      {['โครงร่างวิจัย / เอกสาร','สถานะ','ความเห็นรีวิว','จัดการ'].map(h => (
+                      {['โครงร่างวิจัย / เอกสาร', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
                         <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
                       ))}
                     </tr>
@@ -370,13 +326,13 @@ export const Ethics: React.FC = () => {
                               <Select
                                 value={reviewStatus}
                                 onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
-                                items={['กำลังตรวจ','รอแก้ไข','อนุมัติ','ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
+                                items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
                               >
                                 <SelectTrigger className="text-xs font-bold" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF', color: '#0B1D3A' }}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {['กำลังตรวจ','รอแก้ไข','อนุมัติ','ไม่อนุมัติ'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                  {['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             ) : (
@@ -410,8 +366,63 @@ export const Ethics: React.FC = () => {
               </div>
             )}
           </div>
-        )}
-      </ContentPanel>
+        </ContentPanel>
+      )}
+      {/* MODAL: submit a new Ethics submission */}
+      <Dialog open={submitModalOpen} onOpenChange={setSubmitModalOpen}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>ยื่นคำขอ</p>
+            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>ยื่นโครงร่างวิจัยขอรับการพิจารณาจริยธรรม</DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5">
+            {!user ? (
+              <EmptyState icon={<UploadCloud className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อยื่นเอกสาร" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนอัปโหลดไฟล์และยื่นโครงร่างวิจัย" dashed />
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-xs font-medium" style={{ color: '#64748B' }}>แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
+
+                {formError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
+                  </div>
+                )}
+                {formSuccess && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {formSuccess}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อโครงร่างวิจัย *</label>
+                    <Input type="text" required placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..." value={title} onChange={(e) => setTitle(e.target.value)} className={inputBase} style={inputSty} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดสรุปย่อ</label>
+                    <Textarea rows={3} placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..." value={desc} onChange={(e) => setDesc(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>อัปโหลดเอกสารประกอบ * <span className="font-normal" style={{ color: '#94A3B8' }}>(เลือกได้หลายไฟล์)</span></label>
+                    <Input type="file" id="ethics-files" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
+                    <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 h-auto rounded-xl text-sm font-bold disabled:opacity-50 mt-2"
+                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                >
+                  {isSubmitting ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
+                </Button>
+              </form>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

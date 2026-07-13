@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2, Calendar } from 'lucide-react'
+import { Trash2, Calendar, Edit2 } from 'lucide-react'
 import { DataTable, DataTableColumn } from '../../components/DataTable'
 import { StatusBadge } from '../../components/StatusBadge'
 import { SidePanel, FieldLabel } from '../../components/SidePanel'
@@ -104,10 +104,11 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
             setAppStatusInput(app.status)
             setAppNotesInput(app.admin_notes || '')
           }}
-          className="px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-          style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0' }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+          style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
         >
-          จัดการ
+          <Edit2 className="w-3 h-3" />
+          จัดการคิว
         </button>
       ),
     },

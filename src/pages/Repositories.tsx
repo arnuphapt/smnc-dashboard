@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { useLookups } from '../context/LookupContext'
 import { useAuth } from '../context/AuthContext'
-import { FileText, Download, X, BookOpen, Lightbulb, FileCheck, Award, Share2, Eye } from 'lucide-react'
+import { FileText, Download, X, FileCheck, Eye } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
 import { formatExcelDate } from '../utils/format'
 import { DataTable, DataTableColumn } from '../components/DataTable'
 import { FilterBar, FilterBarSelect } from '../components/FilterBar'
+import { Breadcrumbs } from '../components/Breadcrumbs'
 
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
@@ -15,7 +16,6 @@ export const Repositories: React.FC = () => {
   const { user } = useAuth()
   const { getOptionsByCategory } = useLookups()
   const { category } = useParams<{ category: string }>()
-  const navigate = useNavigate()
 
   const activeCategory = category && VALID_CATEGORIES.includes(category) ? category : 'research'
   const [items, setItems] = useState<WisdomItem[]>([])
@@ -498,11 +498,11 @@ export const Repositories: React.FC = () => {
   }
 
   const categories = [
-    { id: 'research', label: 'คลังผลงานวิจัย', icon: BookOpen },
-    { id: 'intellectual_property', label: 'คลังทรัพย์สินทางปัญญา', icon: FileCheck },
-    { id: 'innovation', label: 'คลังนวัตกรรม', icon: Lightbulb },
-    { id: 'award', label: 'คลังรางวัลและความสำเร็จ', icon: Award },
-    { id: 'utilization', label: 'การนำไปใช้ประโยชน์', icon: Share2 },
+    { id: 'research', label: 'คลังผลงานวิจัย' },
+    { id: 'intellectual_property', label: 'คลังทรัพย์สินทางปัญญา' },
+    { id: 'innovation', label: 'คลังนวัตกรรม' },
+    { id: 'award', label: 'คลังรางวัลและความสำเร็จ' },
+    { id: 'utilization', label: 'การนำไปใช้ประโยชน์' },
   ]
 
   const categoryMeta: Record<string, { label: string; subtitle: string }> = {
@@ -513,44 +513,32 @@ export const Repositories: React.FC = () => {
     utilization: { label: 'การนำไปใช้ประโยชน์', subtitle: 'Research Utilization' },
   }
   const currentMeta = categoryMeta[activeCategory] ?? { label: 'คลังปัญญา 5 ด้าน', subtitle: 'Wisdom Repositories' }
+  const categoryRecordCode: Record<string, string> = {
+    research: 'RES-01',
+    intellectual_property: 'IPR-02',
+    innovation: 'INV-03',
+    award: 'AWD-04',
+    utilization: 'UTL-05',
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      <Breadcrumbs />
       
-      {/* Page Header Band — matches Clinic/Ethics/IP pattern */}
+      {/* Page Header — plain heading + description, no card */}
       <div className="page-header-band">
-        <div className="relative px-8 pt-8 pb-0">
-          <span className="eyebrow-badge mb-3 inline-block">Knowledge Repository</span>
-          <h1 className="text-3xl font-black text-white tracking-tight leading-tight mb-1">
-            {currentMeta.label}
-          </h1>
-          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
-          </p>
-
-          {/* Tab Pills */}
-          <div className="flex gap-2 mt-7 overflow-x-auto pb-px">
-            {categories.map((cat) => {
-              const Icon = cat.icon
-              const isActive = activeCategory === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => navigate(`/repositories/${cat.id}`)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all duration-200 shrink-0"
-                  style={{
-                    background: isActive ? '#F0F7FF' : 'rgba(255,255,255,0.07)',
-                    color: isActive ? '#0B1D3A' : 'rgba(255,255,255,0.65)',
-                    borderBottom: isActive ? '2px solid #0EA5A0' : '2px solid transparent',
-                  }}
-                >
-                  <Icon className="w-4 h-4" />
-                  {cat.label}
-                </button>
-              )
-            })}
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>
+            SMNC · Knowledge Repository
+          </span>
+          <span className="record-tag shrink-0">REC · {categoryRecordCode[activeCategory] || 'RES-01'}</span>
         </div>
+        <h1 className="header-display text-[1.75rem] font-bold leading-tight mt-2 mb-1" style={{ color: '#0B1D3A' }}>
+          {currentMeta.label}
+        </h1>
+        <p className="text-sm font-medium" style={{ color: '#64748B' }}>
+          {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
+        </p>
       </div>
 
       {/* Dynamic Filters Bar */}

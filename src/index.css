@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -104,23 +105,44 @@
   box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04);
 }
 
-/* ── Navy page header band ───────────────────────────────────────────────── */
+/* ── Page header — plain heading + description, no card chrome. The
+   record-code tag (see .record-tag) is the one deliberate accent. ───────── */
 .page-header-band {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-mid) 60%, #0E3251 100%);
-  border-radius: 1rem;
-  overflow: hidden;
-  position: relative;
+  margin-bottom: 1.5rem;
 }
 
-.page-header-band::before {
+/* ── Header display type — serif headline used nowhere else on purpose,
+   so it reads as "the masthead" the moment it appears. ─────────────────── */
+.header-display {
+  font-family: 'Noto Serif Thai', 'Sarabun', serif;
+}
+
+/* ── Record-code tag — the one signature motif repeated on every page
+   header: this is a records/wisdom repository, so each screen is framed
+   like a catalogued record rather than a marketing hero. ───────────────── */
+.record-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  background: var(--frost);
+  border: 1px solid var(--mist);
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  white-space: nowrap;
+}
+
+.record-tag::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.3;
-  background-image:
-    radial-gradient(ellipse at 80% 20%, rgba(14,165,160,0.25) 0%, transparent 60%),
-    radial-gradient(ellipse at 10% 80%, rgba(14,165,160,0.12) 0%, transparent 50%);
-  pointer-events: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--accent);
+  flex-shrink: 0;
 }
 
 /* ── Form inputs ─────────────────────────────────────────────────────────── */

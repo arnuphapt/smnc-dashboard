@@ -704,11 +704,12 @@ export const AdminPanel: React.FC = () => {
     : items
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 animate-fadeIn text-slate-800">
+    <div className="flex-1 animate-fadeIn text-slate-800">
       <PageHeader
         title="ระบบหลังบ้าน"
         subtitle="Admin Console — จัดการเนื้อหา ผู้ใช้งาน และคำขอทั้งหมดของระบบ"
         extraBadge="Admin Only"
+        recordCode="ADM-00"
         tabs={adminTabs}
         activeTab={activeAdminTab}
       />
@@ -843,6 +844,15 @@ export const AdminPanel: React.FC = () => {
                 setIpStatusInput={setIpStatusInput}
                 onUpdateIPApp={handleUpdateIPApp}
                 onTransferToCatalog={handleTransferToCatalog}
+                newFormTitle={newFormTitle}
+                setNewFormTitle={setNewFormTitle}
+                newFormCat={newFormCat}
+                setNewFormCat={setNewFormCat}
+                newFormUrl={newFormUrl}
+                setNewFormUrl={setNewFormUrl}
+                onAddDownloadableForm={handleAddDownloadableForm}
+                downloadableForms={downloadableForms}
+                onDeleteDownloadableForm={handleDeleteDownloadableForm}
               />
             )}
           />

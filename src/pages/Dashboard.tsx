@@ -310,22 +310,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
   return (
     <div className="space-y-8 animate-fadeIn">
       
-      {/* Page Header Band — matches Phase 2 pages */}
-      <div className="page-header-band px-8 py-7">
-        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Page Header — plain heading + description, no card */}
+      <div className="page-header-band">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>
+            SMNC · Digital Research Workspace
+          </span>
+          <span className="record-tag shrink-0">REC · DRW-00</span>
+        </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
           <div>
-            <span className="eyebrow-badge mb-3 inline-block">Digital Research Workspace</span>
-            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">
+            <h2 className="header-display text-2xl font-bold leading-tight" style={{ color: '#0B1D3A' }}>
               ระบบวิเคราะห์และคลังปัญญาดิจิทัล SMNC
             </h2>
-            <p className="text-sm font-medium mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <p className="text-sm font-medium mt-1" style={{ color: '#64748B' }}>
               สถิติและข้อมูลการคุ้มครองทรัพย์สินทางปัญญาแบบเรียลไทม์
             </p>
           </div>
           {userRole && (
             <span
               className="self-start md:self-end text-xs font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-full shrink-0"
-              style={{ background: 'rgba(14,165,160,0.18)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.4)' }}
+              style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.3)' }}
             >
               {userRole === 'admin' ? 'ผู้ดูแลระบบ' : userRole === 'expert' ? 'ผู้ทรงคุณวุฒิ' : 'อาจารย์'}
             </span>

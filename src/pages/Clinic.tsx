@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
-  Info,
   CalendarPlus,
-  Calendar,
   History,
   CheckCircle,
   ChevronLeft,
@@ -14,11 +12,12 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
-import { PageHeader, ContentPanel } from '../components/PageHeader'
+import { PageHeader, ContentPanel, SectionHeader } from '../components/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface ClinicEvent {
   id: string
@@ -41,14 +40,14 @@ interface Appointment {
   created_at: string
 }
 
+const monthNamesThai = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+
 export const Clinic: React.FC = () => {
   const { user } = useAuth()
-  const [activeSubTab, setActiveSubTab] = useState<'info' | 'book' | 'events' | 'history'>('info')
   const [clinicDesc, setClinicDesc] = useState<string>('')
-  
+
   const [topic, setTopic] = useState('')
   const [notes, setNotes] = useState('')
-  const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
@@ -58,8 +57,15 @@ export const Clinic: React.FC = () => {
   const [events, setEvents] = useState<ClinicEvent[]>([])
 
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDayEvents, setSelectedDayEvents] = useState<ClinicEvent[]>([])
+
+  // Clicking a calendar date opens this modal — it replaces the old always-visible
+  // "book a consultation" section, showing that day's workshops (if any) plus a
+  // booking form scoped to the clicked date instead of a free-text date field.
+  const [dayModalOpen, setDayModalOpen] = useState(false)
+  const [selectedDateKey, setSelectedDateKey] = useState<string>('')
   const [selectedDateStr, setSelectedDateStr] = useState<string>('')
+  const [selectedDayEvents, setSelectedDayEvents] = useState<ClinicEvent[]>([])
+  const [selectedIsPast, setSelectedIsPast] = useState(false)
 
   const fetchClinicInfo = async () => {
     try {
@@ -96,8 +102,7 @@ export const Clinic: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
-  useEffect(() => { fetchClinicInfo(); fetchEvents() }, [user])
-  useEffect(() => { if (activeSubTab === 'history') fetchAppointments() }, [activeSubTab, user])
+  useEffect(() => { fetchClinicInfo(); fetchEvents(); fetchAppointments() }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -109,15 +114,14 @@ export const Clinic: React.FC = () => {
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !selectedDateKey) return
     setFormError(''); setFormSuccess(''); setIsSubmitting(true)
     if (!topic.trim()) { setFormError('กรุณากรอกหัวข้อปรึกษา'); setIsSubmitting(false); return }
-    if (!date) { setFormError('กรุณาเลือกวันที่'); setIsSubmitting(false); return }
     try {
-      const { error } = await supabase.from('appointments').insert({ requester_id: user.id, topic: topic.trim(), notes: notes.trim(), requested_at: new Date(`${date}T${time}`).toISOString(), status: 'pending' })
+      const { error } = await supabase.from('appointments').insert({ requester_id: user.id, topic: topic.trim(), notes: notes.trim(), requested_at: new Date(`${selectedDateKey}T${time}`).toISOString(), status: 'pending' })
       if (error) throw error
-      setFormSuccess('ส่งคำขอจองนัดหมายแล้ว! กรุณารอแอดมินยืนยันผลผ่านหน้าประวัติการจอง')
-      setTopic(''); setNotes(''); setDate(''); setTime('09:00')
+      setFormSuccess('ส่งคำขอจองนัดหมายแล้ว! กรุณารอแอดมินยืนยันผลผ่านหัวข้อประวัติการจอง')
+      setTopic(''); setNotes(''); setTime('09:00')
     } catch (err: any) { setFormError(err.message || 'เกิดข้อผิดพลาด') } finally { setIsSubmitting(false) }
   }
 
@@ -133,32 +137,46 @@ export const Clinic: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
-  const monthNamesThai = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
   const { firstDay, daysInMonth } = (() => {
     const y = currentDate.getFullYear(), m = currentDate.getMonth()
     return { firstDay: new Date(y, m, 1).getDay(), daysInMonth: new Date(y, m + 1, 0).getDate() }
   })()
 
-  const prevMonth = () => { setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)); setSelectedDayEvents([]); setSelectedDateStr('') }
-  const nextMonth = () => { setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)); setSelectedDayEvents([]); setSelectedDateStr('') }
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
 
-  const handleDayClick = (day: number) => {
-    const year = currentDate.getFullYear()
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0')
+  // Shared by clicking a calendar cell and the standalone "จองนัดหมาย" button
+  // (which always opens on today, regardless of which month is on screen).
+  const openDayModal = (year: number, month0: number, day: number) => {
+    const month = String(month0 + 1).padStart(2, '0')
     const dayStr = String(day).padStart(2, '0')
     const dateKey = `${year}-${month}-${dayStr}`
     const dayEvents = events.filter(ev => {
       const d = new Date(ev.event_date)
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === dateKey
     })
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const clicked = new Date(year, month0, day)
+
+    setSelectedDateKey(dateKey)
+    setSelectedDateStr(`${day} ${monthNamesThai[month0]} ${year + 543}`)
     setSelectedDayEvents(dayEvents)
-    setSelectedDateStr(`${day} ${monthNamesThai[currentDate.getMonth()]} ${currentDate.getFullYear() + 543}`)
+    setSelectedIsPast(clicked < today)
+    setFormError(''); setFormSuccess(''); setTopic(''); setNotes(''); setTime('09:00')
+    setDayModalOpen(true)
+  }
+
+  const handleDayClick = (day: number) => openDayModal(currentDate.getFullYear(), currentDate.getMonth(), day)
+
+  const handleBookNowClick = () => {
+    const now = new Date()
+    openDayModal(now.getFullYear(), now.getMonth(), now.getDate())
   }
 
   const renderCalendarCells = () => {
     const cells = []
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`e-${i}`} className="min-h-[64px]" style={{ background: '#F8FAFC', borderRight: '1px solid #E8F0F8', borderBottom: '1px solid #E8F0F8' }} />)
+      cells.push(<div key={`e-${i}`} className="min-h-[76px]" style={{ background: '#FAFCFF', borderRight: '1px solid #E8F0F8', borderBottom: '1px solid #E8F0F8' }} />)
     }
     for (let day = 1; day <= daysInMonth; day++) {
       const year = currentDate.getFullYear()
@@ -175,19 +193,20 @@ export const Clinic: React.FC = () => {
         <button
           key={`d-${day}`}
           onClick={() => handleDayClick(day)}
-          className="min-h-[64px] flex flex-col p-2 text-left cursor-pointer transition-all duration-150 group"
+          className="group min-h-[76px] flex flex-col p-2 text-left cursor-pointer transition-colors duration-150"
           style={{
             background: isToday ? '#EFF6FF' : '#FFFFFF',
             borderRight: '1px solid #E8F0F8',
             borderBottom: '1px solid #E8F0F8',
           }}
+          onMouseEnter={(e) => { if (!isToday) e.currentTarget.style.background = '#F0F7FF' }}
+          onMouseLeave={(e) => { if (!isToday) e.currentTarget.style.background = '#FFFFFF' }}
         >
           <span
-            className="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full"
-            style={{
-              background: isToday ? '#0B1D3A' : 'transparent',
-              color: isToday ? '#FFFFFF' : '#1E293B',
-            }}
+            className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors duration-150 ${
+              isToday ? '' : 'text-slate-800 group-hover:bg-[#0EA5A0] group-hover:text-white'
+            }`}
+            style={isToday ? { background: '#0B1D3A', color: '#FFFFFF' } : undefined}
           >
             {day}
           </span>
@@ -213,80 +232,65 @@ export const Clinic: React.FC = () => {
     return cells
   }
 
-  const tabsConfig = [
-    { key: 'info', icon: <Info className="w-4 h-4" />, label: 'เกี่ยวกับคลินิก' },
-    { key: 'events', icon: <Calendar className="w-4 h-4" />, label: 'ปฏิทินกิจกรรม' },
-    { key: 'book', icon: <CalendarPlus className="w-4 h-4" />, label: 'จองนัดปรึกษา' },
-    { key: 'history', icon: <History className="w-4 h-4" />, label: 'ประวัติของฉัน' },
-  ]
-
   const inputBase = "w-full text-sm px-4 py-2.5 rounded-xl focus:outline-none transition-all duration-200"
   const inputBorder = { border: '1.5px solid #CBD5E1' }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+    <div className="flex-1 space-y-6 animate-fadeIn">
       <PageHeader
         title="คลินิกวิจัย SMNC"
         subtitle="Research Clinic — ปรึกษา เรียนรู้ และพัฒนางานวิจัยร่วมกัน"
         extraBadge="Research Support Services"
-        tabs={tabsConfig}
-        activeTab={activeSubTab}
-        onTabChange={(tab) => setActiveSubTab(tab as any)}
+        recordCode="CLN-01"
       />
 
+      {/* SECTION: INFO */}
       <ContentPanel>
-        {/* TAB: INFO */}
-        {activeSubTab === 'info' && (
-          <div className="space-y-8">
-            <div>
-              <p
-                className="text-xs font-extrabold uppercase tracking-[0.15em] mb-2"
-                style={{ color: '#0EA5A0' }}
-              >
-                เกี่ยวกับเรา
-              </p>
-              <div className="text-base font-medium leading-relaxed whitespace-pre-line" style={{ color: '#334155' }}>
-                {clinicDesc}
-              </div>
-            </div>
+        <SectionHeader eyebrow="เกี่ยวกับเรา" title="เกี่ยวกับคลินิกวิจัย" />
+        <div className="space-y-8 mt-4">
+          <div className="text-base font-medium leading-relaxed whitespace-pre-line" style={{ color: '#334155' }}>
+            {clinicDesc}
+          </div>
 
-            <div style={{ borderTop: '1px solid #E8F0F8', paddingTop: '2rem' }}>
-              <p className="text-xs font-extrabold uppercase tracking-[0.15em] mb-5" style={{ color: '#0EA5A0' }}>
-                บริการให้คำปรึกษา
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {[
-                  { title: 'ออกแบบและระเบียบวิธีวิจัย', desc: 'การตั้งสมมติฐาน เลือกประชากรกลุ่มตัวอย่าง และออกแบบคำถามวิจัย' },
-                  { title: 'วิเคราะห์ข้อมูลและสถิติ', desc: 'แนะนำสถิติพื้นฐาน สถิติขั้นสูง และโปรแกรมประมวลผลข้อมูล' },
-                  { title: 'จริยธรรม & ทรัพย์สินทางปัญญา', desc: 'ขั้นตอนตรวจสอบ แก้ไข และแบบฟอร์มยื่นตามมาตรฐาน' },
-                ].map((s) => (
+          <div style={{ borderTop: '1px solid #E8F0F8', paddingTop: '2rem' }}>
+            <p className="text-xs font-extrabold uppercase tracking-[0.15em] mb-5" style={{ color: '#0EA5A0' }}>
+              บริการให้คำปรึกษา
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {[
+                { title: 'ออกแบบและระเบียบวิธีวิจัย', desc: 'การตั้งสมมติฐาน เลือกประชากรกลุ่มตัวอย่าง และออกแบบคำถามวิจัย' },
+                { title: 'วิเคราะห์ข้อมูลและสถิติ', desc: 'แนะนำสถิติพื้นฐาน สถิติขั้นสูง และโปรแกรมประมวลผลข้อมูล' },
+                { title: 'จริยธรรม & ทรัพย์สินทางปัญญา', desc: 'ขั้นตอนตรวจสอบ แก้ไข และแบบฟอร์มยื่นตามมาตรฐาน' },
+              ].map((s) => (
+                <div
+                  key={s.title}
+                  className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1"
+                  style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}
+                >
                   <div
-                    key={s.title}
-                    className="p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1"
-                    style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}
-                  >
-                    <div
-                      className="w-8 h-1 rounded-full mb-4"
-                      style={{ background: 'linear-gradient(90deg, #0EA5A0, #0B1D3A)' }}
-                    />
-                    <h5 className="font-bold text-sm mb-2" style={{ color: '#0B1D3A' }}>{s.title}</h5>
-                    <p className="text-xs leading-relaxed" style={{ color: '#64748B' }}>{s.desc}</p>
-                  </div>
-                ))}
-              </div>
+                    className="w-8 h-1 rounded-full mb-4"
+                    style={{ background: 'linear-gradient(90deg, #0EA5A0, #0B1D3A)' }}
+                  />
+                  <h5 className="font-bold text-sm mb-2" style={{ color: '#0B1D3A' }}>{s.title}</h5>
+                  <p className="text-xs leading-relaxed" style={{ color: '#64748B' }}>{s.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+      </ContentPanel>
 
-        {/* TAB: EVENTS */}
-        {activeSubTab === 'events' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              {/* Calendar Header */}
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-extrabold" style={{ color: '#0B1D3A' }}>
-                  {monthNamesThai[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
-                </h3>
+      {/* SECTION: CALENDAR + HISTORY — booking history sits beside the calendar, not in its own section */}
+      <ContentPanel>
+        <SectionHeader eyebrow="กิจกรรม" title="ปฏิทินกิจกรรม" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-extrabold" style={{ color: '#0B1D3A' }}>
+                {monthNamesThai[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
+              </h3>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-semibold hidden sm:block" style={{ color: '#94A3B8' }}>คลิกวันที่เพื่อดูกิจกรรมหรือจองคิวปรึกษา</p>
                 <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}>
                   <button onClick={prevMonth} className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-white" style={{ color: '#0B1D3A' }}>
                     <ChevronLeft className="w-4 h-4" />
@@ -296,187 +300,216 @@ export const Clinic: React.FC = () => {
                   </button>
                 </div>
               </div>
-
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 text-center text-[10px] font-extrabold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>
-                {['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'].map(d => <div key={d} className="py-1">{d}</div>)}
-              </div>
-
-              {/* Grid */}
-              <div
-                className="grid grid-cols-7 rounded-xl overflow-hidden"
-                style={{ border: '1px solid #E8F0F8', borderRight: 'none', borderBottom: 'none' }}
-              >
-                {renderCalendarCells()}
-              </div>
             </div>
 
-            {/* Day Detail Panel */}
-            <div className="rounded-2xl p-5 flex flex-col" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-4" style={{ color: '#0EA5A0' }}>
-                {selectedDateStr ? selectedDateStr : 'เลือกวันที่บนปฏิทิน'}
-              </p>
+            <div className="grid grid-cols-7 text-center text-[10px] font-extrabold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>
+              {['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'].map(d => <div key={d} className="py-1">{d}</div>)}
+            </div>
 
-              {selectedDayEvents.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-8 gap-3">
-                  <Calendar className="w-10 h-10 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
-                  <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>
-                    {selectedDateStr ? 'ไม่มีกิจกรรมในวันนี้' : 'คลิกวันใดบนปฏิทินเพื่อดูกิจกรรม'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
-                  {selectedDayEvents.map((ev) => (
-                    <div key={ev.id} className="p-4 bg-white rounded-xl space-y-3" style={{ border: '1px solid #DAEEFF' }}>
-                      <div>
-                        <span
-                          className="inline-block text-[9px] font-extrabold uppercase tracking-[0.1em] px-2.5 py-0.5 rounded-full mb-2"
-                          style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.3)' }}
-                        >
-                          สัมมนา / อบรม
-                        </span>
-                        <h5 className="font-bold text-sm leading-snug" style={{ color: '#0B1D3A' }}>{ev.title}</h5>
-                        {ev.description && <p className="text-xs mt-1" style={{ color: '#64748B' }}>{ev.description}</p>}
-                      </div>
-                      <div className="space-y-1.5 text-xs font-medium" style={{ borderTop: '1px solid #F0F7FF', paddingTop: '0.75rem', color: '#475569' }}>
-                        {ev.location && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
-                            {ev.location}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
-                          ที่นั่ง: {ev.registered_count} / {ev.capacity ?? 'ไม่จำกัด'}
-                        </div>
-                      </div>
-                      {user ? (
-                        <button
-                          onClick={() => handleEventRegistration(ev.id, ev.is_registered || false)}
-                          disabled={!ev.is_registered && ev.capacity ? (ev.registered_count || 0) >= ev.capacity : false}
-                          className="w-full py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200"
-                          style={ev.is_registered
-                            ? { background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }
-                            : { background: '#0B1D3A', color: '#FFFFFF' }}
-                        >
-                          {ev.is_registered ? 'ยกเลิกการลงทะเบียน' : 'ลงทะเบียนเข้าร่วม'}
-                        </button>
-                      ) : (
-                        <div className="w-full py-2 text-center text-[10px] font-bold rounded-xl" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px dashed #CBD5E1' }}>
-                          เข้าสู่ระบบเพื่อลงทะเบียน
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-4 flex items-start gap-1.5 text-[10px] font-medium" style={{ color: '#94A3B8', borderTop: '1px solid #DAEEFF', paddingTop: '1rem' }}>
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                กิจกรรมอาจมีการปรับเปลี่ยน โปรดติดต่องานวิจัยสถาบันเพื่อยืนยัน
-              </div>
+            <div
+              className="grid grid-cols-7 rounded-xl overflow-hidden"
+              style={{ border: '1px solid #E8F0F8', borderRight: 'none', borderBottom: 'none' }}
+            >
+              {renderCalendarCells()}
             </div>
           </div>
-        )}
 
-        {/* TAB: BOOK */}
-        {activeSubTab === 'book' && (
-          <div className="max-w-xl mx-auto">
+          {/* Booking history — right rail beside the calendar */}
+          <div className="rounded-2xl p-4 flex flex-col" style={{ background: '#F8FAFC', border: '1px solid #F0F7FF' }}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>ของฉัน</p>
+                <h4 className="text-sm font-bold" style={{ color: '#0B1D3A' }}>ประวัติการจองนัดหมาย</h4>
+              </div>
+              {user && (
+                <Button
+                  onClick={handleBookNowClick}
+                  className="shrink-0 h-auto py-1.5 px-3 rounded-lg text-[10px] font-bold flex items-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                >
+                  <CalendarPlus className="w-3.5 h-3.5" />
+                  จองนัดหมาย
+                </Button>
+              )}
+            </div>
+
             {!user ? (
-              <div className="text-center py-16 flex flex-col items-center gap-4" style={{ border: '2px dashed #CBD5E1', borderRadius: '1rem' }}>
-                <CalendarPlus className="w-12 h-12 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
+              <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
+                <History className="w-8 h-8 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
+                <p className="text-[10px] font-semibold" style={{ color: '#94A3B8' }}>เข้าสู่ระบบเพื่อดูประวัติการนัดหมาย</p>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
+                <History className="w-8 h-8 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
+                <p className="text-[10px] font-semibold" style={{ color: '#94A3B8' }}>ยังไม่มีประวัติการจองนัดหมาย</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {appointments.map((app) => {
+                  const d = new Date(app.requested_at)
+                  const fmt = `${d.getDate()} ${monthNamesThai[d.getMonth()].slice(0, 3)} ${d.getFullYear() + 543} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                  return (
+                    <div key={app.id} className="p-3 bg-white rounded-xl" style={{ border: '1px solid #F0F7FF' }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <h5 className="font-bold text-xs leading-snug truncate" style={{ color: '#0B1D3A' }} title={app.topic}>{app.topic}</h5>
+                        <StatusBadge status={app.status} size="sm" />
+                      </div>
+                      <p className="text-[10px] font-medium mt-1" style={{ color: '#475569' }}>{fmt}</p>
+                      {app.notes && <p className="text-[10px] mt-1 truncate" style={{ color: '#94A3B8' }} title={app.notes}>{app.notes}</p>}
+                      {app.admin_notes && <p className="text-[10px] mt-1 italic" style={{ color: '#64748B' }}>หมายเหตุ: {app.admin_notes}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </ContentPanel>
+
+      {/* MODAL: date detail — workshops that day + book a consultation for that date */}
+      <Dialog open={dayModalOpen} onOpenChange={setDayModalOpen}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>วันที่เลือก</p>
+            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>{selectedDateStr}</DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
+            {/* Workshops that day */}
+            {selectedDayEvents.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: '#94A3B8' }}>กิจกรรมวันนี้</p>
+                {selectedDayEvents.map((ev) => (
+                  <div key={ev.id} className="p-4 rounded-xl space-y-3" style={{ background: '#F8FAFC', border: '1px solid #F0F7FF' }}>
+                    <div>
+                      <span
+                        className="inline-block text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2"
+                        style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.3)' }}
+                      >
+                        สัมมนา / อบรม
+                      </span>
+                      <h5 className="font-bold text-sm leading-snug" style={{ color: '#0B1D3A' }}>{ev.title}</h5>
+                      {ev.description && <p className="text-xs mt-1" style={{ color: '#64748B' }}>{ev.description}</p>}
+                    </div>
+                    <div className="space-y-1.5 text-xs font-medium" style={{ borderTop: '1px solid #F0F7FF', paddingTop: '0.75rem', color: '#475569' }}>
+                      {ev.location && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
+                          {ev.location}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
+                        ที่นั่ง: {ev.registered_count} / {ev.capacity ?? 'ไม่จำกัด'}
+                      </div>
+                    </div>
+                    {user ? (
+                      <button
+                        onClick={() => handleEventRegistration(ev.id, ev.is_registered || false)}
+                        disabled={!ev.is_registered && ev.capacity ? (ev.registered_count || 0) >= ev.capacity : false}
+                        className="w-full py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200"
+                        style={ev.is_registered
+                          ? { background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }
+                          : { background: '#0B1D3A', color: '#FFFFFF' }}
+                      >
+                        {ev.is_registered ? 'ยกเลิกการลงทะเบียน' : 'ลงทะเบียนเข้าร่วม'}
+                      </button>
+                    ) : (
+                      <div className="w-full py-2 text-center text-[10px] font-bold rounded-xl" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px dashed #CBD5E1' }}>
+                        เข้าสู่ระบบเพื่อลงทะเบียน
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Book a consultation for this date */}
+            {selectedIsPast ? (
+              <div className="flex items-start gap-2 px-4 py-3 rounded-xl text-xs font-medium" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px dashed #CBD5E1' }}>
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                วันที่นี้ผ่านมาแล้ว ไม่สามารถจองคิวปรึกษาย้อนหลังได้ — เลือกวันที่ในอนาคตแทน
+              </div>
+            ) : !user ? (
+              <div className="text-center py-8 flex flex-col items-center gap-3" style={{ border: '2px dashed #CBD5E1', borderRadius: '1rem' }}>
+                <CalendarPlus className="w-9 h-9 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
                 <div>
-                  <h4 className="text-sm font-bold" style={{ color: '#0B1D3A' }}>เข้าสู่ระบบเพื่อจองนัด</h4>
-                  <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>จำเป็นต้องลงชื่อเข้าใช้ก่อนส่งคำขอนัดปรึกษา</p>
+                  <h4 className="text-xs font-bold" style={{ color: '#0B1D3A' }}>เข้าสู่ระบบเพื่อจองนัด</h4>
+                  <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>จำเป็นต้องลงชื่อเข้าใช้ก่อนส่งคำขอนัดปรึกษา</p>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleBooking} className="space-y-6">
-                <div>
-                  <h3 className="text-base font-black mb-1" style={{ color: '#0B1D3A' }}>ส่งคำขอนัดปรึกษา</h3>
+              <form onSubmit={handleBooking} className="space-y-4">
+                <div style={selectedDayEvents.length > 0 ? { borderTop: '1px solid #F0F7FF', paddingTop: '1.25rem' } : undefined}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>จองคิวปรึกษาวันนี้</p>
                   <p className="text-xs font-medium" style={{ color: '#64748B' }}>เจ้าหน้าที่จะยืนยันนัดหมายและติดต่อกลับโดยเร็ว</p>
                 </div>
 
                 {formError && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
-                    <AlertCircle className="w-4 h-4 shrink-0" /> {formError}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
                   </div>
                 )}
                 {formSuccess && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
-                    <CheckCircle className="w-4 h-4 shrink-0" /> {formSuccess}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {formSuccess}
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>หัวข้อที่ขอปรึกษา *</label>
-                    <Input
-                      type="text"
-                      placeholder="เช่น ขอบข่ายทฤษฎีวิจัย หรือ การใช้โปรแกรม SPSS..."
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className={inputBase}
-                      style={{ ...inputBorder, background: '#FAFCFF' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดเพิ่มเติม</label>
-                    <Textarea
-                      rows={3}
-                      placeholder="เขียนรายละเอียดเพิ่มเติมเพื่อให้ทีมเตรียมตัวได้ล่วงหน้า..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className={inputBase + ' resize-none'}
-                      style={{ ...inputBorder, background: '#FAFCFF' }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>วันที่ขอนัด *</label>
-                      <Input
-                        type="date"
-                        value={date}
-                        min={new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setDate(e.target.value)}
-                        className={inputBase}
-                        style={{ ...inputBorder, background: '#FAFCFF' }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ช่วงเวลา *</label>
-                      <Select
-                        value={time}
-                        onValueChange={(v) => setTime(v ?? '09:00')}
-                        items={[
-                          { value: '09:00', label: '09:00 – 10:00 (เช้า)' },
-                          { value: '10:00', label: '10:00 – 11:00 (เช้า)' },
-                          { value: '11:00', label: '11:00 – 12:00 (เช้า)' },
-                          { value: '13:00', label: '13:00 – 14:00 (บ่าย)' },
-                          { value: '14:00', label: '14:00 – 15:00 (บ่าย)' },
-                          { value: '15:00', label: '15:00 – 16:00 (บ่าย)' },
-                        ]}
-                      >
-                        <SelectTrigger className={inputBase + ' w-full'} style={{ ...inputBorder, background: '#FAFCFF' }}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="09:00">09:00 – 10:00 (เช้า)</SelectItem>
-                          <SelectItem value="10:00">10:00 – 11:00 (เช้า)</SelectItem>
-                          <SelectItem value="11:00">11:00 – 12:00 (เช้า)</SelectItem>
-                          <SelectItem value="13:00">13:00 – 14:00 (บ่าย)</SelectItem>
-                          <SelectItem value="14:00">14:00 – 15:00 (บ่าย)</SelectItem>
-                          <SelectItem value="15:00">15:00 – 16:00 (บ่าย)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>หัวข้อที่ขอปรึกษา *</label>
+                  <Input
+                    type="text"
+                    placeholder="เช่น ขอบข่ายทฤษฎีวิจัย หรือ การใช้โปรแกรม SPSS..."
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className={inputBase}
+                    style={{ ...inputBorder, background: '#FAFCFF' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดเพิ่มเติม</label>
+                  <Textarea
+                    rows={2}
+                    placeholder="เขียนรายละเอียดเพิ่มเติมเพื่อให้ทีมเตรียมตัวได้ล่วงหน้า..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className={inputBase + ' resize-none'}
+                    style={{ ...inputBorder, background: '#FAFCFF' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ช่วงเวลา *</label>
+                  <Select
+                    value={time}
+                    onValueChange={(v) => setTime(v ?? '09:00')}
+                    items={[
+                      { value: '09:00', label: '09:00 – 10:00 (เช้า)' },
+                      { value: '10:00', label: '10:00 – 11:00 (เช้า)' },
+                      { value: '11:00', label: '11:00 – 12:00 (เช้า)' },
+                      { value: '13:00', label: '13:00 – 14:00 (บ่าย)' },
+                      { value: '14:00', label: '14:00 – 15:00 (บ่าย)' },
+                      { value: '15:00', label: '15:00 – 16:00 (บ่าย)' },
+                    ]}
+                  >
+                    <SelectTrigger className={inputBase + ' w-full'} style={{ ...inputBorder, background: '#FAFCFF' }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="09:00">09:00 – 10:00 (เช้า)</SelectItem>
+                      <SelectItem value="10:00">10:00 – 11:00 (เช้า)</SelectItem>
+                      <SelectItem value="11:00">11:00 – 12:00 (เช้า)</SelectItem>
+                      <SelectItem value="13:00">13:00 – 14:00 (บ่าย)</SelectItem>
+                      <SelectItem value="14:00">14:00 – 15:00 (บ่าย)</SelectItem>
+                      <SelectItem value="15:00">15:00 – 16:00 (บ่าย)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
+                  className="w-full py-2.5 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
                 >
                   {isSubmitting ? 'กำลังส่ง...' : 'ส่งคำขอนัดหมาย →'}
@@ -484,55 +517,8 @@ export const Clinic: React.FC = () => {
               </form>
             )}
           </div>
-        )}
-
-        {/* TAB: HISTORY */}
-        {activeSubTab === 'history' && (
-          <div>
-            {!user ? (
-              <div className="text-center py-16 flex flex-col items-center gap-4" style={{ border: '2px dashed #CBD5E1', borderRadius: '1rem' }}>
-                <History className="w-12 h-12 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
-                <div>
-                  <h4 className="text-sm font-bold" style={{ color: '#0B1D3A' }}>เข้าสู่ระบบเพื่อดูประวัติ</h4>
-                  <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>จำเป็นต้องลงชื่อเข้าใช้ก่อนดูประวัติการนัดหมาย</p>
-                </div>
-              </div>
-            ) : appointments.length === 0 ? (
-              <div className="text-center py-12 flex flex-col items-center gap-3">
-                <History className="w-10 h-10 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
-                <p className="text-xs font-semibold" style={{ color: '#94A3B8' }}>ยังไม่มีประวัติการจองนัดหมาย</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #E8F0F8' }}>
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
-                      {['หัวข้อปรึกษา','วันเวลานัด','หมายเหตุ','สถานะ','ความเห็น Admin'].map(h => (
-                        <th key={h} className="py-3 px-4 font-extrabold uppercase text-[10px] tracking-wider" style={{ color: '#64748B' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ borderColor: '#E8F0F8' }}>
-                    {appointments.map((app) => {
-                      const d = new Date(app.requested_at)
-                      const fmt = `${d.getDate()} ${monthNamesThai[d.getMonth()]} ${d.getFullYear() + 543} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-                      return (
-                        <tr key={app.id} className="transition-colors hover:bg-blue-50/30">
-                          <td className="py-3 px-4 font-bold" style={{ color: '#0B1D3A' }}>{app.topic}</td>
-                          <td className="py-3 px-4 font-medium" style={{ color: '#475569' }}>{fmt}</td>
-                          <td className="py-3 px-4 max-w-[160px] truncate" style={{ color: '#64748B' }} title={app.notes}>{app.notes || '—'}</td>
-                          <td className="py-3 px-4"><StatusBadge status={app.status} /></td>
-                          <td className="py-3 px-4 italic font-medium" style={{ color: '#64748B' }}>{app.admin_notes || '—'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </ContentPanel>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

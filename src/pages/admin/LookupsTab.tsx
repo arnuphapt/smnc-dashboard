@@ -53,9 +53,11 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
       render: (opt) => (
         <button
           onClick={() => onDeleteLookup(opt.id)}
-          className="p-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-200 transition cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+          style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-3 h-3" />
+          ลบ
         </button>
       ),
     },
