@@ -25,7 +25,7 @@ const REPOSITORY_SUBNAV = [
 const MASTERDATA_SUBNAV = [
   { isHeader: true, label: 'Overview & Settings' },
   { slug: '', icon: LayoutGrid, label: 'Master Overview' },
-  { slug: 'lookups/research_type', icon: Settings, label: 'Master Research Type' },
+  { slug: 'lookups/research_type', icon: Settings, label: 'Master Creator Type' },
   { slug: 'lookups/department', icon: Settings, label: 'Master Department' },
   { slug: 'lookups/ip_type', icon: Settings, label: 'Master IP Type' },
   { slug: 'lookups/award_level', icon: Settings, label: 'Master Award Level' },

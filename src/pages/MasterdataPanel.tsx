@@ -101,6 +101,7 @@ export const MasterdataPanel: React.FC = () => {
   const [metaApplicationStatus, setMetaApplicationStatus] = useState('')
   const [metaIpCurrentStatus, setMetaIpCurrentStatus] = useState('')
   const [metaPatentNum, setMetaPatentNum] = useState('')
+  const [metaCreatorType, setMetaCreatorType] = useState('')
   const [metaAwardName, setMetaAwardName] = useState('')
   const [metaUtilizationDate, setMetaUtilizationDate] = useState('')
 
@@ -364,6 +365,7 @@ export const MasterdataPanel: React.FC = () => {
     setMetaApplicationStatus(item.metadata.application_status || '')
     setMetaIpCurrentStatus(item.metadata.status || '')
     setMetaPatentNum(item.metadata.patent_number || '')
+    setMetaCreatorType(item.metadata.creator_type || '')
     setMetaAwardName(item.metadata.award_name || '')
     setMetaUtilizationDate(item.metadata.utilization_date || '')
 
@@ -428,6 +430,7 @@ export const MasterdataPanel: React.FC = () => {
         metadata.application_status = metaApplicationStatus
         metadata.status = metaIpCurrentStatus
         metadata.patent_number = metaPatentNum
+        metadata.creator_type = metaCreatorType
       } else if (formCategory === 'award') {
         metadata.award_level = metaSubtype
         metadata.organizer = metaOrganizer
@@ -1129,6 +1132,8 @@ export const MasterdataPanel: React.FC = () => {
         setMetaIpCurrentStatus={setMetaIpCurrentStatus}
         metaPatentNum={metaPatentNum}
         setMetaPatentNum={setMetaPatentNum}
+        metaCreatorType={metaCreatorType}
+        setMetaCreatorType={setMetaCreatorType}
         metaAwardName={metaAwardName}
         setMetaAwardName={setMetaAwardName}
         metaUtilizationDate={metaUtilizationDate}

@@ -9,19 +9,19 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { supabase } from '../../services/supabase'
 
 const LOOKUP_CATEGORY_OPTIONS = [
-  { value: 'research_type', label: 'ประเภทผลงานวิจัย/นวัตกรรม (research_type)' },
-  { value: 'department', label: 'สาขาวิชา/หน่วยงาน (department)' },
-  { value: 'ip_type', label: 'ประเภททรัพย์สินทางปัญญา (ip_type)' },
-  { value: 'award_level', label: 'ระดับรางวัลเชิดชูเกียรติ (award_level)' },
-  { value: 'utilization_type', label: 'ประเภทการนำไปใช้ประโยชน์ (utilization_type)' },
-  { value: 'journal_rank', label: 'ระดับฐานวารสาร (journal_rank)' },
-  { value: 'scope', label: 'ขอบเขตผลงาน (scope)' },
-  { value: 'innovation_type', label: 'ประเภทของผลนวัตกรรม (innovation_type)' },
-  { value: 'source', label: 'ที่มาของชิ้นงาน (source)' },
-  { value: 'ip_current_status', label: 'สถานะปัจจุบัน IP (ip_current_status)' },
-  { value: 'venue', label: 'เวทีการนำเสนอ (venue)' },
-  { value: 'year', label: 'ปี (year)' },
-  { value: 'ethics_criteria', label: 'เกณฑ์การพิจารณาจริยธรรม (ethics_criteria)' },
+  { value: 'research_type', label: 'ประเภทผู้สร้างสรรค์' },
+  { value: 'department', label: 'สาขาวิชา/หน่วยงาน' },
+  { value: 'ip_type', label: 'ประเภททรัพย์สินทางปัญญา' },
+  { value: 'award_level', label: 'ระดับรางวัลเชิดชูเกียรติ' },
+  { value: 'utilization_type', label: 'ประเภทการนำไปใช้ประโยชน์' },
+  { value: 'journal_rank', label: 'ระดับฐานวารสาร' },
+  { value: 'scope', label: 'ขอบเขตผลงาน' },
+  { value: 'innovation_type', label: 'ประเภทของผลนวัตกรรม' },
+  { value: 'source', label: 'ที่มาของชิ้นงาน' },
+  { value: 'ip_current_status', label: 'สถานะปัจจุบัน IP' },
+  { value: 'venue', label: 'เวทีการนำเสนอ' },
+  { value: 'year', label: 'ปี' },
+  { value: 'ethics_criteria', label: 'เกณฑ์การพิจารณาจริยธรรม' },
 ]
 
 interface LookupsTabProps {
@@ -64,7 +64,7 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
     ...(defaultCategory ? [] : [
       { key: 'category', header: 'หมวดหมู่', render: (opt: LookupOption) => <span className="text-slate-500 font-semibold">{opt.category}</span> } as DataTableColumn<LookupOption>,
     ]),
-    { key: 'value', header: 'ค่าระบบ', render: (opt) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{opt.value}</span> },
+    { key: 'value', header: 'ชื่อ', render: (opt) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{opt.value}</span> },
     {
       key: 'actions',
       header: 'จัดการ',
@@ -183,7 +183,7 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-500 font-bold mb-1">ค่าระบบ (Value)</label>
+              <label className="block text-slate-500 font-bold mb-1">ชื่อ</label>
               <Input
                 type="text"
                 required
@@ -268,7 +268,7 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-500 font-bold mb-1">ค่าระบบ (Value)</label>
+              <label className="block text-slate-500 font-bold mb-1">ชื่อ</label>
               <Input
                 type="text"
                 required

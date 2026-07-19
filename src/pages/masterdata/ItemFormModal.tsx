@@ -75,6 +75,8 @@ interface ItemFormModalProps {
   setMetaIpCurrentStatus: (value: string) => void
   metaPatentNum: string
   setMetaPatentNum: (value: string) => void
+  metaCreatorType: string
+  setMetaCreatorType: (value: string) => void
   metaAwardName: string
   setMetaAwardName: (value: string) => void
   metaUtilizationDate: string
@@ -111,7 +113,8 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   metaScope, setMetaScope, metaJournalRank, setMetaJournalRank,
   metaContribution, setMetaContribution, metaFundingHas, setMetaFundingHas, metaFundingDetail, setMetaFundingDetail,
   metaSource, setMetaSource, metaIpStatus, setMetaIpStatus, metaApplicationStatus, setMetaApplicationStatus,
-  metaIpCurrentStatus, setMetaIpCurrentStatus, metaPatentNum, setMetaPatentNum, metaAwardName, setMetaAwardName,
+  metaIpCurrentStatus, setMetaIpCurrentStatus, metaPatentNum, setMetaPatentNum,
+  metaCreatorType, setMetaCreatorType, metaAwardName, setMetaAwardName,
   metaUtilizationDate, setMetaUtilizationDate,
   // setFormCategory is not needed in the form body anymore since it is locked to page category
   // but we keep it in props to avoid breaking consumers
@@ -503,6 +506,23 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                       </SelectTrigger>
                       <SelectContent>
                         {getOptionsByCategory('ip_current_status').map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">ผู้สร้างสรรค์ / ประเภทผู้สร้างสรรค์</label>
+                    <Select
+                      value={metaCreatorType}
+                      onValueChange={(v) => setMetaCreatorType(v ?? '')}
+                      items={getOptionsByCategory('research_type').map((opt) => ({ value: opt.value, label: opt.value }))}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกประเภทผู้สร้างสรรค์..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getOptionsByCategory('research_type').map((opt) => (
                           <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
                         ))}
                       </SelectContent>
