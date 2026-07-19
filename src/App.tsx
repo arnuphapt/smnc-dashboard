@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LookupProvider } from './context/LookupContext'
+import { hasRole, formatUserRolesText } from './utils/roleHelper'
 import { AuthScreen } from './pages/AuthScreen'
 import { Dashboard } from './pages/Dashboard'
 import { Repositories } from './pages/Repositories'
@@ -36,6 +37,7 @@ const MASTERDATA_SUBNAV = [
   { slug: 'lookups/ip_current_status', icon: Settings, label: 'Master IP Status' },
   { slug: 'lookups/venue', icon: Settings, label: 'Master Venue' },
   { slug: 'lookups/year', icon: Settings, label: 'Master Year' },
+  { slug: 'lookups/ethics_criteria', icon: Settings, label: 'Master Ethics Criteria' },
   { slug: 'users', icon: Users, label: 'Master Users' },
   { slug: 'roles', icon: Shield, label: 'Master Roles' },
   { isHeader: true, label: 'Service Queues' },
@@ -143,7 +145,7 @@ const AppContent: React.FC = () => {
       label: 'ทรัพย์สินทางปัญญา',
       active: location.pathname === '/ip-application'
     },
-    ...(profile?.role === 'admin'
+    ...(hasRole(profile?.role, 'admin')
       ? [{
         key: 'masterdata',
         to: '/master',
@@ -163,7 +165,7 @@ const AppContent: React.FC = () => {
             isHeader: false,
             to: sub.slug ? `/master/${sub.slug}` : '/master',
             label: sub.label,
-            active: isMasterdataActive && activeMasterdataSlug === sub.slug,
+            active: isMasterdataActive && (activeMasterdataSlug === sub.slug || (activeMasterdataSlug === '' && sub.slug === '')),
           }
         }),
       } as SidebarItem]
@@ -282,7 +284,7 @@ const AppContent: React.FC = () => {
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-md shrink-0" style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #0EA5A0 100%)' }}>
                 <Shield className="w-4 h-4 text-white stroke-[2.5]" />
               </div>
-              <span className="text-sm font-extrabold text-slate-950 tracking-tight">คลังปัญญา SMNC</span>
+              <span className="text-sm font-extrabold text-slate-950 tracking-tight">คลังปัญญาดิจิตอล SMNC</span>
             </Link>
             <div className="hidden md:block" />
 
@@ -300,7 +302,7 @@ const AppContent: React.FC = () => {
                         {user.email}
                       </div>
                       <span className={`inline-block text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1.5 ${getRoleBadgeColor(profile?.role)}`}>
-                        {profile?.role || 'TEACHER'}
+                        {formatUserRolesText(profile?.role)}
                       </span>
                     </div>
                     <div
@@ -325,7 +327,7 @@ const AppContent: React.FC = () => {
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50 animate-fadeIn text-xs text-slate-700">
                       <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100">
                         <div className="font-bold text-slate-900 truncate" title={user.email}>{user.email}</div>
-                        <div className="text-[9px] font-extrabold uppercase text-slate-400 mt-1">สิทธิ์: {profile?.role || 'TEACHER'}</div>
+                        <div className="text-[9px] font-extrabold uppercase text-slate-400 mt-1">สิทธิ์: {formatUserRolesText(profile?.role)}</div>
                       </div>
 
                       <div className="py-1">
@@ -365,7 +367,7 @@ const AppContent: React.FC = () => {
                           ทรัพย์สินทางปัญญา (IP)
                         </Link>
 
-                        {profile?.role === 'admin' && (
+                        {hasRole(profile?.role, 'admin') && (
                           <Link
                             to="/master"
                             onClick={() => setShowProfileDropdown(false)}
@@ -413,7 +415,7 @@ const AppContent: React.FC = () => {
             <Route path="/clinic" element={<Clinic />} />
             <Route path="/ethics" element={<Ethics />} />
             <Route path="/ip-application" element={<IPApplication />} />
-            <Route path="/master/*" element={profile?.role === 'admin' ? <MasterdataPanel /> : <AccessDenied />} />
+            <Route path="/master/*" element={hasRole(profile?.role, 'admin') ? <MasterdataPanel /> : <AccessDenied />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -421,7 +423,7 @@ const AppContent: React.FC = () => {
         {/* Footer */}
         <footer className="bg-white py-6 border-t border-slate-200 mt-12 text-center text-xs text-slate-500">
           <p>© {new Date().getFullYear()} คลังปัญญาดิจิทัล วิทยาลัยพยาบาลศรีมหาสารคาม. All rights reserved.</p>
-          <p className="mt-1 text-slate-400">ระบบพัฒนาแบบเรียลไทม์ประสิทธิภาพสูงสำหรับจัดเก็บวิจัยและนวัตกรรม</p>
+          <p className="mt-1 text-slate-400">พัฒนาแบบเรียลไทม์ประสิทธิภาพสูงสำหรับจัดเก็บวิจัยและนวัตกรรม</p>
         </footer>
       </div>
     </div>

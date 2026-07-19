@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
-import { Trash2, ExternalLink, Clipboard, FileText, UserCheck, Shield, Plus } from 'lucide-react'
+import { Trash2, ExternalLink, Clipboard, FileText, UserCheck, Shield, Plus, Edit2 } from 'lucide-react'
 import { DataTableColumn } from '../../components/DataTable'
 import { MasterDataTable } from '../../components/MasterDataTable'
 import { StatusBadge } from '../../components/StatusBadge'
 import { SidePanel, FieldLabel } from '../../components/SidePanel'
 import { Profile } from '../../context/AuthContext'
+import { hasRole, formatUserRolesText } from '../../utils/roleHelper'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { supabase } from '../../services/supabase'
 
 const NO_REVIEWER = '__none__'
 
@@ -72,7 +74,7 @@ export const serializeReviewerNotes = (scores: Record<string, 'pass' | 'fail' | 
 }
 
 // Generate printable/exportable PDF layout window
-export const handleExportEvaluation = (sub: any, reviewerName: string, submitterEmail: string) => {
+export const handleExportEvaluation = (sub: any, _reviewerName: string, submitterEmail: string) => {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
 
@@ -117,6 +119,19 @@ export const handleExportEvaluation = (sub: any, reviewerName: string, submitter
     `
     cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
     cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
+  }
+
+  let expert1Notes = cleanNotes.trim()
+  let expert2Notes = ''
+
+  if (cleanNotes.includes('[ผู้ทรงคุณวุฒิท่านที่ 2]')) {
+    const parts = cleanNotes.split('[ผู้ทรงคุณวุฒิท่านที่ 2]')
+    expert1Notes = parts[0].replace(/\[ผู้ทรงคุณวุฒิท่านที่ 1\]/g, '').trim()
+    expert2Notes = parts[1].trim()
+  } else if (cleanNotes.includes('---')) {
+    const parts = cleanNotes.split('---')
+    expert1Notes = parts[0].trim()
+    expert2Notes = parts[1].trim()
   }
 
   printWindow.document.write(`
@@ -204,7 +219,7 @@ export const handleExportEvaluation = (sub: any, reviewerName: string, submitter
           <div class="meta-label">ผู้ยื่นคำขอ:</div>
           <div>${submitterEmail}</div>
           <div class="meta-label">ผู้ทรงคุณวุฒิ:</div>
-          <div>${reviewerName || 'ผู้ทรงคุณวุฒิในระบบ'}</div>
+          <div>ผู้ทรงคุณวุฒิท่านที่ 1, ผู้ทรงคุณวุฒิท่านที่ 2</div>
           <div class="meta-label">สถานะผลการประเมิน:</div>
           <div style="font-weight: 700; color: ${sub.status === 'อนุมัติ' ? '#16a34a' : sub.status === 'รอแก้ไข' ? '#b45309' : '#475569'}">${sub.status}</div>
           <div class="meta-label">วันที่พิมพ์เอกสาร:</div>
@@ -213,8 +228,21 @@ export const handleExportEvaluation = (sub: any, reviewerName: string, submitter
 
         ${checklistHtml}
 
-        <h3 style="font-size: 14px; color: #0B1D3A; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">ความเห็นและข้อเสนอแนะเพิ่มเติม</h3>
-        <div class="notes-container">${cleanNotes.trim() || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}</div>
+        <h3 style="font-size: 14px; color: #0B1D3A; margin-top: 25px; margin-bottom: 12px; border-bottom: 2px solid #0EA5A0; padding-bottom: 6px;">ความเห็นและข้อเสนอแนะเพิ่มเติมจากผู้ทรงคุณวุฒิ</h3>
+        
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 12px; font-weight: 700; color: #0EA5A0; margin-bottom: 6px;">
+            • ข้อเสนอแนะจากผู้ทรงคุณวุฒิท่านที่ 1:
+          </div>
+          <div class="notes-container">${expert1Notes || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}</div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 12px; font-weight: 700; color: #7C3AED; margin-bottom: 6px;">
+            • ข้อเสนอแนะจากผู้ทรงคุณวุฒิท่านที่ 2:
+          </div>
+          <div class="notes-container">${expert2Notes || 'ไม่มีข้อเสนอแนะเพิ่มเติม'}</div>
+        </div>
 
         <div class="footer">
           เอกสารนี้จัดทำโดยระบบงานจริยธรรมการวิจัย คลังปัญญา SMNC (วิทยาลัยพยาบาลศรีมหาสารคาม)<br/>
@@ -355,9 +383,9 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (sub) => (
-        <div className="flex gap-1.5 justify-center">
+        <div className="flex gap-1.5 justify-end">
           <button
             onClick={() => {
               setSubEditing(sub)
@@ -406,6 +434,12 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
   const [selectedStatus, setSelectedStatus] = useState('')
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
 
+  // Edit Form States
+  const [editingForm, setEditingForm] = useState<any | null>(null)
+  const [editFormTitle, setEditFormTitle] = useState('')
+  const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip'>('ethics')
+  const [editFormUrl, setEditFormUrl] = useState('')
+
   const filteredSubmissions = ethicsSubmissions.filter((sub) => {
     const submitter = profiles.find((p) => p.id === sub.submitter_id)
     const matchesSearch = !subSearch.trim() ||
@@ -447,16 +481,31 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (form) => (
-        <button
-          onClick={() => onDeleteDownloadableForm(form.id)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-          style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          ลบ
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingForm(form)
+              setEditFormTitle(form.title)
+              setEditFormCat(form.category)
+              setEditFormUrl(form.file_url)
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          >
+            <Edit2 className="w-3 h-3" />
+            แก้ไข
+          </button>
+          <button
+            onClick={() => onDeleteDownloadableForm(form.id)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            ลบ
+          </button>
+        </div>
       )
     }
   ]
@@ -591,6 +640,91 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
         </DialogContent>
       </Dialog>
 
+      {/* Edit Form Dialog */}
+      <Dialog open={!!editingForm} onOpenChange={(open) => !open && setEditingForm(null)}>
+        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>แบบฟอร์มดาวน์โหลด</p>
+            <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
+              แก้ไขแบบฟอร์มดาวน์โหลด
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-slate-400">
+              แก้ไขรายละเอียดและลิงก์เอกสารของแบบฟอร์มดาวน์โหลด
+            </DialogDescription>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!editingForm || !editFormTitle || !editFormUrl) return
+              try {
+                const { error } = await supabase.from('downloadable_forms').update({
+                  title: editFormTitle,
+                  category: editFormCat,
+                  file_url: editFormUrl
+                }).eq('id', editingForm.id)
+                if (error) throw error
+                setEditingForm(null)
+              } catch (err: any) {
+                console.error('Error updating downloadable form:', err)
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">ชื่อเอกสาร / แบบฟอร์ม *</label>
+              <Input
+                type="text"
+                required
+                value={editFormTitle}
+                onChange={(e) => setEditFormTitle(e.target.value)}
+                placeholder="เช่น แบบฟอร์มขอจริยธรรม วิจัยในมนุษย์..."
+                className="w-full light-input text-xs"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">หมวดหมู่เอกสาร *</label>
+              <select
+                value={editFormCat}
+                onChange={(e) => setEditFormCat(e.target.value as 'ethics' | 'ip')}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
+              >
+                <option value="ethics">จริยธรรมการวิจัย (Ethics)</option>
+                <option value="ip">ทรัพย์สินทางปัญญา (IP)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร (จากเว็บหรือฝากไฟล์) *</label>
+              <Input
+                type="url"
+                required
+                value={editFormUrl}
+                onChange={(e) => setEditFormUrl(e.target.value)}
+                placeholder="https://example.com/form.pdf"
+                className="w-full light-input text-xs"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingForm(null)}
+                className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
+                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+              >
+                บันทึกการแก้ไข
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <SidePanel
         open={!!subEditing}
         onClose={() => setSubEditing(null)}
@@ -634,10 +768,10 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               >
                 <option value={NO_REVIEWER}>-- ยังไม่มอบหมาย --</option>
                 {profiles
-                  .filter((p) => p.role === 'expert' || p.role === 'admin')
+                  .filter((p) => hasRole(p.role, 'expert') || hasRole(p.role, 'admin'))
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.email} ({p.role.toUpperCase()})
+                      {p.email} ({formatUserRolesText(p.role)})
                     </option>
                   ))}
               </select>

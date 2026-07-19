@@ -4,6 +4,7 @@ import { WisdomItem } from '../Dashboard'
 import { LookupOption } from '../../context/LookupContext'
 import { Profile } from '../../context/AuthContext'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { getMediaUrl } from '../../services/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -32,6 +33,7 @@ interface ItemFormModalProps {
   setFormAuthors: (value: string) => void
   formIsPublic: boolean
   setFormIsPublic: (value: boolean) => void
+  imageFile?: File | null
   setImageFile: (file: File | null) => void
   setDocFile: (file: File | null) => void
 
@@ -101,8 +103,8 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   isFormOpen, setIsFormOpen, editingItem, submitLoading, onSubmit,
   getOptionsByCategory, getCategoryLabel, getSubtypeCategoryForForm, getSubtypeLabelForForm,
   profiles,
-  formCategory, formTitle, setFormTitle, formDescription, setFormDescription,
-  formAuthors, setFormAuthors, formIsPublic, setFormIsPublic, setImageFile, setDocFile,
+  formCategory, formTitle, setFormTitle, formDescription: _formDescription, setFormDescription: _setFormDescription,
+  formAuthors, setFormAuthors, formIsPublic, setFormIsPublic, imageFile, setImageFile, setDocFile,
   metaDept, setMetaDept, metaSubtype, setMetaSubtype, metaYear, setMetaYear,
   metaJournal, setMetaJournal, metaRegNum, setMetaRegNum, metaRegDate, setMetaRegDate,
   metaOrganizer, setMetaOrganizer, metaOrgUsed, setMetaOrgUsed, metaImpact, setMetaImpact,
@@ -248,14 +250,14 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               </div>
             </div>
             <div>
-              <label className="block text-slate-500 font-bold mb-1">ปีที่ตีพิมพ์</label>
+              <label className="block text-slate-500 font-bold mb-1">ปี</label>
               <Select
                 value={metaYear}
                 onValueChange={(v) => setMetaYear(v ?? '')}
                 items={getOptionsByCategory('year').map((opt) => ({ value: opt.value, label: opt.value }))}
               >
                 <SelectTrigger className="w-full light-input">
-                  <SelectValue placeholder="เลือกปีที่ตีพิมพ์..." />
+                  <SelectValue placeholder="เลือกปี..." />
                 </SelectTrigger>
                 <SelectContent>
                   {getOptionsByCategory('year').map((opt) => (
@@ -511,21 +513,14 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
 
               {formCategory === 'award' && (
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">เวทีการนำเสนอ</label>
-                  <Select
+                  <label className="block text-slate-500 font-bold mb-1">รายละเอียดเวทีการนำเสนอ</label>
+                  <Input
+                    type="text"
                     value={metaOrganizer}
-                    onValueChange={(v) => setMetaOrganizer(v ?? '')}
-                    items={getOptionsByCategory('venue').map((opt) => ({ value: opt.value, label: opt.value }))}
-                  >
-                    <SelectTrigger className="w-full light-input">
-                      <SelectValue placeholder="เลือกเวทีการนำเสนอ..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getOptionsByCategory('venue').map((opt) => (
-                        <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setMetaOrganizer(e.target.value)}
+                    placeholder="กรอกรายละเอียดเวทีการนำเสนอ เช่น งานประชุมวิชาการพยาบาลแห่งชาติ..."
+                    className="w-full light-input"
+                  />
                 </div>
               )}
 
@@ -578,25 +573,33 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-slate-500 font-bold mb-1">บทคัดย่อ / รายละเอียดของผลงาน (Description / Abstract)</label>
-            <Textarea
-              required
-              rows={4}
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="รายละเอียดเพิ่มเติม บทคัดย่อ หรือข้อมูลอธิบาย..."
-              className="w-full light-input resize-none text-xs"
-            />
-          </div>
+
 
           {/* File uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-500 font-bold mb-1">
-                ภาพประกอบหลัก ({editingItem?.image_url ? 'มีภาพเดิมแล้ว ต้องการเปลี่ยนเลือกไฟล์ใหม่' : 'เลือกอัปโหลดไฟล์ภาพ'})
+                ภาพประกอบหลัก ({imageFile || editingItem?.image_url ? 'มีรูปภาพเลือกอยู่' : 'เลือกอัปโหลดไฟล์ภาพ'})
               </label>
+
+              {(imageFile || editingItem?.image_url) && (
+                <div className="mb-2 p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                  <img
+                    src={imageFile ? URL.createObjectURL(imageFile) : getMediaUrl(editingItem?.image_url, editingItem?.is_public)}
+                    alt="Preview"
+                    className="w-20 h-16 object-cover rounded-lg border border-slate-200 shadow-sm shrink-0"
+                  />
+                  <div className="text-[10px] space-y-0.5 overflow-hidden">
+                    <span className="font-bold text-teal-700 block truncate">
+                      {imageFile ? `รูปใหม่: ${imageFile.name}` : 'รูปภาพเดิมในระบบ'}
+                    </span>
+                    <span className="text-slate-400 block">
+                      {imageFile ? `${(imageFile.size / 1024).toFixed(1)} KB` : 'พร้อมแสดงผล'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <Input
                 type="file"
                 accept="image/*"

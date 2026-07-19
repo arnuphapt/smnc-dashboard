@@ -443,7 +443,7 @@ export const MasterdataPanel: React.FC = () => {
       const rowData = {
         category: formCategory,
         title: formTitle,
-        description: formDescription,
+        description: formDescription || '-',
         authors: formAuthors,
         is_public: formIsPublic,
         image_url: imageUrl || null,
@@ -1088,6 +1088,7 @@ export const MasterdataPanel: React.FC = () => {
         setFormAuthors={setFormAuthors}
         formIsPublic={formIsPublic}
         setFormIsPublic={setFormIsPublic}
+        imageFile={imageFile}
         setImageFile={setImageFile}
         setDocFile={setDocFile}
         metaDept={metaDept}

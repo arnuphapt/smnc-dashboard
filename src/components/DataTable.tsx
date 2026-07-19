@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export interface DataTableColumn<T> {
   key: string
   header: string
-  align?: 'left' | 'center'
+  align?: 'left' | 'center' | 'right'
   sortable?: boolean
   render: (row: T) => React.ReactNode
 }
@@ -94,7 +94,7 @@ export function DataTable<T>({
                 <TableHead
                   key={col.key}
                   onClick={col.sortable ? () => onSortChange?.(col.key) : undefined}
-                  className={`h-auto whitespace-normal p-4 font-extrabold uppercase text-[10px] tracking-wider ${col.align === 'center' ? 'text-center' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                  className={`h-auto whitespace-normal p-4 font-extrabold uppercase text-[10px] tracking-wider ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
                   style={{ color: headerTextColor }}
                 >
                   {col.header}
@@ -128,7 +128,7 @@ export function DataTable<T>({
                   {start + idx + 1}
                 </TableCell>
                 {columns.map((col) => (
-                  <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : ''}`}>
+                  <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
                     {col.render(row)}
                   </TableCell>
                 ))}

@@ -8,3 +8,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export const getMediaUrl = (urlOrPath?: string | null, isPublic: boolean = true) => {
+  if (!urlOrPath) return ''
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://') || urlOrPath.startsWith('data:') || urlOrPath.startsWith('blob:')) {
+    return urlOrPath
+  }
+  const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
+  const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
+  return data.publicUrl
+}
+

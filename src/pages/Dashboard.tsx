@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
-import { BookOpen, Lightbulb, Award, Lock, Shield, FileText } from 'lucide-react'
+import { supabase, getMediaUrl } from '../services/supabase'
+import { BookOpen, Lightbulb, Award, Lock, Shield, FileText, Download, FolderDown, Search, FileCheck } from 'lucide-react'
 import { formatExcelDate, getCategoryLabel, getCategoryColor } from '../utils/format'
+
+export interface DownloadableForm {
+  id: string
+  title: string
+  file_url: string
+  category: string
+  is_public: boolean
+  sort_order: number
+  created_at: string
+}
 
 export interface WisdomItem {
   id: string
@@ -54,17 +64,17 @@ const DonutChart: React.FC<DonutChartProps> = ({ title, centerLabel, data }) => 
           {title}
         </h4>
       </div>
-      
+
       <div className="relative flex items-center justify-center my-4 shrink-0">
         <svg width="135" height="135" viewBox="0 0 120 120" className="transform -rotate-90">
           <circle cx="60" cy="60" r={r} fill="transparent" stroke="#f1f5f9" strokeWidth="14" />
-          
+
           {total > 0 && data.map((item, idx) => {
             const pct = (item.value / total) * 100
             const strokeDash = (pct / 100) * circumference
             const strokeOffset = -((accumulatedPercent / 100) * circumference)
             accumulatedPercent += pct
-            
+
             return (
               <circle
                 key={idx}
@@ -82,7 +92,7 @@ const DonutChart: React.FC<DonutChartProps> = ({ title, centerLabel, data }) => 
             )
           })}
         </svg>
-        
+
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span className="text-xs font-extrabold text-slate-700 tracking-wider uppercase leading-none">{centerLabel}</span>
         </div>
@@ -122,6 +132,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
   const [loading, setLoading] = useState(true)
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null)
 
+  const [downloadForms, setDownloadForms] = useState<DownloadableForm[]>([])
+  const [docSearch, setDocSearch] = useState('')
+  const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'repository'>('all')
+
   const fetchDashboardData = async () => {
     try {
       const { data, error } = await supabase
@@ -131,9 +145,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
       if (error) throw error
       const items = (data as WisdomItem[]) || []
+
       setAllItems(items)
 
-      // Calculate stats
       const newStats: Stats = {
         research: 0,
         intellectual_property: 0,
@@ -164,13 +178,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
     }
   }
 
+  const fetchDownloadableForms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('downloadable_forms')
+        .select('*')
+        .order('sort_order', { ascending: true })
+      if (!error && data) {
+        setDownloadForms(data)
+      }
+    } catch (err) {
+      console.error('Error fetching downloadable forms:', err)
+    }
+  }
+
   useEffect(() => {
     fetchDashboardData()
+    fetchDownloadableForms()
 
     const channel = supabase
       .channel('dashboard-items-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wisdom_items' }, () => {
         fetchDashboardData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'downloadable_forms' }, () => {
+        fetchDownloadableForms()
       })
       .subscribe()
 
@@ -179,17 +211,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
     }
   }, [])
 
+  // Combine downloadable forms + repository items with file attachments
+  const downloadFormsList = downloadForms.map((f) => ({
+    uniqueId: `form_${f.id}`,
+    type: 'form',
+    title: f.title,
+    file_url: f.file_url,
+    categoryKey: f.category,
+    categoryLabel: f.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : f.category === 'ip' ? 'แบบฟอร์ม IP' : 'แบบฟอร์มทั่วไป',
+    categoryBadgeStyle: f.category === 'ethics' ? 'bg-purple-50 text-purple-700 border border-purple-200' : f.category === 'ip' ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-slate-100 text-slate-700 border border-slate-200',
+    is_public: f.is_public,
+    subInfo: 'แบบฟอร์มทางการ',
+    created_at: f.created_at,
+  }))
+
+  const repositoryFilesList = allItems
+    .filter((item) => item.file_url)
+    .map((item) => ({
+      uniqueId: `item_${item.id}`,
+      type: 'repository',
+      title: item.title,
+      file_url: item.file_url!,
+      categoryKey: 'repository',
+      categoryLabel: getCategoryLabel(item.category),
+      categoryBadgeStyle: 'bg-teal-50 text-teal-800 border border-teal-200',
+      is_public: item.is_public,
+      subInfo: item.authors || 'เอกสารประกอบผลงาน',
+      created_at: item.created_at,
+    }))
+
+  const combinedDownloadList = [...downloadFormsList, ...repositoryFilesList]
+
+  const filteredDownloadList = combinedDownloadList.filter((item) => {
+    const matchesSearch = !docSearch.trim() || item.title.toLowerCase().includes(docSearch.toLowerCase())
+    if (!matchesSearch) return false
+
+    if (docFilterCategory === 'ethics') return item.categoryKey === 'ethics'
+    if (docFilterCategory === 'ip') return item.categoryKey === 'ip'
+    if (docFilterCategory === 'repository') return item.type === 'repository'
+    return true
+  })
+
   // Calculate Last 6 Months trend data
   const getTrendData = () => {
     const data = []
     const now = new Date()
     const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-    
+
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const year = d.getFullYear()
       const month = d.getMonth()
-      
+
       const count = allItems.filter(item => {
         const itemDate = new Date(item.created_at)
         return itemDate.getFullYear() === year && itemDate.getMonth() === month
@@ -220,7 +293,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
   // Build SVG path
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const areaPath = points.length > 0 
+  const areaPath = points.length > 0
     ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingY} L ${points[0].x} ${chartHeight - paddingY} Z`
     : ''
 
@@ -311,7 +384,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      
+
       {/* Page Header — plain heading + description, no card */}
       <div className="page-header-band">
         <div className="flex items-center justify-between gap-3">
@@ -323,10 +396,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
           <div>
             <h2 className="header-display text-2xl font-bold leading-tight" style={{ color: '#0B1D3A' }}>
-              ระบบวิเคราะห์และคลังปัญญาดิจิทัล SMNC
+              คลังปัญญาดิจิตอล SMNC
             </h2>
             <p className="text-sm font-medium mt-1" style={{ color: '#64748B' }}>
-              สถิติและข้อมูลการคุ้มครองทรัพย์สินทางปัญญาแบบเรียลไทม์
+              ระบบแสดงผลข้อมูลเกี่ยวกับคลังผลงาน คลินิกวิจัย จริยธรรมการวิจัย และทรัพย์สินทางปัญญา
             </p>
           </div>
           {userRole && (
@@ -377,7 +450,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
 
       {/* 3. IP Progress & Timeline Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
+
         {/* Left Column: Progress Bars & Live Activity feed */}
         <div className="lg:col-span-1 space-y-6 h-full">
           {/* IP Progress Bars */}
@@ -386,7 +459,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
               <span className="w-1.5 h-3.5 rounded-full" style={{ background: '#0EA5A0' }}></span>
               ความคืบหน้าทรัพย์สินทางปัญญา
             </h3>
-            
+
             <div className="space-y-4">
               {/* Progress 1 */}
               <div className="space-y-1.5">
@@ -430,9 +503,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
             <div className="space-y-3.5">
               {recentItems.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex gap-3 text-xs">
-                  <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-[10px] ${getCategoryColor(item.category)}`}>
-                    {getCategoryLabel(item.category)[0]}
-                  </div>
+                  {item.image_url ? (
+                    <img
+                      src={getMediaUrl(item.image_url, item.is_public)}
+                      alt={item.title}
+                      className="w-8 h-8 rounded-lg object-cover shrink-0 border border-slate-200"
+                    />
+                  ) : (
+                    <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-[10px] ${getCategoryColor(item.category)}`}>
+                      {getCategoryLabel(item.category)[0]}
+                    </div>
+                  )}
                   <div className="space-y-0.5 truncate">
                     <h5 className="font-bold text-slate-800 truncate">{item.title}</h5>
                     <p className="text-[10px] text-slate-400 font-medium">ผู้จัดทำ: {item.authors || 'ไม่ระบุ'}</p>
@@ -456,7 +537,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
               const dateStr = formatExcelDate(item.metadata?.export_date)
               const status = item.metadata?.status || 'ส่งเอกสารออก'
               const badgeClass = getStatusBadgeClass(status)
-              
+
               // Timeline node marker colors
               const dotColors = ['bg-blue-900', 'bg-cyan-600', 'bg-emerald-600', 'bg-purple-600', 'bg-amber-500', 'bg-pink-500']
               const dotBg = dotColors[idx % dotColors.length]
@@ -471,7 +552,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
                     <h4 className="text-[11px] font-bold leading-snug transition-colors" style={{ color: '#0B1D3A' }}>
                       {item.title}
                     </h4>
-                    
+
                     <div className="flex items-center gap-2 flex-wrap text-[10px] text-slate-500 font-semibold pt-1">
                       <span>{dateStr}</span>
                       <span>|</span>
@@ -573,7 +654,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
                     onMouseEnter={() => setHoveredTrendIndex(i)}
                     onMouseLeave={() => setHoveredTrendIndex(null)}
                   />
-                  
+
                   {/* Tooltip labels */}
                   <g className={`transition-opacity duration-200 ${hoveredTrendIndex === i ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
                     <rect
@@ -607,6 +688,108 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userRole }) =>
               ))}
             </svg>
           </div>
+        </div>
+      </div>
+
+      {/* 5. Download Center Section (คลังเอกสารและแบบฟอร์มดาวน์โหลด) */}
+      <div className="light-card rounded-2xl p-6 bg-white border border-slate-200 shadow-sm space-y-5">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+              <h3 className="text-base font-black tracking-tight flex items-center gap-2 text-slate-900">
+                <FolderDown className="w-5 h-5 text-teal-600" />
+                คลังเอกสารและแบบฟอร์มดาวน์โหลด (Download Center)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              รวบรวมแบบฟอร์มขอรับรองจริยธรรม แบบฟอร์มยื่นทรัพย์สินทางปัญญา และเอกสารประกอบคลังปัญญาประจำสถาบัน
+            </p>
+          </div>
+
+          {/* Quick Search */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={docSearch}
+              onChange={(e) => setDocSearch(e.target.value)}
+              placeholder="ค้นหาชื่อเอกสาร/แบบฟอร์ม..."
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Filter Category Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          {[
+            { id: 'all', label: 'ทั้งหมด' },
+            { id: 'ethics', label: 'แบบฟอร์มจริยธรรม' },
+            { id: 'ip', label: 'แบบฟอร์ม IP' },
+            { id: 'repository', label: 'เอกสารคลังปัญญา' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setDocFilterCategory(tab.id as any)}
+              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
+                docFilterCategory === tab.id
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Download Documents Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+          {filteredDownloadList.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+              <FileCheck className="w-8 h-8 mx-auto opacity-50 text-slate-400" />
+              <p className="text-xs font-semibold">ไม่พบเอกสารหรือแบบฟอร์มดาวน์โหลดตามคำค้นหา</p>
+            </div>
+          ) : (
+            filteredDownloadList.map((docItem) => (
+              <div
+                key={docItem.uniqueId}
+                className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-teal-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-3 group"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${docItem.categoryBadgeStyle}`}>
+                      {docItem.categoryLabel}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400">
+                      {docItem.is_public ? 'Public' : 'Private'}
+                    </span>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-slate-800 group-hover:text-teal-700 transition-colors line-clamp-2 leading-snug">
+                    {docItem.title}
+                  </h4>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium truncate">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span className="truncate">{docItem.subInfo}</span>
+                  </div>
+
+                  <a
+                    href={getMediaUrl(docItem.file_url, docItem.is_public)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 text-teal-700 hover:text-white border border-teal-200/60 text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3 h-3" />
+                    ดาวน์โหลด
+                  </a>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, BookOpen } from 'lucide-react'
 import { DataTableColumn } from '../../components/DataTable'
 import { MasterDataTable } from '../../components/MasterDataTable'
 import { WisdomItem } from '../Dashboard'
+import { getMediaUrl } from '../../services/supabase'
 
 interface ItemsTabProps {
   items: WisdomItem[]
@@ -43,7 +44,16 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
       key: 'title',
       header: 'ชื่อผลงาน',
       render: (item) => (
-        <span className="font-bold truncate block max-w-[240px]" style={{ color: '#0B1D3A' }}>{item.title}</span>
+        <div className="flex items-center gap-2.5">
+          {item.image_url && (
+            <img
+              src={getMediaUrl(item.image_url, item.is_public)}
+              alt={item.title}
+              className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+            />
+          )}
+          <span className="font-bold truncate block max-w-[240px]" style={{ color: '#0B1D3A' }}>{item.title}</span>
+        </div>
       ),
     },
     {
@@ -64,9 +74,9 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (item) => (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => onOpenEditForm(item)}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"

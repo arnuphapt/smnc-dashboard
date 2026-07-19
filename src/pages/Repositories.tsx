@@ -4,12 +4,13 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { useLookups } from '../context/LookupContext'
 import { useAuth } from '../context/AuthContext'
-import { FileText, Download, X, FileCheck, Eye } from 'lucide-react'
+import { FileText, Download, X, FileCheck, Eye, FileDown, User, Calendar, Building2, Tag, Award, BookOpen, Globe, Bookmark } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
 import { formatExcelDate } from '../utils/format'
 import { DataTable, DataTableColumn } from '../components/DataTable'
 import { FilterBar, FilterBarSelect } from '../components/FilterBar'
 import { Breadcrumbs } from '../components/Breadcrumbs'
+import { exportItemToWord, exportCategoryReportToWord } from '../utils/wordExport'
 
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
@@ -212,17 +213,28 @@ export const Repositories: React.FC = () => {
   })
 
   const linkColumn: DataTableColumn<WisdomItem> = {
-    key: '__link',
-    header: 'Link',
-    align: 'center',
+    key: '__actions',
+    header: 'จัดการ',
+    align: 'right',
     render: (item) => (
-      <button
-        onClick={() => handleOpenDetail(item)}
-        className="whitespace-nowrap px-2.5 py-1 rounded bg-slate-50 border border-slate-200 hover:border-blue-900 text-slate-600 hover:text-blue-900 font-bold transition flex items-center justify-center gap-1 mx-auto cursor-pointer shadow-sm text-[10px]"
-      >
-        <Eye className="w-3.5 h-3.5" />
-        เปิดดู
-      </button>
+      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <button
+          onClick={() => handleOpenDetail(item)}
+          className="px-2.5 py-1 rounded bg-slate-50 border border-slate-200 hover:border-blue-900 text-slate-600 hover:text-blue-900 font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-sm text-[10px]"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          เปิดดู
+        </button>
+        <button
+          onClick={() => exportItemToWord(item, currentMeta.label)}
+          className="px-2.5 py-1 rounded border transition flex items-center justify-center gap-1 cursor-pointer shadow-sm text-[10px] font-bold"
+          style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          title="ออกรายงาน Word (.doc) รายการนี้"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          รายงาน Word
+        </button>
+      </div>
     ),
   }
 
@@ -230,7 +242,7 @@ export const Repositories: React.FC = () => {
     if (activeCategory === 'research') {
       return [
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
-        { key: 'title', header: 'ชื่อเรื่อง', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[280px] break-words block">{item.title}</span> },
+        { key: 'title', header: 'ชื่อเรื่อง', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'นักวิจัย', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
         { key: 'contribution', header: 'บทบาท', sortable: true, render: (item) => item.metadata?.contribution && (
           <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200/50">{item.metadata.contribution}</span>
@@ -251,7 +263,7 @@ export const Repositories: React.FC = () => {
 
     if (activeCategory === 'intellectual_property') {
       return [
-        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[260px] break-words block">{item.title}</span> },
+        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
         { key: 'ip_type', header: 'ประเภทของงาน', sortable: true, render: (item) => item.metadata?.ip_type && (
           <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
@@ -279,7 +291,7 @@ export const Repositories: React.FC = () => {
     if (activeCategory === 'innovation') {
       return [
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
-        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[250px] break-words block">{item.title}</span> },
+        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
         { key: 'creator_type', header: 'ผู้สร้างสรรค์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.creator_type || '-'}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope && (
@@ -300,19 +312,18 @@ export const Repositories: React.FC = () => {
     if (activeCategory === 'award') {
       return [
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
-        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[250px] break-words block">{item.title}</span> },
+        { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope && (
           <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">{item.metadata.scope}</span>
         ) },
         { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
-        { key: 'presenter', header: 'ผู้นำเสนอ', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.presenter || '-'}</span> },
         { key: 'award_level', header: 'ระดับเวทีการนำเสนอ', sortable: true, render: (item) => item.metadata?.award_level && (
           <span className="whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-150">
             {item.metadata.award_level}
           </span>
         ) },
-        { key: 'organizer', header: 'เวทีการนำเสนอ', sortable: true, render: (item) => (
-          <span className="text-slate-500 max-w-[200px] truncate block" title={item.metadata?.organizer}>{item.metadata?.organizer || '-'}</span>
+        { key: 'organizer', header: 'รายละเอียดเวทีการนำเสนอ', sortable: true, render: (item) => (
+          <span className="text-slate-500 max-w-[240px] break-words block" title={item.metadata?.organizer}>{item.metadata?.organizer || '-'}</span>
         ) },
         { key: 'award_name', header: 'รางวัล', sortable: true, render: (item) => item.metadata?.award_name && (
           <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">🏆 {item.metadata.award_name}</span>
@@ -508,19 +519,28 @@ export const Repositories: React.FC = () => {
       <Breadcrumbs />
       
       {/* Page Header — plain heading + description, no card */}
-      <div className="page-header-band">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>
-            SMNC · Knowledge Repository
-          </span>
-          <span className="record-tag shrink-0">REC · {categoryRecordCode[activeCategory] || 'RES-01'}</span>
+      <div className="page-header-band flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center justify-between md:justify-start gap-3">
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>
+              SMNC · Knowledge Repository
+            </span>
+            <span className="record-tag shrink-0">REC · {categoryRecordCode[activeCategory] || 'RES-01'}</span>
+          </div>
+          <h1 className="header-display text-[1.75rem] font-bold leading-tight mt-2 mb-1" style={{ color: '#0B1D3A' }}>
+            {currentMeta.label}
+          </h1>
+          <p className="text-sm font-medium" style={{ color: '#64748B' }}>
+            {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
+          </p>
         </div>
-        <h1 className="header-display text-[1.75rem] font-bold leading-tight mt-2 mb-1" style={{ color: '#0B1D3A' }}>
-          {currentMeta.label}
-        </h1>
-        <p className="text-sm font-medium" style={{ color: '#64748B' }}>
-          {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
-        </p>
+        <button
+          onClick={() => exportCategoryReportToWord(currentMeta.label, sortedItems)}
+          className="btn-primary text-xs flex items-center gap-2 !py-2.5 !px-4 shadow-md shrink-0 cursor-pointer self-start md:self-auto"
+        >
+          <FileDown className="w-4 h-4 stroke-[2.5]" />
+          ออกรายงาน Word สรุปสถิติ
+        </button>
       </div>
 
       {/* Dynamic Filters Bar */}
@@ -552,46 +572,70 @@ export const Repositories: React.FC = () => {
         }}
       />
 
-      {/* Detail Modal - Pure light sheet design */}
+      {/* Detail Modal - High-end intentionally designed sheet */}
       {selectedItem && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex justify-between items-start shrink-0">
-              <div>
-                <span className="eyebrow-badge">
-                  {categories.find(c => c.id === selectedItem.category)?.label}
-                </span>
-                <h3 className="text-base font-bold text-slate-900 mt-1.5 leading-snug">
+          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-start shrink-0 relative bg-gradient-to-r from-slate-50 via-white to-teal-50/20">
+              <div className="space-y-1.5 pr-6">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-teal-500/10 text-teal-700 border border-teal-500/20">
+                    <Bookmark className="w-3 h-3 text-teal-600" />
+                    {categories.find(c => c.id === selectedItem.category)?.label}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                    ID: {selectedItem.id.substring(0, 8)}
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 leading-snug tracking-tight pt-1">
                   {selectedItem.title}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-800 transition"
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer shrink-0"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content Scrollable */}
-            <div className="p-6 overflow-y-auto space-y-6 text-xs leading-relaxed text-slate-700">
+            <div className="p-6 overflow-y-auto space-y-5 text-xs leading-relaxed text-slate-700">
               
-              {/* Author & Info grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>👤</span>
+              {/* Main Image if available */}
+              {selectedItem.image_url && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-900/5 flex items-center justify-center p-3 max-h-72 shadow-inner">
+                  <img
+                    src={getMediaUrl(selectedItem.image_url, selectedItem.is_public)}
+                    alt={selectedItem.title}
+                    className="w-full max-h-64 object-contain rounded-xl shadow-sm"
+                  />
+                </div>
+              )}
+
+              {/* Attributes Grid Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* Author Card */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70 flex items-start gap-3 transition-all hover:bg-slate-50">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'rgba(14,165,160,0.12)', color: '#0EA5A0' }}>
+                    <User className="w-4 h-4" />
+                  </div>
                   <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">คณะผู้จัดทำ</div>
-                    <div className="text-xs text-slate-800 font-semibold">{selectedItem.authors || 'ไม่ระบุ'}</div>
+                    <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">คณะผู้จัดทำ / เจ้าของผลงาน</div>
+                    <div className="text-xs font-bold text-slate-800 mt-0.5">{selectedItem.authors || 'ไม่ระบุ'}</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>📅</span>
+                {/* Date Created Card */}
+                <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70 flex items-start gap-3 transition-all hover:bg-slate-50">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'rgba(14,165,160,0.12)', color: '#0EA5A0' }}>
+                    <Calendar className="w-4 h-4" />
+                  </div>
                   <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">วันที่บันทึกระบบ</div>
-                    <div className="text-xs text-slate-800 font-semibold font-mono">
+                    <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">วันที่บันทึกระบบ</div>
+                    <div className="text-xs font-bold text-slate-800 font-mono mt-0.5">
                       {new Date(selectedItem.created_at).toLocaleDateString('th-TH', {
                         year: 'numeric',
                         month: 'long',
@@ -601,17 +645,20 @@ export const Repositories: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Department Card if present */}
                 {selectedItem.metadata?.department && (
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>🏫</span>
+                  <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70 flex items-start gap-3 transition-all hover:bg-slate-50">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'rgba(14,165,160,0.12)', color: '#0EA5A0' }}>
+                      <Building2 className="w-4 h-4" />
+                    </div>
                     <div>
-                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">สาขาวิชา/หน่วยงาน</div>
-                      <div className="text-xs text-slate-800 font-semibold">{getDeptOptionLabel(selectedItem.metadata.department)}</div>
+                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">สาขาวิชา / หน่วยงาน</div>
+                      <div className="text-xs font-bold text-slate-800 mt-0.5">{getDeptOptionLabel(selectedItem.metadata.department)}</div>
                     </div>
                   </div>
                 )}
 
-                {/* Subtype metadata fields */}
+                {/* Dynamic Metadata Attributes Cards */}
                 {Object.entries(selectedItem.metadata || {}).map(([key, val]) => {
                   if (key === 'department' || !val) return null
                   const labelMap: Record<string, string> = {
@@ -622,10 +669,10 @@ export const Repositories: React.FC = () => {
                     journal_name: 'ตีพิมพ์ในวารสาร',
                     registration_number: 'เลขทะเบียนเอกสารสิทธิ์ / เลขที่คำขอ',
                     registration_date: 'วันที่จดทะเบียนสิทธิ์',
-                    organizer: 'หน่วยงานผู้มอบ/เวทีการนำเสนอ',
+                    organizer: 'รายละเอียดเวทีการนำเสนอ',
                     organization_used: 'หน่วยงานที่อ้างอิงนำไปใช้',
                     impact_summary: 'ประโยชน์เชิงประจักษ์',
-                    year: 'ปีจัดทำ/ปีงบประมาณ',
+                    year: 'ปี',
                     scope: 'ขอบเขตของผลงาน',
                     creator_type: 'กลุ่มผู้สร้างสรรค์',
                     source: 'ที่มาของผลงาน',
@@ -644,7 +691,7 @@ export const Repositories: React.FC = () => {
                     presented: 'การนำเสนอผลงานวิชาการ',
                     drive_link: 'ลิงก์ไดรฟ์รายละเอียดผลงาน',
                   }
-                  
+
                   const label = labelMap[key] || key
                   let displayVal = val as string
                   if (key.endsWith('_type') || key === 'award_level') {
@@ -661,36 +708,37 @@ export const Repositories: React.FC = () => {
                     }
                   }
 
+                  // Pick appropriate icon based on key
+                  let IconComponent = Tag
+                  if (key === 'year' || key.includes('date')) IconComponent = Calendar
+                  else if (key.includes('award')) IconComponent = Award
+                  else if (key.includes('journal')) IconComponent = BookOpen
+                  else if (key === 'scope') IconComponent = Globe
+
                   return (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(14,165,160,0.12)' }}>📄</span>
+                    <div key={key} className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70 flex items-start gap-3 transition-all hover:bg-slate-50">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'rgba(14,165,160,0.12)', color: '#0EA5A0' }}>
+                        <IconComponent className="w-4 h-4" />
+                      </div>
                       <div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{label}</div>
-                        <div className="text-xs text-slate-800 font-semibold">{displayVal}</div>
+                        <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</div>
+                        <div className="text-xs font-bold text-slate-800 mt-0.5">{displayVal}</div>
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">บทคัดย่อ / รายละเอียดเพิ่มเติม</h4>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 whitespace-pre-line leading-relaxed">
-                  {selectedItem.description || 'ไม่มีคำอธิบายรายละเอียด'}
-                </div>
-              </div>
-
-              {/* Download File File Section */}
+              {/* Download File Attachment Card if file_url present */}
               {selectedItem.file_url && (
-                <div className="p-4 rounded-xl flex items-center justify-between" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}>
+                <div className="p-4 rounded-2xl flex items-center justify-between gap-3 border" style={{ background: '#F0F7FF', borderColor: '#DAEEFF' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm" style={{ background: 'rgba(14,165,160,0.15)', color: '#0EA5A0' }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ background: 'rgba(14,165,160,0.15)', color: '#0EA5A0' }}>
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-800">เอกสารแนบประจำผลงาน</div>
-                      <div className="text-[10px] text-slate-500 font-medium">
+                      <div className="text-[10px] text-slate-500 font-medium mt-0.5">
                         {selectedItem.is_public ? 'แฟ้มเอกสารเปิดเผยทั่วไป (Public)' : 'แฟ้มเอกสารเฉพาะบุคคลที่ล็อกอินในระบบสถาบัน (Private)'}
                       </div>
                     </div>
@@ -701,14 +749,14 @@ export const Repositories: React.FC = () => {
                       href={getMediaUrl(selectedItem.file_url, true)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4"
+                      className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4 shrink-0 shadow-sm"
                     >
                       <Download className="w-4 h-4" />
                       ดาวน์โหลด
                     </a>
                   ) : user ? (
                     signedUrlLoading ? (
-                      <button disabled className="px-4 py-2 rounded-lg bg-slate-200 text-slate-500 text-xs flex items-center gap-1.5">
+                      <button disabled className="px-4 py-2 rounded-xl bg-slate-200 text-slate-500 text-xs flex items-center gap-1.5 shrink-0">
                         <span className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></span>
                         กำลังดึงไฟล์...
                       </button>
@@ -717,18 +765,18 @@ export const Repositories: React.FC = () => {
                         href={signedUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4"
+                        className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4 shrink-0 shadow-sm"
                       >
                         <Download className="w-4 h-4" />
                         ดาวน์โหลดเอกสาร (Private)
                       </a>
                     ) : (
-                      <button disabled className="px-4 py-2 rounded-lg bg-red-100 text-red-700 border border-red-200 text-xs">
+                      <button disabled className="px-4 py-2 rounded-xl bg-red-100 text-red-700 border border-red-200 text-xs shrink-0">
                         ไฟล์ล้มเหลว
                       </button>
                     )
                   ) : (
-                    <div className="text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-200/60 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                    <div className="text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-200/60 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm shrink-0">
                       🔒 ล็อกอินก่อนเพื่อรับสิทธิ์ดาวน์โหลด
                     </div>
                   )}
@@ -736,11 +784,20 @@ export const Repositories: React.FC = () => {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0 gap-3">
+              <button
+                onClick={() => exportItemToWord(selectedItem, currentMeta.label)}
+                className="px-4 py-2 rounded-xl border transition flex items-center gap-2 cursor-pointer shadow-sm text-xs font-bold"
+                style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+              >
+                <FileText className="w-4 h-4" />
+                ออกรายงาน Word (.doc)
+              </button>
+
               <button
                 onClick={() => setSelectedItem(null)}
-                className="px-4 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition shadow-sm cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs transition shadow-sm cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>

@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { Trash2, Settings, Plus } from 'lucide-react'
+import { Trash2, Settings, Plus, Edit2 } from 'lucide-react'
 import { DataTableColumn } from '../../components/DataTable'
 import { MasterDataTable } from '../../components/MasterDataTable'
 import { LookupOption } from '../../context/LookupContext'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { supabase } from '../../services/supabase'
 
 const LOOKUP_CATEGORY_OPTIONS = [
   { value: 'research_type', label: 'ประเภทผลงานวิจัย/นวัตกรรม (research_type)' },
@@ -19,7 +20,8 @@ const LOOKUP_CATEGORY_OPTIONS = [
   { value: 'source', label: 'ที่มาของชิ้นงาน (source)' },
   { value: 'ip_current_status', label: 'สถานะปัจจุบัน IP (ip_current_status)' },
   { value: 'venue', label: 'เวทีการนำเสนอ (venue)' },
-  { value: 'year', label: 'ปีที่ตีพิมพ์ (year)' },
+  { value: 'year', label: 'ปี (year)' },
+  { value: 'ethics_criteria', label: 'เกณฑ์การพิจารณาจริยธรรม (ethics_criteria)' },
 ]
 
 interface LookupsTabProps {
@@ -46,6 +48,9 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(defaultCategory)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [editingLookup, setEditingLookup] = useState<LookupOption | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [editCategory, setEditCategory] = useState('')
 
   // Sync when navigating between lookup category pages
   React.useEffect(() => {
@@ -63,16 +68,30 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (opt) => (
-        <button
-          onClick={() => onDeleteLookup(opt.id)}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-          style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
-        >
-          <Trash2 className="w-3 h-3" />
-          ลบ
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingLookup(opt)
+              setEditValue(opt.value)
+              setEditCategory(opt.category)
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          >
+            <Edit2 className="w-3 h-3" />
+            แก้ไข
+          </button>
+          <button
+            onClick={() => onDeleteLookup(opt.id)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            ลบ
+          </button>
+        </div>
       ),
     },
   ]
@@ -189,6 +208,91 @@ export const LookupsTab: React.FC<LookupsTabProps> = ({
                 style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
               >
                 บันทึกตัวเลือก
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editingLookup} onOpenChange={(open) => !open && setEditingLookup(null)}>
+        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คลังข้อมูล</p>
+            <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
+              แก้ไขตัวเลือกตัวกรอง
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-slate-400">
+              กรอกข้อมูลเพื่อแก้ไขตัวเลือกตัวกรอง
+            </DialogDescription>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!editingLookup || !editValue) return
+              try {
+                const { error } = await supabase
+                  .from('lookup_options')
+                  .update({
+                    category: editCategory,
+                    value: editValue
+                  })
+                  .eq('id', editingLookup.id)
+                if (error) throw error
+                setEditingLookup(null)
+              } catch (err: any) {
+                console.error('Error updating lookup:', err)
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div>
+              <label className="block text-slate-500 font-bold mb-1">หมวดหมู่ตัวกรอง (Category)</label>
+              {defaultCategory ? (
+                <div className="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 flex items-center font-bold">
+                  {LOOKUP_CATEGORY_OPTIONS.find((o) => o.value === defaultCategory)?.label ?? defaultCategory}
+                </div>
+              ) : (
+                <Select value={editCategory} onValueChange={(v) => setEditCategory(v ?? '')} items={LOOKUP_CATEGORY_OPTIONS}>
+                  <SelectTrigger className="w-full light-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOOKUP_CATEGORY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-slate-500 font-bold mb-1">ค่าระบบ (Value)</label>
+              <Input
+                type="text"
+                required
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                placeholder="เช่น Routine to Research (R2R)"
+                className="w-full light-input"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingLookup(null)}
+                className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
+                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+              >
+                บันทึกการแก้ไข
               </button>
             </div>
           </form>

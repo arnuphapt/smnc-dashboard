@@ -8,6 +8,7 @@ import { Profile } from '../../context/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { supabase } from '../../services/supabase'
 
 interface IpTabProps {
   ipApplications: any[]
@@ -90,9 +91,9 @@ export const IpTab: React.FC<IpTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (app) => (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => {
               setIpEditing(app)
@@ -131,6 +132,12 @@ export const IpTab: React.FC<IpTabProps> = ({
   const [formSearch, setFormSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
+
+  // Edit Form States
+  const [editingForm, setEditingForm] = useState<any | null>(null)
+  const [editFormTitle, setEditFormTitle] = useState('')
+  const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip'>('ip')
+  const [editFormUrl, setEditFormUrl] = useState('')
 
   const filteredIpApplications = ipApplications.filter((app) => {
     const applicant = profiles.find((p) => p.id === app.applicant_id)
@@ -173,16 +180,31 @@ export const IpTab: React.FC<IpTabProps> = ({
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
+      align: 'right',
       render: (form) => (
-        <button
-          onClick={() => onDeleteDownloadableForm(form.id)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-          style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          ลบ
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              setEditingForm(form)
+              setEditFormTitle(form.title)
+              setEditFormCat(form.category)
+              setEditFormUrl(form.file_url)
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          >
+            <Edit2 className="w-3 h-3" />
+            แก้ไข
+          </button>
+          <button
+            onClick={() => onDeleteDownloadableForm(form.id)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            ลบ
+          </button>
+        </div>
       )
     }
   ]
@@ -312,6 +334,91 @@ export const IpTab: React.FC<IpTabProps> = ({
                 style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
               >
                 บันทึกแบบฟอร์ม
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Form Dialog */}
+      <Dialog open={!!editingForm} onOpenChange={(open) => !open && setEditingForm(null)}>
+        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>แบบฟอร์มดาวน์โหลด</p>
+            <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
+              แก้ไขแบบฟอร์มดาวน์โหลด
+            </DialogTitle>
+            <DialogDescription className="text-[11px] text-slate-400">
+              แก้ไขรายละเอียดและลิงก์เอกสารของแบบฟอร์มดาวน์โหลด
+            </DialogDescription>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!editingForm || !editFormTitle || !editFormUrl) return
+              try {
+                const { error } = await supabase.from('downloadable_forms').update({
+                  title: editFormTitle,
+                  category: editFormCat,
+                  file_url: editFormUrl
+                }).eq('id', editingForm.id)
+                if (error) throw error
+                setEditingForm(null)
+              } catch (err: any) {
+                console.error('Error updating downloadable form:', err)
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">ชื่อเอกสาร / แบบฟอร์ม *</label>
+              <Input
+                type="text"
+                required
+                value={editFormTitle}
+                onChange={(e) => setEditFormTitle(e.target.value)}
+                placeholder="เช่น แบบฟอร์มขอจดทะเบียนลิขสิทธิ์..."
+                className="w-full light-input text-xs"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">หมวดหมู่เอกสาร *</label>
+              <select
+                value={editFormCat}
+                onChange={(e) => setEditFormCat(e.target.value as 'ethics' | 'ip')}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
+              >
+                <option value="ip">ทรัพย์สินทางปัญญา (IP)</option>
+                <option value="ethics">จริยธรรมการวิจัย (Ethics)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร *</label>
+              <Input
+                type="url"
+                required
+                value={editFormUrl}
+                onChange={(e) => setEditFormUrl(e.target.value)}
+                placeholder="https://example.com/form.pdf"
+                className="w-full light-input text-xs"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingForm(null)}
+                className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
+                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+              >
+                บันทึกการแก้ไข
               </button>
             </div>
           </form>

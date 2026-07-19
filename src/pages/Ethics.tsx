@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useLookups } from '../context/LookupContext'
+import { hasRole } from '../utils/roleHelper'
 import {
   FileText,
   UploadCloud,
@@ -59,6 +61,7 @@ const inputSty = { border: '1.5px solid #CBD5E1', background: '#FAFCFF' }
 
 export const Ethics: React.FC = () => {
   const { user, profile } = useAuth()
+  const { getOptionsByCategory } = useLookups()
 
   const [forms, setForms] = useState<DownloadableForm[]>([])
   const [submissions, setSubmissions] = useState<EthicsSubmission[]>([])
@@ -75,6 +78,7 @@ export const Ethics: React.FC = () => {
 
   const [reviewNotes, setReviewNotes] = useState('')
   const [reviewStatus, setReviewStatus] = useState('กำลังตรวจ')
+  const [reviewerRoleLabel, setReviewerRoleLabel] = useState('ผู้ทรงคุณวุฒิท่านที่ 1')
 
   // Revision modal states
   const [revisionModalOpen, setRevisionModalOpen] = useState(false)
@@ -132,7 +136,9 @@ export const Ethics: React.FC = () => {
     if (!user) return
     try {
       let query = supabase.from('ethics_submissions').select('*, profiles:submitter_id(email)').order('created_at', { ascending: false })
-      if (profile?.role === 'expert') query = query.eq('assigned_reviewer_id', user.id)
+      if (hasRole(profile?.role, 'expert') && !hasRole(profile?.role, 'admin')) {
+        query = query.eq('assigned_reviewer_id', user.id)
+      }
       const { data, error } = await query
       if (error) throw error
       setReviewSubmissions(data || [])
@@ -332,7 +338,7 @@ export const Ethics: React.FC = () => {
     }
   }
 
-  const isReviewTabVisible = profile?.role === 'expert' || profile?.role === 'admin'
+  const isReviewTabVisible = hasRole(profile?.role, 'expert') || hasRole(profile?.role, 'admin')
 
   return (
     <div className="flex-1 space-y-6 animate-fadeIn">
@@ -704,36 +710,68 @@ export const Ethics: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Dynamic Criteria List */}
                 <div className="space-y-3">
                   <label className="block text-xs font-bold" style={{ color: '#0B1D3A' }}>ผลประเมินตามรายเกณฑ์</label>
                   <div className="space-y-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                    {EVALUATION_CRITERIA.map((criterion) => (
-                      <div key={criterion.key} className="space-y-1">
-                        <div className="text-[10px] font-bold text-slate-700 leading-snug">{criterion.label}</div>
-                        <div className="grid grid-cols-3 gap-1 bg-slate-200/50 p-0.5 rounded-lg">
-                          {[
-                            { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-emerald-500 peer-checked:text-white text-emerald-700' },
-                            { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-amber-500 peer-checked:text-white text-amber-700' },
-                            { val: 'na', label: 'N/A', color: 'peer-checked:bg-slate-400 peer-checked:text-white text-slate-600' }
-                          ].map(opt => (
-                            <label key={opt.val} className="cursor-pointer text-[10px] font-bold text-center">
-                              <input
-                                type="radio"
-                                name={`expert-score-${criterion.key}`}
-                                value={opt.val}
-                                checked={scores[criterion.key] === opt.val}
-                                onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
-                                className="sr-only peer"
-                              />
-                              <div className={`py-1 rounded-md transition peer-checked:shadow-sm ${opt.color} hover:bg-slate-200/30`}>
-                                {opt.label}
-                              </div>
-                            </label>
-                          ))}
+                    {(() => {
+                      const criteriaOptions = getOptionsByCategory('ethics_criteria')
+                      const activeCriteria = criteriaOptions.length > 0
+                        ? criteriaOptions.map((opt, idx) => ({
+                            key: `opt_${opt.id}`,
+                            label: opt.value.startsWith(`${idx + 1}.`) ? opt.value : `${idx + 1}. ${opt.value}`
+                          }))
+                        : EVALUATION_CRITERIA
+
+                      return activeCriteria.map((criterion) => (
+                        <div key={criterion.key} className="space-y-1">
+                          <div className="text-[10px] font-bold text-slate-700 leading-snug">{criterion.label}</div>
+                          <div className="grid grid-cols-3 gap-1 bg-slate-200/50 p-0.5 rounded-lg">
+                            {[
+                              { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-emerald-500 peer-checked:text-white text-emerald-700' },
+                              { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-amber-500 peer-checked:text-white text-amber-700' },
+                              { val: 'na', label: 'N/A', color: 'peer-checked:bg-slate-400 peer-checked:text-white text-slate-600' }
+                            ].map(opt => (
+                              <label key={opt.val} className="cursor-pointer text-[10px] font-bold text-center">
+                                <input
+                                  type="radio"
+                                  name={`expert-score-${criterion.key}`}
+                                  value={opt.val}
+                                  checked={scores[criterion.key] === opt.val}
+                                  onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
+                                  className="sr-only peer"
+                                />
+                                <div className={`py-1 rounded-md transition peer-checked:shadow-sm ${opt.color} hover:bg-slate-200/30`}>
+                                  {opt.label}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    })()}
                   </div>
+                </div>
+
+                {/* Reviewer Tag Selector */}
+                <div>
+                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
+                  <Select
+                    value={reviewerRoleLabel}
+                    onValueChange={(v) => setReviewerRoleLabel(v ?? 'ผู้ทรงคุณวุฒิท่านที่ 1')}
+                    items={[
+                      { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
+                      { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
+                    ]}
+                  >
+                    <SelectTrigger className="w-full light-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
+                      <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -769,14 +807,15 @@ export const Ethics: React.FC = () => {
 
                 <Button
                   onClick={() => {
-                    const serialized = serializeReviewerNotes(scores, reviewNotes)
+                    const taggedNotes = `[${reviewerRoleLabel}]\n${reviewNotes}`
+                    const serialized = serializeReviewerNotes(scores, taggedNotes)
                     handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
                     setReviewModalOpen(false)
                   }}
                   className="w-full py-2.5 h-auto rounded-xl text-xs font-bold mt-2"
                   style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
                 >
-                  บันทึกคำพิจารณา
+                  บันทึกผลการประเมิน
                 </Button>
               </>
             )}

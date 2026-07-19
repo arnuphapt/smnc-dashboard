@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../services/supabase'
-import { Shield, Lock, Check, X, GraduationCap, UserCheck, Settings } from 'lucide-react'
+import { Shield, Lock, Check, X, GraduationCap, UserCheck, Edit2 } from 'lucide-react'
 import { MasterDataTable } from '../../components/MasterDataTable'
 import { DataTableColumn } from '../../components/DataTable'
 
@@ -42,7 +42,7 @@ const ROLES: RoleRow[] = [
   {
     key: 'expert',
     label: 'ผู้ทรงคุณวุฒิ (Expert)',
-    desc: 'ผู้ทรงคุณวุฒิที่ได้รับมอบหมายเพื่อพิจารณาและให้คำแนะนำงานวิจัย',
+    desc: 'ผู้ทรงคุณวุฒิที่ได้รับมอบหมายเพื่อพิจารณาจริยธรรมการวิจัยของโครงการวิจัย',
     icon: <UserCheck className="w-4 h-4" />,
     colorClass: 'bg-purple-50 text-purple-700 border-purple-200',
     isLocked: false,
@@ -126,27 +126,30 @@ export const RolesTab: React.FC = () => {
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'center',
-      render: (row) =>
-        row.isLocked ? (
-          <div
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed"
-            title="สิทธิ์ Admin ถูกล็อกถาวร"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            ล็อกถาวร
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditingRole(row)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            จัดการสิทธิ์
-          </button>
-        ),
+      align: 'right',
+      render: (row) => (
+        <div className="flex justify-end">
+          {row.isLocked ? (
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed"
+              title="สิทธิ์ Admin ถูกล็อกถาวร"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              ล็อกถาวร
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingRole(row)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+              style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              แก้ไขสิทธิ์
+            </button>
+          )}
+        </div>
+      ),
     },
   ]
 

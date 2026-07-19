@@ -17,6 +17,15 @@ interface LookupContextType {
 
 const LookupContext = createContext<LookupContextType | undefined>(undefined)
 
+const INITIAL_ETHICS_CRITERIA = [
+  '1. วัตถุประสงค์และการออกแบบการวิจัย',
+  '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง',
+  '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล',
+  '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)',
+  '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร',
+  '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม'
+]
+
 export const LookupProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [options, setOptions] = useState<LookupOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,7 +37,25 @@ export const LookupProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .select('*')
         .order('sort_order', { ascending: true })
       if (error) throw error
-      setOptions((data as LookupOption[]) || [])
+      let fetchedOptions = (data as LookupOption[]) || []
+
+      const ethicsCriteria = fetchedOptions.filter(opt => opt.category === 'ethics_criteria')
+      if (ethicsCriteria.length === 0) {
+        const seedData = INITIAL_ETHICS_CRITERIA.map((val, idx) => ({
+          category: 'ethics_criteria',
+          value: val,
+          sort_order: idx + 1
+        }))
+        const { data: insertedData, error: seedError } = await supabase
+          .from('lookup_options')
+          .insert(seedData)
+          .select()
+        if (!seedError && insertedData) {
+          fetchedOptions = [...fetchedOptions, ...(insertedData as LookupOption[])]
+        }
+      }
+
+      setOptions(fetchedOptions)
     } catch (err) {
       console.error('Error fetching lookup options:', err)
     } finally {

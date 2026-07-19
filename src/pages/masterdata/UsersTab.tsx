@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, GraduationCap, UserCheck, Shield, Settings } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, Shield, Edit2 } from 'lucide-react'
 import { DataTableColumn } from '../../components/DataTable'
 import { MasterDataTable } from '../../components/MasterDataTable'
 import { Profile } from '../../context/AuthContext'
+import { getUserRoles, ROLE_OPTIONS } from '../../utils/roleHelper'
 
 interface UsersTabProps {
   profiles: Profile[]
@@ -21,18 +22,27 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
     { key: 'email', header: 'อีเมลผู้ใช้งาน', render: (p) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{p.email}</span> },
     {
       key: 'role',
-      header: 'ระดับสิทธิ์',
-      render: (p) => (
-        <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
-          p.role === 'admin'
-            ? 'bg-red-50 text-red-700 border border-red-200/60'
-            : p.role === 'expert'
-            ? 'bg-purple-50 text-purple-700 border border-purple-200/60'
-            : 'bg-teal-50 text-teal-700 border border-teal-200/60'
-        }`}>
-          {p.role.toUpperCase()}
-        </span>
-      ),
+      header: 'ระดับสิทธิ์การใช้งาน (Roles)',
+      render: (p) => {
+        const roles = getUserRoles(p.role)
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((r) => {
+              const opt = ROLE_OPTIONS.find((o) => o.value === r)
+              return (
+                <span
+                  key={r}
+                  className={`px-2.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider ${
+                    opt?.bgClass || 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {opt?.shortLabel || r}
+                </span>
+              )
+            })}
+          </div>
+        )
+      },
     },
     {
       key: 'created_at',
@@ -41,20 +51,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
     },
     {
       key: 'actions',
-      header: 'จัดการสิทธิ์',
-      align: 'center',
+      header: 'จัดการ',
+      align: 'right',
       render: (p) => (
-        <button
-          onClick={() => {
-            setSelectedProfile(p)
-            setNewRole(p.role)
-          }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-          style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
-        >
-          <Settings className="w-3.5 h-3.5" />
-          จัดการสิทธิ์
-        </button>
+        <div className="flex justify-end">
+          <button
+            onClick={() => {
+              setSelectedProfile(p)
+              setNewRole(p.role)
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
+            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            แก้ไขสิทธิ์
+          </button>
+        </div>
       ),
     },
   ]
@@ -64,7 +76,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
       p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.role.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesRole = !selectedRole || p.role === selectedRole
+    const matchesRole = !selectedRole || getUserRoles(p.role).includes(selectedRole)
 
     return matchesSearch && matchesRole
   })
@@ -118,25 +130,43 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
                 สิทธิ์การใช้งาน
               </label>
               <div className="flex flex-col gap-2">
-                {[
-                  { value: 'teacher', label: 'อาจารย์ (Teacher)', icon: <GraduationCap className="w-4 h-4" />, colorClass: 'text-[#0EA5A0]' },
-                  { value: 'expert', label: 'ผู้ทรงคุณวุฒิ (Expert)', icon: <UserCheck className="w-4 h-4" />, colorClass: 'text-purple-700' },
-                  { value: 'admin', label: 'ผู้ดูแลระบบ (Admin)', icon: <Shield className="w-4 h-4" />, colorClass: 'text-red-700' },
-                ].map((roleOpt) => {
-                  const isSelected = newRole === roleOpt.value
+                {ROLE_OPTIONS.map((roleOpt) => {
+                  const currentRoles = getUserRoles(newRole)
+                  const isChecked = currentRoles.includes(roleOpt.value)
+                  const toggleRole = () => {
+                    let updated: string[]
+                    if (isChecked) {
+                      if (currentRoles.length === 1) return // Keep at least one role
+                      updated = currentRoles.filter((r) => r !== roleOpt.value)
+                    } else {
+                      updated = [...currentRoles, roleOpt.value]
+                    }
+                    setNewRole(updated.join(','))
+                  }
+
+                  const IconComponent = roleOpt.value === 'admin' ? Shield : roleOpt.value === 'expert' ? UserCheck : GraduationCap
+
                   return (
                     <button
                       key={roleOpt.value}
                       type="button"
-                      onClick={() => setNewRole(roleOpt.value)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold text-left transition-all duration-150 cursor-pointer ${
-                        isSelected
+                      onClick={toggleRole}
+                      className={`flex items-center justify-between px-4 py-3 rounded-xl border text-xs font-bold text-left transition-all duration-150 cursor-pointer ${
+                        isChecked
                           ? 'border-[#0EA5A0] bg-[#0EA5A0]/10 text-[#0EA5A0]'
                           : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      <span className={roleOpt.colorClass}>{roleOpt.icon}</span>
-                      <span>{roleOpt.label}</span>
+                      <div className="flex items-center gap-3">
+                        <span className={roleOpt.colorClass}><IconComponent className="w-4 h-4" /></span>
+                        <span>{roleOpt.label}</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        className="w-4 h-4 accent-[#0EA5A0] rounded cursor-pointer pointer-events-none"
+                      />
                     </button>
                   )
                 })}
