@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../services/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { useLookups } from '../context/LookupContext'
 import { Calendar, Award, Clipboard } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
@@ -550,6 +551,43 @@ export const MasterdataPanel: React.FC = () => {
     }
   }
 
+  const handleAddUser = async (email: string, password: string, role: string) => {
+    try {
+      const tempClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } }
+      )
+
+      const { data, error } = await tempClient.auth.signUp({
+        email: email.trim(),
+        password,
+      })
+
+      if (error) throw error
+
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: email.trim(),
+            role: role || 'teacher',
+          })
+
+        if (profileError) {
+          console.error('Error updating profile role:', profileError)
+        }
+      }
+
+      triggerAlert('สำเร็จ', `เพิ่มผู้ใช้งาน ${email} เรียบร้อยแล้ว!`, 'primary')
+      fetchProfiles()
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถเพิ่มผู้ใช้งานได้: ${err.message}`, 'danger')
+      throw err
+    }
+  }
+
   // Phase 2 Action Handlers
 
   // Clinic description
@@ -975,7 +1013,7 @@ export const MasterdataPanel: React.FC = () => {
               )
             case 'users':
               return (
-                <UsersTab profiles={profiles} usersLoading={usersLoading} onUpdateRole={handleUpdateRole} />
+                <UsersTab profiles={profiles} usersLoading={usersLoading} onUpdateRole={handleUpdateRole} onAddUser={handleAddUser} />
               )
             case 'roles':
               return <RolesTab />

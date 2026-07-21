@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, Profile } from '../context/AuthContext'
 import { useLookups } from '../context/LookupContext'
-import { hasRole } from '../utils/roleHelper'
+import { hasRole, formatUserRolesText } from '../utils/roleHelper'
 import {
   FileText,
   UploadCloud,
@@ -67,6 +67,7 @@ export const Ethics: React.FC = () => {
   const [submissions, setSubmissions] = useState<EthicsSubmission[]>([])
   const [attachments, setAttachments] = useState<EthicsAttachment[]>([])
   const [reviewSubmissions, setReviewSubmissions] = useState<any[]>([])
+  const [expertProfiles, setExpertProfiles] = useState<Profile[]>([])
 
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
@@ -153,11 +154,21 @@ export const Ethics: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
+  const fetchExpertProfiles = async () => {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      if (error) throw error
+      const experts = ((data as Profile[]) || []).filter((p) => hasRole(p.role, 'expert'))
+      setExpertProfiles(experts)
+    } catch (err) { console.error(err) }
+  }
+
   useEffect(() => {
     fetchForms()
     fetchAttachments()
     fetchSubmissions()
     fetchReviewSubmissions()
+    fetchExpertProfiles()
   }, [user, profile])
 
   useEffect(() => {
@@ -544,7 +555,22 @@ export const Ethics: React.FC = () => {
                                   setReviewStatus(sub.status)
                                   const parsed = parseReviewerNotes(sub.reviewer_notes || '')
                                   setScores(parsed.scores)
-                                  setReviewNotes(parsed.comments)
+
+                                  let cleanComments = parsed.comments
+                                  const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
+                                  if (tagMatch) {
+                                    setReviewerRoleLabel(tagMatch[1])
+                                    cleanComments = cleanComments.replace(/^\[(.*?)\]\s*\n?/, '')
+                                  } else {
+                                    const currentIsExpert = hasRole(profile?.role, 'expert')
+                                    setReviewerRoleLabel(
+                                      currentIsExpert && profile?.email
+                                        ? profile.email
+                                        : (expertProfiles[0]?.email || 'ผู้ทรงคุณวุฒิท่านที่ 1')
+                                    )
+                                  }
+
+                                  setReviewNotes(cleanComments)
                                   setReviewModalOpen(true)
                                 }}
                                 className="px-3 py-1.5 h-auto rounded-lg text-[10px] font-bold hover:-translate-y-0.5"
@@ -758,18 +784,35 @@ export const Ethics: React.FC = () => {
                   <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
                   <Select
                     value={reviewerRoleLabel}
-                    onValueChange={(v) => setReviewerRoleLabel(v ?? 'ผู้ทรงคุณวุฒิท่านที่ 1')}
-                    items={[
-                      { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
-                      { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
-                    ]}
+                    onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
+                    items={
+                      expertProfiles.length > 0
+                        ? expertProfiles.map((p) => ({
+                            value: p.email,
+                            label: `${p.email} (${formatUserRolesText(p.role)})`
+                          }))
+                        : [
+                            { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
+                            { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
+                          ]
+                    }
                   >
                     <SelectTrigger className="w-full light-input">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
-                      <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
+                      {expertProfiles.length > 0 ? (
+                        expertProfiles.map((p) => (
+                          <SelectItem key={p.id} value={p.email}>
+                            {p.email} ({formatUserRolesText(p.role)})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
+                          <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
