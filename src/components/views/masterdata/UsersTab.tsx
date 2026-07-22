@@ -167,8 +167,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
 
       {/* Modal for adding user */}
       {isAddModalOpen && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-slate-800">เพิ่มผู้ใช้งานใหม่</h3>

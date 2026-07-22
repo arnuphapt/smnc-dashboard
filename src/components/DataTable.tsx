@@ -73,18 +73,16 @@ export function DataTable<T>({
   const pageRows = data.slice(start, start + pageSize)
 
   const headerRowStyle = headerVariant === 'navy'
-    ? { background: '#0B1D3A' }
-    : { background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }
-  const headerTextColor = headerVariant === 'navy' ? '#FFFFFF' : '#64748B'
+    ? { background: '#0F172A', color: '#FFFFFF' }
+    : { background: '#F2F8F7', borderBottom: '1px solid #CBD5E1', color: '#0F172A' }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E2EDF8' }}>
+    <div className="rounded-3xl overflow-hidden shadow-flip-card bg-white border border-[#E2E8F0]">
       <Table className="text-xs">
         <TableHeader>
           <TableRow className="border-b-0 hover:bg-transparent" style={headerRowStyle}>
             <TableHead
-              className="h-auto whitespace-normal p-4 font-extrabold uppercase text-[10px] tracking-wider text-center w-12"
-              style={{ color: headerTextColor }}
+              className="h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-center w-12 text-[#0F172A]"
             >
               ลำดับ
             </TableHead>
@@ -94,12 +92,11 @@ export function DataTable<T>({
                 <TableHead
                   key={col.key}
                   onClick={col.sortable ? () => onSortChange?.(col.key) : undefined}
-                  className={`h-auto whitespace-normal p-4 font-extrabold uppercase text-[10px] tracking-wider ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
-                  style={{ color: headerTextColor }}
+                  className={`h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
                 >
                   {col.header}
                   {col.sortable && (
-                    <span className={`ml-1 font-mono ${headerVariant === 'navy' && !isSorted ? 'text-white/50' : ''}`} style={headerVariant !== 'navy' ? { color: '#94A3B8' } : undefined}>
+                    <span className="ml-1 font-mono text-[#00796B]">
                       {isSorted ? (sortAsc ? '▲' : '▼') : '⇅'}
                     </span>
                   )}
@@ -108,27 +105,27 @@ export function DataTable<T>({
             })}
           </TableRow>
         </TableHeader>
-        <TableBody className="[&_tr:last-child]:border-0">
+        <TableBody className="[&_tr:last-child]:border-0 divide-y divide-[#E2E8F0]">
           {data.length === 0 ? (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={columns.length + 1} className="text-center py-14 text-slate-400">
+              <TableCell colSpan={columns.length + 1} className="text-center py-14 text-[#94A3B8]">
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="text-slate-300">
+                  <div className="text-[#94A3B8]">
                     {empty.icon}
                   </div>
-                  <p className="font-bold text-xs text-slate-600">{empty.title}</p>
-                  {empty.body && <p className="text-[11px] text-slate-400 font-medium">{empty.body}</p>}
+                  <p className="font-extrabold text-xs text-[#0F172A]">{empty.title}</p>
+                  {empty.body && <p className="text-[11px] text-[#64748B] font-medium">{empty.body}</p>}
                 </div>
               </TableCell>
             </TableRow>
           ) : (
             pageRows.map((row, idx) => (
-              <TableRow key={getRowKey(row)} className="border-b hover:bg-slate-50/60" style={{ borderColor: '#F1F5F9' }}>
-                <TableCell className="whitespace-normal p-4 text-center font-semibold" style={{ color: '#94A3B8' }}>
+              <TableRow key={getRowKey(row)} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+                <TableCell className="whitespace-normal p-4 text-center font-mono font-bold text-[#64748B]">
                   {start + idx + 1}
                 </TableCell>
                 {columns.map((col) => (
-                  <TableCell key={col.key} className={`whitespace-normal p-4 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
+                  <TableCell key={col.key} className={`whitespace-normal p-4 text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
                     {col.render(row)}
                   </TableCell>
                 ))}
@@ -140,10 +137,9 @@ export function DataTable<T>({
 
       {data.length > pageSize && (
         <div
-          className="flex items-center justify-between px-4 py-3"
-          style={{ borderTop: '1px solid #F1F5F9', background: '#FAFCFF' }}
+          className="flex items-center justify-between px-5 py-3 border-t border-[#E2F1F0] bg-[#F4FAF9]"
         >
-          <p className="text-[10px] font-semibold" style={{ color: '#94A3B8' }}>
+          <p className="text-[10px] font-mono font-bold text-[#6BAAA6]">
             แสดง {start + 1}–{Math.min(start + pageSize, data.length)} จาก {data.length} รายการ
           </p>
           <div className="flex items-center gap-1.5">
@@ -154,12 +150,11 @@ export function DataTable<T>({
               disabled={page === 1}
               size="icon-sm"
               variant="ghost"
-              className="rounded-lg"
-              style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0' }}
+              className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-[10px] font-bold px-1.5" style={{ color: '#0B1D3A' }}>
+            <span className="text-[10px] font-mono font-black px-2 text-[#1E8C86]">
               หน้า {page} / {totalPages}
             </span>
             <Button
@@ -169,10 +164,9 @@ export function DataTable<T>({
               disabled={page === totalPages}
               size="icon-sm"
               variant="ghost"
-              className="rounded-lg"
-              style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0' }}
+              className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>

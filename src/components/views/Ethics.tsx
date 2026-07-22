@@ -17,7 +17,11 @@ import {
   Clipboard,
   Briefcase,
   UserCheck,
-  Trash2
+  Trash2,
+  ShieldCheck,
+  FileCheck,
+  Download,
+  Sparkles
 } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
@@ -60,8 +64,8 @@ interface EthicsAttachment {
   file_type?: string
 }
 
-const inputBase = "w-full text-sm px-4 py-2.5 rounded-xl focus:outline-none transition-all duration-200"
-const inputSty = { border: '1.5px solid #CBD5E1', background: '#FAFCFF' }
+const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
+const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
 export const Ethics: React.FC = () => {
   const { user, profile } = useAuth()
@@ -85,7 +89,6 @@ export const Ethics: React.FC = () => {
   const [reviewStatus, setReviewStatus] = useState('กำลังตรวจ')
   const [reviewerRoleLabel, setReviewerRoleLabel] = useState('ผู้ทรงคุณวุฒิท่านที่ 1')
 
-  // Revision modal states
   const [revisionModalOpen, setRevisionModalOpen] = useState(false)
   const [selectedSubForRevision, setSelectedSubForRevision] = useState<any | null>(null)
   const [revisionFiles, setRevisionFiles] = useState<FileList | null>(null)
@@ -94,12 +97,10 @@ export const Ethics: React.FC = () => {
   const [revisionError, setRevisionError] = useState('')
   const [revisionSuccess, setRevisionSuccess] = useState('')
 
-  // Delete confirm modal states
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [subIdToDelete, setSubIdToDelete] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // Custom Alert Dialog States
   const [alertDialogOpen, setAlertDialogOpen] = useState(false)
   const [alertConfig, setAlertConfig] = useState<{ title: string; description: string; variant?: 'primary' | 'danger' | 'warning' } | null>(null)
 
@@ -108,7 +109,6 @@ export const Ethics: React.FC = () => {
     setAlertDialogOpen(true)
   }
 
-  // Expert review modal states
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [selectedSubForReview, setSelectedSubForReview] = useState<any | null>(null)
   const [scores, setScores] = useState<Record<string, 'pass' | 'fail' | 'na'>>({
@@ -216,7 +216,7 @@ export const Ethics: React.FC = () => {
           if (attachError) throw attachError
         }
       }
-      setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว! ติดตามสถานะได้ที่หัวข้อติดตามสถานะด้านล่าง')
+      setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว!')
       setTitle(''); setDesc(''); setFiles(null)
       const fileInput = document.getElementById('ethics-files') as HTMLInputElement
       if (fileInput) fileInput.value = ''
@@ -355,46 +355,106 @@ export const Ethics: React.FC = () => {
 
   const isReviewTabVisible = hasRole(profile?.role, 'expert') || hasRole(profile?.role, 'admin')
 
+  const pendingCount = submissions.filter(s => s.status === 'ยื่นแล้ว' || s.status === 'กำลังตรวจ').length
+  const approvedCount = submissions.filter(s => s.status === 'อนุมัติ').length
+
   return (
     <div className="flex-1 space-y-6 animate-fadeIn">
       <PageHeader
         title="จริยธรรมการวิจัย"
-        subtitle="Research Ethics — ยื่น ติดตาม และพิจารณาคำขอรับรองจริยธรรม"
-        extraBadge="Ethics Review System"
+        subtitle="Research Ethics — ยื่น ติดตาม และพิจารณาคำขอรับรองจริยธรรมการวิจัยในมนุษย์ (IRB)"
+        extraBadge="Ethics Review Board"
         recordCode="ETH-02"
       />
 
-      {/* SECTION: FORMS */}
+      {/* HERO SECTION: IRB MASTHEAD & STATS */}
       <ContentPanel>
-        <SectionHeader eyebrow="แบบฟอร์มทางการ" title="รายการแบบฟอร์มยื่นขอรับรองจริยธรรม" />
+        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-white border border-[#E2E8F0] shadow-flip-card space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-6">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F6F5] border border-[#BCE5E2] text-[#00796B] text-xs font-mono font-extrabold tracking-wide">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>HUMAN RESEARCH ETHICS BOARD (IRB)</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#0F172A] tracking-tight">
+                ศูนย์พิจารณาจริยธรรมการวิจัยในมนุษย์
+              </h2>
+            </div>
+            {user && (
+              <Button
+                onClick={handleOpenSubmitModal}
+                className="shrink-0 btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5"
+              >
+                <UploadCloud className="w-4 h-4 stroke-[2.5]" />
+                ยื่นโครงร่างวิจัยขอรับการพิจารณา
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-3 shadow-xs">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#0F172A] border border-[#E2E8F0] font-bold shadow-xs">
+                <Clipboard className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-[#64748B] uppercase block">คำขอทั้งหมดของฉัน</span>
+                <span className="text-xl font-mono font-black text-[#0F172A]">{submissions.length} รายการ</span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-3 shadow-xs">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#0F172A] border border-[#E2E8F0] font-bold shadow-xs">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-[#64748B] uppercase block">อยู่ระหว่างพิจารณา</span>
+                <span className="text-xl font-mono font-black text-[#0F172A]">{pendingCount} รายการ</span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] flex items-center gap-3 shadow-xs">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white text-[#0F172A] border border-[#E2E8F0] font-bold shadow-xs">
+                <FileCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-[#64748B] uppercase block">ผ่านการรับรองอนุมัติ</span>
+                <span className="text-xl font-mono font-black text-[#0F172A]">{approvedCount} รายการ</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ContentPanel>
+
+      {/* SECTION 1: FORMS GRID */}
+      <ContentPanel>
+        <SectionHeader eyebrow="แบบฟอร์มทางการ" title="ดาวน์โหลดแบบฟอร์มยื่นขอรับรองจริยธรรมการวิจัย" />
         <div className="mt-4">
           {forms.length === 0 ? (
             <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีแบบฟอร์มอัปโหลด" body="ติดต่องานวิจัยสถาบันเพื่อรับแบบฟอร์มทางอีเมล" dashed />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {forms.map((form) => (
                 <div
                   key={form.id}
-                  className="flex items-center justify-between p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
-                  style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#0F172A] transition duration-200 shadow-xs group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#0B1D3A' }}>
-                      <FileText className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-white border border-[#E2E8F0] text-[#00796B] shadow-xs">
+                      <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-xs truncate" style={{ color: '#0B1D3A' }} title={form.title}>{form.title}</p>
-                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#94A3B8' }}>แบบฟอร์มอย่างเป็นทางการ</p>
+                      <p className="font-extrabold text-xs truncate text-[#0F172A] group-hover:text-[#00796B] transition-colors" title={form.title}>{form.title}</p>
+                      <p className="text-[10px] font-mono font-bold text-[#64748B] mt-0.5">แบบฟอร์ม IRB ทางการ</p>
                     </div>
                   </div>
                   <a
                     href={form.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-3 shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 hover:-translate-y-0.5"
-                    style={{ background: '#FFFFFF', color: '#0B1D3A', border: '1px solid #DAEEFF' }}
+                    className="ml-3 shrink-0 btn-primary text-xs flex items-center gap-1.5 !py-1.5 !px-3"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" /> ดาวน์โหลด
+                    <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+                    ดาวน์โหลด
                   </a>
                 </div>
               ))}
@@ -403,69 +463,59 @@ export const Ethics: React.FC = () => {
         </div>
       </ContentPanel>
 
-      {/* SECTION: STATUS */}
+      {/* SECTION 2: MY SUBMISSIONS TABLE */}
       <ContentPanel>
-        <div className="flex items-start justify-between gap-3">
-          <SectionHeader eyebrow="ของฉัน" title="ติดตามสถานะคำขอ" />
-          {user && (
-            <Button
-              onClick={handleOpenSubmitModal}
-              className="shrink-0 h-auto py-2 px-4 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer text-white"
-              style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              ยื่นคำขอรับการพิจารณา
-            </Button>
-          )}
+        <div className="flex items-center justify-between gap-3">
+          <SectionHeader eyebrow="รายการยื่นของฉัน" title="ติดตามสถานะคำขอรับการพิจารณาจริยธรรม" />
         </div>
         <div className="mt-4">
           {!user ? (
             <EmptyState icon={<Clock className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อติดตามสถานะ" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนดูประวัติคำขอ" dashed />
           ) : submissions.length === 0 ? (
-            <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีประวัติการยื่นคำขอ" />
+            <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีประวัติการยื่นคำขอ" body="คลิกปุ่ม 'ยื่นโครงร่างวิจัยขอรับการพิจารณา' ด้านบนเพื่อส่งเอกสารครั้งแรก" />
           ) : (
-            <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #E8F0F8' }}>
+            <div className="overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
+                  <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
                     {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น', 'จัดการ'].map(h => (
-                      <th key={h} className="py-3 px-4 font-extrabold uppercase text-[11px] tracking-wider text-slate-500">{h}</th>
+                      <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ borderColor: '#E8F0F8' }}>
+                <tbody className="divide-y divide-[#E2E8F0]">
                   {submissions.map((sub) => {
                     const subAttach = attachments.filter(a => a.submission_id === sub.id)
                     return (
-                      <tr key={sub.id} className="transition-colors hover:bg-blue-50/30">
-                        <td className="py-3 px-4">
-                          <div className="text-xs font-bold text-[#0B1D3A]">{sub.project_title}</div>
-                          {sub.project_description && <p className="text-[11px] font-medium text-slate-500 mt-0.5">{sub.project_description}</p>}
+                      <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
+                        <td className="py-3.5 px-4">
+                          <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
+                          {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4">
                           <div className="flex flex-col gap-1.5 max-w-[180px]">
                             {subAttach.map((at) => (
-                              <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0EA5A0] hover:underline truncate cursor-pointer" title={at.file_name}>
+                              <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors truncate cursor-pointer shadow-xs max-w-full" title={at.file_name}>
                                 <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
                               </button>
                             ))}
                           </div>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap"><StatusBadge status={sub.status} size="sm" /></td>
-                        <td className="py-3 px-4 max-w-[200px]">
-                          <div className="text-xs font-medium italic text-slate-600 truncate" title={sub.reviewer_notes}>
+                        <td className="py-3.5 px-4 whitespace-nowrap"><StatusBadge status={sub.status} size="sm" /></td>
+                        <td className="py-3.5 px-4 max-w-[200px]">
+                          <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
                             {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-xs font-semibold text-slate-500 whitespace-nowrap">{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-3.5 px-4 text-xs font-mono font-bold text-[#64748B] whitespace-nowrap">{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
+                        <td className="py-3.5 px-4">
                           <div className="flex flex-col sm:flex-row gap-1.5">
                             {sub.reviewer_notes && (
                               <button
                                 onClick={() => handleExportClick(sub)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all duration-200 shadow-2xs cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
                               >
-                                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                                <ExternalLink className="w-3.5 h-3.5" />
                                 รายงานผล
                               </button>
                             )}
@@ -473,17 +523,16 @@ export const Ethics: React.FC = () => {
                             {sub.status === 'รอแก้ไข' && (
                               <button
                                 onClick={() => handleOpenRevisionModal(sub)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-2xs cursor-pointer"
-                                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                                className="btn-gold text-xs flex items-center gap-1.5 !py-1.5 !px-3"
                               >
-                                <UploadCloud className="w-3.5 h-3.5" />
+                                <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
                                 ส่งเล่มปรับปรุง
                               </button>
                             )}
 
                             <button
                               onClick={() => handleDeleteSubmission(sub.id)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-all duration-200 shadow-2xs cursor-pointer"
+                              className="btn-coral text-xs flex items-center gap-1.5 !py-1.5 !px-3"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               ลบคำขอ
@@ -499,57 +548,57 @@ export const Ethics: React.FC = () => {
           )}
         </div>
       </ContentPanel>
- 
-      {/* SECTION: REVIEW (EXPERT/ADMIN ONLY) */}
+
+      {/* SECTION 3: REVIEW COMMITTEE QUEUE (EXPERT/ADMIN ONLY) */}
       {isReviewTabVisible && (
         <ContentPanel>
-          <div className="flex items-center gap-2">
-            <SectionHeader eyebrow="คิวงานพิจารณา" title="กล่องงานพิจารณาจริยธรรมของคุณ" />
-            <Briefcase className="w-5 h-5 ml-auto" style={{ color: '#7E22CE' }} />
+          <div className="flex items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3 mb-4">
+            <SectionHeader eyebrow="คิวพิจารณาจริยธรรม" title="กล่องงานพิจารณาโครงร่างวิจัย (สำหรับคณะกรรมการ & ผู้ทรงคุณวุฒิ)" />
+            <Briefcase className="w-5 h-5 text-[#00796B] shrink-0" />
           </div>
           <div className="mt-4">
             {reviewSubmissions.length === 0 ? (
               <EmptyState icon={<UserCheck className="w-10 h-10 stroke-[1.5]" />} title="ไม่มีรายการในคิวขณะนี้" body="เมื่อแอดมินมอบหมายงาน รายการจะปรากฏที่นี่" dashed />
             ) : (
-              <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #E8F0F8' }}>
+              <div className="overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
                 <table className="w-full text-xs text-left">
                   <thead>
-                    <tr style={{ background: '#F0F7FF', borderBottom: '1px solid #DAEEFF' }}>
+                    <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
                       {['โครงร่างวิจัย / เอกสาร', 'ผู้ยื่นคำขอ', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
-                        <th key={h} className="py-3 px-4 font-extrabold uppercase text-[11px] tracking-wider text-slate-500">{h}</th>
+                        <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y bg-white" style={{ borderColor: '#E8F0F8' }}>
+                  <tbody className="divide-y divide-[#E2E8F0] bg-white">
                     {reviewSubmissions.map((sub) => {
                       const subAttach = attachments.filter(a => a.submission_id === sub.id)
                       return (
-                        <tr key={sub.id} className="transition-colors hover:bg-blue-50/30">
-                          <td className="py-3 px-4 max-w-[280px]">
-                            <div className="text-xs font-bold text-[#0B1D3A]">{sub.project_title}</div>
-                            {sub.project_description && <p className="text-[11px] font-medium text-slate-500 mt-0.5">{sub.project_description}</p>}
+                        <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
+                          <td className="py-3.5 px-4 max-w-[280px]">
+                            <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
+                            {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
                             {subAttach.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {subAttach.map((at) => (
-                                  <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-[#0EA5A0] bg-teal-50/60 border border-teal-100 hover:underline cursor-pointer transition-colors truncate max-w-full" title={at.file_name}>
+                                  <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] cursor-pointer transition-colors truncate shadow-xs max-w-full" title={at.file_name}>
                                     <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
                                   </button>
                                 ))}
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-xs font-bold text-[#0B1D3A]">
+                          <td className="py-3.5 px-4 text-xs font-extrabold text-[#0F172A]">
                             {sub.profiles?.email || 'ไม่ระบุผู้ยื่น'}
                           </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3.5 px-4 whitespace-nowrap">
                             <StatusBadge status={sub.status} size="sm" />
                           </td>
-                          <td className="py-3 px-4 max-w-[200px]">
-                            <div className="text-xs font-medium italic text-slate-600 truncate" title={sub.reviewer_notes}>
+                          <td className="py-3.5 px-4 max-w-[200px]">
+                            <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
                               {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             <div className="flex gap-1.5 justify-center">
                               <Button
                                 onClick={() => {
@@ -575,7 +624,7 @@ export const Ethics: React.FC = () => {
                                   setReviewNotes(cleanComments)
                                   setReviewModalOpen(true)
                                 }}
-                                className="px-3 py-1 h-auto rounded-xl text-xs font-bold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-all duration-200 shadow-2xs cursor-pointer"
+                                className="px-3.5 py-1.5 h-auto rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
                               >
                                 พิจารณาผล
                               </Button>
@@ -583,9 +632,9 @@ export const Ethics: React.FC = () => {
                               {sub.reviewer_notes && (
                                 <button
                                   onClick={() => handleExportClick(sub)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all duration-200 shadow-2xs cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#E0F2FE] transition cursor-pointer shadow-xs"
                                 >
-                                  <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                                  <ExternalLink className="w-3.5 h-3.5 text-[#00796B]" />
                                   พิมพ์รายงาน
                                 </button>
                               )}
@@ -602,12 +651,12 @@ export const Ethics: React.FC = () => {
         </ContentPanel>
       )}
 
-      {/* MODAL: submit a new Ethics submission */}
+      {/* MODAL: SUBMIT NEW PROPOSAL */}
       <Dialog open={submitModalOpen} onOpenChange={setSubmitModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>ยื่นคำขอ</p>
-            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>ยื่นโครงร่างวิจัยขอรับการพิจารณาจริยธรรม</DialogTitle>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2F1F0] bg-[#F4FAF9]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#2BA8A2]">ยื่นคำขอ IRB</p>
+            <DialogTitle className="header-display text-lg font-black text-[#1E8C86]">ยื่นโครงร่างวิจัยขอรับการพิจารณาจริยธรรม</DialogTitle>
           </DialogHeader>
 
           <div className="px-6 py-5">
@@ -615,40 +664,39 @@ export const Ethics: React.FC = () => {
               <EmptyState icon={<UploadCloud className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อยื่นเอกสาร" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนอัปโหลดไฟล์และยื่นโครงร่างวิจัย" dashed />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-xs font-medium" style={{ color: '#64748B' }}>แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
+                <p className="text-xs font-semibold text-[#6BAAA6]">แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
 
                 {formError && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-extrabold bg-[#FFF0ED] text-[#EF6C4A] border border-[#FF8A6A]">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
                   </div>
                 )}
                 {formSuccess && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-extrabold bg-[#EBFBEE] text-[#27AE60] border border-[#A3E2B6]">
                     <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {formSuccess}
                   </div>
                 )}
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อโครงร่างวิจัย *</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ชื่อโครงร่างวิจัย *</label>
                     <Input type="text" required placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..." value={title} onChange={(e) => setTitle(e.target.value)} className={inputBase} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดสรุปย่อ</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">รายละเอียดสรุปย่อ</label>
                     <Textarea rows={3} placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..." value={desc} onChange={(e) => setDesc(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>อัปโหลดเอกสารประกอบ * <span className="font-normal" style={{ color: '#94A3B8' }}>(เลือกได้หลายไฟล์)</span></label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">อัปโหลดเอกสารประกอบ * <span className="font-normal text-[#6BAAA6]">(เลือกได้หลายไฟล์)</span></label>
                     <Input type="file" id="ethics-files" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                    <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                    <p className="text-[10px] mt-1 text-[#6BAAA6] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 h-auto rounded-xl text-sm font-bold disabled:opacity-50 mt-2"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                  className="w-full py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 mt-2 btn-gold"
                 >
                   {isSubmitting ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
                 </Button>
@@ -658,12 +706,12 @@ export const Ethics: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: Researcher submits revised proposal documents */}
+      {/* MODAL: SUBMIT REVISED PROPOSAL */}
       <Dialog open={revisionModalOpen} onOpenChange={setRevisionModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>แก้ไขส่งปรับปรุง</p>
-            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2F1F0] bg-[#F4FAF9]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#2BA8A2]">แก้ไขส่งปรับปรุง</p>
+            <DialogTitle className="header-display text-lg font-black text-[#1E8C86]">
               ส่งเล่มโครงร่างวิจัยฉบับแก้ไข
             </DialogTitle>
           </DialogHeader>
@@ -671,42 +719,41 @@ export const Ethics: React.FC = () => {
           <div className="px-6 py-5">
             {selectedSubForRevision && (
               <form onSubmit={handleSubmitRevision} className="space-y-4">
-                <p className="text-xs font-medium text-slate-500">
+                <p className="text-xs font-semibold text-[#6BAAA6]">
                   อัปโหลดไฟล์เล่มเสนอแนะปรับปรุง หรือเอกสารเพิ่มเติมตามคำแนะนำของผู้ทรงคุณวุฒิ
                 </p>
 
                 {revisionError && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-extrabold bg-[#FFF0ED] text-[#EF6C4A] border border-[#FF8A6A]">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {revisionError}
                   </div>
                 )}
                 {revisionSuccess && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-extrabold bg-[#EBFBEE] text-[#27AE60] border border-[#A3E2B6]">
                     <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {revisionSuccess}
                   </div>
                 )}
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ชื่อโครงร่างวิจัย</label>
-                    <Input type="text" disabled value={selectedSubForRevision.project_title} className="w-full text-xs px-4 py-2.5 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed" style={inputSty} />
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ชื่อโครงร่างวิจัย</label>
+                    <Input type="text" disabled value={selectedSubForRevision.project_title} className="w-full text-xs px-4 py-2.5 rounded-2xl bg-[#E8F6F5] text-[#6BAAA6] cursor-not-allowed" style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>บันทึกแจ้งการแก้ไข / สรุปรายการแก้ *</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">บันทึกแจ้งการแก้ไข / สรุปรายการแก้ *</label>
                     <Textarea rows={3} required placeholder="ระบุรายการจุดที่ปรับแก้ เช่น แก้แบบชี้แจงยินยอมฉบับที่ 2 แล้ว..." value={revisionNotes} onChange={(e) => setRevisionNotes(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>อัปโหลดเอกสารปรับปรุง * <span className="font-normal text-slate-400">(เลือกได้หลายไฟล์)</span></label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">อัปโหลดเอกสารปรับปรุง * <span className="font-normal text-[#6BAAA6]">(เลือกได้หลายไฟล์)</span></label>
                     <Input type="file" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setRevisionFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                    <p className="text-[10px] mt-1 text-slate-400">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                    <p className="text-[10px] mt-1 text-[#6BAAA6] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={revisionSubmitting}
-                  className="w-full py-2.5 h-auto rounded-xl text-xs font-bold disabled:opacity-50 mt-2"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold disabled:opacity-50 mt-2 btn-gold"
                 >
                   {revisionSubmitting ? 'กำลังอัปโหลดเอกสารแก้ไข...' : 'ยืนยันส่งเอกสารปรับปรุง →'}
                 </Button>
@@ -716,12 +763,12 @@ export const Ethics: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: Expert review evaluation checklist scorecard */}
+      {/* MODAL: EXPERT EVALUATION SCORECARD */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#7E22CE' }}>พิจารณาข้อเสนอ</p>
-            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2F1F0] bg-[#F4FAF9]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#2BA8A2]">พิจารณาข้อเสนอ</p>
+            <DialogTitle className="header-display text-lg font-black text-[#1E8C86]">
               ประเมินจริยธรรมโครงร่างวิจัย
             </DialogTitle>
           </DialogHeader>
@@ -730,16 +777,15 @@ export const Ethics: React.FC = () => {
             {selectedSubForReview && (
               <>
                 <div>
-                  <div className="text-xs font-bold text-slate-400">ชื่อโครงร่างวิจัย</div>
-                  <div className="text-sm font-bold mt-0.5" style={{ color: '#0B1D3A' }}>
+                  <div className="text-xs font-extrabold text-[#6BAAA6]">ชื่อโครงร่างวิจัย</div>
+                  <div className="text-sm font-black mt-0.5 text-[#1E8C86]">
                     {selectedSubForReview.project_title}
                   </div>
                 </div>
 
-                {/* Dynamic Criteria List */}
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold" style={{ color: '#0B1D3A' }}>ผลประเมินตามรายเกณฑ์</label>
-                  <div className="space-y-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                  <label className="block text-xs font-extrabold text-[#1E8C86]">ผลประเมินตามรายเกณฑ์</label>
+                  <div className="space-y-3 bg-[#FFF8E7] border border-[#F3E5C8] p-3.5 rounded-2xl">
                     {(() => {
                       const criteriaOptions = getOptionsByCategory('ethics_criteria')
                       const activeCriteria = criteriaOptions.length > 0
@@ -751,14 +797,14 @@ export const Ethics: React.FC = () => {
 
                       return activeCriteria.map((criterion) => (
                         <div key={criterion.key} className="space-y-1">
-                          <div className="text-[10px] font-bold text-slate-700 leading-snug">{criterion.label}</div>
-                          <div className="grid grid-cols-3 gap-1 bg-slate-200/50 p-0.5 rounded-lg">
+                          <div className="text-[10px] font-extrabold text-[#1E8C86] leading-snug">{criterion.label}</div>
+                          <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-[#E2F1F0]">
                             {[
-                              { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-emerald-500 peer-checked:text-white text-emerald-700' },
-                              { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-amber-500 peer-checked:text-white text-amber-700' },
-                              { val: 'na', label: 'N/A', color: 'peer-checked:bg-slate-400 peer-checked:text-white text-slate-600' }
+                              { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-[#27AE60] peer-checked:text-white text-[#27AE60]' },
+                              { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-[#FFD23F] peer-checked:text-[#1E8C86] text-[#D48806]' },
+                              { val: 'na', label: 'N/A', color: 'peer-checked:bg-[#6BAAA6] peer-checked:text-white text-[#6BAAA6]' }
                             ].map(opt => (
-                              <label key={opt.val} className="cursor-pointer text-[10px] font-bold text-center">
+                              <label key={opt.val} className="cursor-pointer text-[10px] font-black text-center">
                                 <input
                                   type="radio"
                                   name={`expert-score-${criterion.key}`}
@@ -767,7 +813,7 @@ export const Ethics: React.FC = () => {
                                   onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
                                   className="sr-only peer"
                                 />
-                                <div className={`py-1 rounded-md transition peer-checked:shadow-sm ${opt.color} hover:bg-slate-200/30`}>
+                                <div className={`py-1 rounded-lg transition peer-checked:shadow-xs ${opt.color} hover:bg-[#E8F6F5]`}>
                                   {opt.label}
                                 </div>
                               </label>
@@ -779,9 +825,8 @@ export const Ethics: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Reviewer Tag Selector */}
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
                   <Select
                     value={reviewerRoleLabel}
                     onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
@@ -797,10 +842,10 @@ export const Ethics: React.FC = () => {
                           ]
                     }
                   >
-                    <SelectTrigger className="w-full light-input">
+                    <SelectTrigger className="w-full bg-[#FFF8E7] border border-[#F3E5C8] text-[#1E8C86] rounded-2xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-2xl">
                       {expertProfiles.length > 0 ? (
                         expertProfiles.map((p) => (
                           <SelectItem key={p.id} value={p.email}>
@@ -818,16 +863,16 @@ export const Ethics: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>สถานะผลประเมิน</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">สถานะผลประเมิน</label>
                   <Select
                     value={reviewStatus}
                     onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
                     items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
                   >
-                    <SelectTrigger className="w-full light-input">
+                    <SelectTrigger className="w-full bg-[#FFF8E7] border border-[#F3E5C8] text-[#1E8C86] rounded-2xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-2xl">
                       <SelectItem value="กำลังตรวจ">กำลังตรวจ</SelectItem>
                       <SelectItem value="รอแก้ไข">รอแก้ไข (ให้ปรับปรุงเล่ม)</SelectItem>
                       <SelectItem value="อนุมัติ">อนุมัติ</SelectItem>
@@ -837,7 +882,7 @@ export const Ethics: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
                   <Textarea
                     rows={3}
                     value={reviewNotes}
@@ -855,8 +900,7 @@ export const Ethics: React.FC = () => {
                     handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
                     setReviewModalOpen(false)
                   }}
-                  className="w-full py-2.5 h-auto rounded-xl text-xs font-bold mt-2"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold mt-2 btn-gold"
                 >
                   บันทึกผลการประเมิน
                 </Button>

@@ -184,18 +184,18 @@ const EXACT_STATUS_MAP: Record<string, StatusConfig> = {
 }
 
 const TONE_STYLE: Record<Tone, { bg: string; color: string; border: string }> = {
-  submitted: { bg: '#F0F9FF', color: '#0284C7', border: '#BAE6FD' },       // Sky Blue
-  reviewing: { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },       // Violet
-  action_required: { bg: '#FFF7ED', color: '#C2410C', border: '#FFEDD5' }, // Orange
-  pending: { bg: '#FFFBEB', color: '#B45309', border: '#FDE68A' },         // Amber
-  success: { bg: '#ECFDF5', color: '#047857', border: '#A7F3D0' },         // Emerald Green
-  danger: { bg: '#FFF1F2', color: '#BE123C', border: '#FECDD3' },          // Rose Red
-  navy: { bg: '#0B1D3A', color: '#FFFFFF', border: '#1A3A5C' },            // Midnight Navy
-  cyan: { bg: '#ECFEFF', color: '#0891B2', border: '#A5F3FC' },            // Cyan
-  teal: { bg: '#F0FDFA', color: '#0F766E', border: '#99F6E4' },            // Teal
-  indigo: { bg: '#EEF2FF', color: '#4338CA', border: '#C7D2FE' },          // Indigo
-  purple: { bg: '#FAF5FF', color: '#7E22CE', border: '#E9D5FF' },          // Purple
-  slate: { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0' },           // Slate Gray
+  submitted: { bg: '#E0F2FE', color: '#0284C7', border: '#BAE6FD' },       // Sky Blue
+  reviewing: { bg: '#F3E8FF', color: '#7C3AED', border: '#DDD6FE' },       // Purple
+  action_required: { bg: '#FFF8E7', color: '#D97706', border: '#FCD34D' },   // Orange
+  pending: { bg: '#FFF8E7', color: '#D97706', border: '#FCD34D' },           // Soft Gold
+  success: { bg: '#E8F6F5', color: '#00796B', border: '#BCE5E2' },           // Success Mint Teal
+  danger: { bg: '#FFE4E6', color: '#E11D48', border: '#FECDD3' },            // Coral Red
+  navy: { bg: '#0F172A', color: '#FFFFFF', border: '#334155' },              // Slate Black
+  cyan: { bg: '#E0F2FE', color: '#0284C7', border: '#BAE6FD' },              // Cyan
+  teal: { bg: '#E8F6F5', color: '#00796B', border: '#BCE5E2' },              // Teal
+  indigo: { bg: '#E0E7FF', color: '#4F46E5', border: '#C7D2FE' },            // Indigo
+  purple: { bg: '#F3E8FF', color: '#7C3AED', border: '#DDD6FE' },            // Purple
+  slate: { bg: '#F1F5F9', color: '#475569', border: '#CBD5E1' },             // Slate
 }
 
 // Intelligent keyword resolution engine for any string value
@@ -335,7 +335,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         borderColor: style.border
       }}
     >
-      {renderIcon(status, resolved.tone, iconSizeClass, resolved.iconKey)}
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
       <span>{customLabel || resolved.label}</span>
     </Badge>
   )
@@ -344,5 +344,5 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 export const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
   const resolved = resolveStatusConfig(status)
   const style = TONE_STYLE[resolved.tone]
-  return <span style={{ color: style.color }}>{renderIcon(status, resolved.tone, 'w-4 h-4', resolved.iconKey)}</span>
+  return <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: style.color }} />
 }

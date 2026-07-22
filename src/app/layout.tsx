@@ -16,7 +16,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="min-h-screen bg-slate-50 antialiased">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&family=Noto+Serif+Thai:wght@600;700&family=Sarabun:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen bg-[#EFF8F7] text-[#1E8C86] antialiased selection:bg-[#FFD23F] selection:text-[#1E8C86]">
         <QueryProvider>
           <AuthProvider>
             <MasterProvider>

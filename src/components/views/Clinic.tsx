@@ -187,7 +187,7 @@ export const Clinic: React.FC = () => {
   const renderCalendarCells = () => {
     const cells: React.ReactNode[] = []
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`e-${i}`} className="min-h-[76px]" style={{ background: '#FAFCFF', borderRight: '1px solid #E8F0F8', borderBottom: '1px solid #E8F0F8' }} />)
+      cells.push(<div key={`e-${i}`} className="min-h-[76px] bg-[#F4FAF9] border-r border-b border-[#E2F1F0]" />)
     }
     for (let day = 1; day <= daysInMonth; day++) {
       const year = currentDate.getFullYear()
@@ -204,20 +204,14 @@ export const Clinic: React.FC = () => {
         <button
           key={`d-${day}`}
           onClick={() => handleDayClick(day)}
-          className="group min-h-[76px] flex flex-col p-2 text-left cursor-pointer transition-colors duration-150"
-          style={{
-            background: isToday ? '#EFF6FF' : '#FFFFFF',
-            borderRight: '1px solid #E8F0F8',
-            borderBottom: '1px solid #E8F0F8',
-          }}
-          onMouseEnter={(e) => { if (!isToday) e.currentTarget.style.background = '#F0F7FF' }}
-          onMouseLeave={(e) => { if (!isToday) e.currentTarget.style.background = '#FFFFFF' }}
+          className={`group min-h-[76px] flex flex-col p-2 text-left cursor-pointer transition-colors duration-150 border-r border-b border-[#E2E8F0] ${
+            isToday ? 'bg-[#FFF8E7]' : 'bg-white hover:bg-[#F2F8F7]'
+          }`}
         >
           <span
             className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors duration-150 ${
-              isToday ? '' : 'text-slate-800 group-hover:bg-[#0EA5A0] group-hover:text-white'
+              isToday ? 'bg-[#0F172A] text-white font-extrabold shadow-xs' : 'text-[#0F172A] group-hover:bg-[#0F172A] group-hover:text-white'
             }`}
-            style={isToday ? { background: '#0B1D3A', color: '#FFFFFF' } : undefined}
           >
             {day}
           </span>
@@ -226,14 +220,13 @@ export const Clinic: React.FC = () => {
               {dayEvents.slice(0, 2).map((ev, idx) => (
                 <div
                   key={idx}
-                  className="text-[9px] px-1.5 py-0.5 rounded font-semibold truncate"
-                  style={{ background: '#0EA5A0', color: '#FFFFFF' }}
+                  className="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold truncate bg-[#00796B] text-white shadow-xs"
                 >
                   {ev.title}
                 </div>
               ))}
               {dayEvents.length > 2 && (
-                <div className="text-[8px] font-bold" style={{ color: '#0EA5A0' }}>+{dayEvents.length - 2}</div>
+                <div className="text-[8px] font-mono font-bold text-[#00796B]">+{dayEvents.length - 2}</div>
               )}
             </div>
           )}
@@ -257,35 +250,31 @@ export const Clinic: React.FC = () => {
 
       {/* SECTION: INFO */}
       <ContentPanel>
-        {/* HERO BANNER FOR ABOUT CLINIC */}
-        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-[#0B1D3A] via-[#1A3A5C] to-[#0EA5A0]/90 text-white shadow-xl">
-          {/* Ambient Background Decorative Glow */}
-          <div className="absolute -top-16 -right-16 w-72 h-72 bg-[#0EA5A0]/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-
+        {/* HERO BANNER FOR ABOUT CLINIC (Light Bright Tone) */}
+        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-[#F0FDF4] via-[#F2F8F7] to-[#F0F7FF] border border-[#D1E5E3] text-[#0F172A] shadow-flip-card">
           <div className="relative z-10 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D1E5E3] pb-6">
               <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-xs font-extrabold tracking-wide">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FFF8E7] text-[#D97706] border border-[#FCD34D] text-xs font-mono font-black tracking-wide shadow-xs">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>SMNC RESEARCH SUPPORT CENTER</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#0F172A] tracking-tight">
                   เกี่ยวกับคลินิกวิจัย
                 </h2>
               </div>
-              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/15 text-xs text-slate-100 shadow-inner">
-                <div className="p-2 rounded-xl bg-[#0EA5A0]/30 text-teal-200">
+              <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full border border-[#E2E8F0] text-xs shadow-xs">
+                <div className="p-2 rounded-full bg-[#FFF8E7] text-[#D97706] font-black">
                   <Headphones className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-white">บริการให้คำปรึกษาแบบ 1-on-1</div>
-                  <div className="text-[11px] text-teal-200/80">โดยอาจารย์และผู้เชี่ยวชาญ คณะพยาบาลศาสตร์</div>
+                  <div className="font-extrabold text-[#0F172A]">บริการให้คำปรึกษาแบบ 1-on-1</div>
+                  <div className="text-[11px] text-[#64748B] font-semibold">โดยอาจารย์และผู้เชี่ยวชาญ คณะพยาบาลศาสตร์</div>
                 </div>
               </div>
             </div>
 
-            <p className="text-sm sm:text-base font-normal leading-relaxed text-slate-100 whitespace-pre-line max-w-4xl">
+            <p className="text-sm sm:text-base font-semibold leading-relaxed text-[#334155] whitespace-pre-line max-w-4xl">
               {clinicDesc}
             </p>
 
@@ -298,8 +287,8 @@ export const Clinic: React.FC = () => {
                 'เตรียมต้นฉบับเพื่อตีพิมพ์',
                 'สืบค้นวารสารตรงสาขา'
               ].map((badge) => (
-                <span key={badge} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs font-semibold text-teal-100 hover:bg-white/20 transition-all">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+                <span key={badge} className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white border border-[#D1E5E3] text-xs font-extrabold text-[#0F172A] hover:bg-[#F2F8F7] transition-all shadow-2xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#00796B] shrink-0" />
                   {badge}
                 </span>
               ))}
@@ -311,8 +300,8 @@ export const Clinic: React.FC = () => {
         <div className="mt-8 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-[#0EA5A0]">Service Categories</p>
-              <h3 className="text-lg font-bold text-[#0B1D3A]">ขอบเขตบริการให้คำปรึกษา</h3>
+              <p className="text-[11px] font-mono font-black uppercase tracking-widest text-[#00796B]">Service Categories</p>
+              <h3 className="text-lg font-black text-[#0F172A]">ขอบเขตบริการให้คำปรึกษา</h3>
             </div>
           </div>
 
@@ -323,62 +312,57 @@ export const Clinic: React.FC = () => {
                 title: 'ออกแบบและระเบียบวิธีวิจัย',
                 subtitle: 'Research Methodology',
                 desc: 'การตั้งสมมติฐาน เลือกประชากรกลุ่มตัวอย่าง และออกแบบเครื่องมือวิจัยให้สอดคล้องตามมาตรฐานสากล',
-                color: 'from-teal-500/10 to-emerald-500/5',
-                borderColor: 'border-teal-200/80 hover:border-[#0EA5A0]',
-                iconBg: 'bg-teal-500/15 text-[#0EA5A0]'
+                borderColor: 'border-[#E2F1F0] hover:border-[#2BA8A2]',
+                iconBg: 'bg-[#E8F6F5] text-[#2BA8A2]'
               },
               {
                 icon: BarChart3,
                 title: 'วิเคราะห์ข้อมูลและสถิติ',
                 subtitle: 'Data & Statistical Analysis',
                 desc: 'แนะนำสถิติพื้นฐาน สถิติขั้นสูง โปรแกรมประมวลผลข้อมูล (SPSS, R, jamovi) และการแปลผลการวิจัย',
-                color: 'from-blue-500/10 to-indigo-500/5',
-                borderColor: 'border-blue-200/80 hover:border-blue-500',
-                iconBg: 'bg-blue-500/15 text-blue-600'
+                borderColor: 'border-[#E2F1F0] hover:border-[#FFD23F]',
+                iconBg: 'bg-[#FFF8E7] text-[#D48806]'
               },
               {
                 icon: ShieldCheck,
                 title: 'จริยธรรม & ทรัพย์สินทางปัญญา',
                 subtitle: 'Research Ethics & IP',
                 desc: 'ขั้นตอนตรวจสอบ แก้ไขแบบฟอร์มยื่นจริยธรรมการวิจัยในมนุษย์ (IRB) และการคุ้มครองทรัพย์สินทางปัญญา',
-                color: 'from-purple-500/10 to-pink-500/5',
-                borderColor: 'border-purple-200/80 hover:border-purple-500',
-                iconBg: 'bg-purple-500/15 text-purple-600'
+                borderColor: 'border-[#E2F1F0] hover:border-[#5DADE2]',
+                iconBg: 'bg-[#EBF7FC] text-[#5DADE2]'
               },
             ].map((s) => {
               const IconComp = s.icon
               return (
                 <div
                   key={s.title}
-                  className={`group relative p-6 rounded-2xl bg-white border ${s.borderColor} shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden`}
+                  className={`group relative p-6 rounded-3xl bg-white border ${s.borderColor} shadow-flip-card hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden`}
                 >
-                  <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${s.color} rounded-bl-full pointer-events-none transition-all group-hover:scale-110`} />
-                  
                   <div className="relative z-10 space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className={`w-12 h-12 rounded-2xl ${s.iconBg} flex items-center justify-center shadow-inner font-bold`}>
+                      <div className={`w-12 h-12 rounded-2xl ${s.iconBg} flex items-center justify-center font-bold shadow-xs`}>
                         <IconComp className="w-6 h-6 stroke-[2]" />
                       </div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-[#0EA5A0] transition-colors">
+                      <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#6BAAA6]">
                         SMNC Service
                       </span>
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-base text-[#0B1D3A] group-hover:text-[#0EA5A0] transition-colors">
+                      <h4 className="font-extrabold text-base text-[#0F172A] group-hover:text-[#00796B] transition-colors">
                         {s.title}
                       </h4>
-                      <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                      <p className="text-[11px] font-bold text-[#64748B] mt-0.5">
                         {s.subtitle}
                       </p>
                     </div>
 
-                    <p className="text-xs leading-relaxed text-slate-600">
+                    <p className="text-xs leading-relaxed text-[#475569] font-semibold">
                       {s.desc}
                     </p>
                   </div>
 
-                  <div className="relative z-10 pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#0EA5A0]">
+                  <div className="relative z-10 pt-4 mt-4 border-t border-[#E2E8F0] flex items-center justify-between text-xs font-extrabold text-[#00796B]">
                     <span>จองคิวรับคำปรึกษา</span>
                     <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                   </div>

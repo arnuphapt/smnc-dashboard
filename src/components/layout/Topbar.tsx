@@ -14,34 +14,47 @@ import {
   Calendar,
   Clipboard,
   Award,
+  Bell,
+  HelpCircle,
+  Search
 } from 'lucide-react'
 
 export const Topbar: React.FC = () => {
   const { user, profile, signOut } = useAuth()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
-  const getRoleBadgeColor = (role?: string) => {
-    if (role === 'admin') return 'bg-red-50 text-red-700 border border-red-200/60'
-    if (role === 'expert') return 'bg-purple-50 text-purple-700 border border-purple-200/60'
-    return 'bg-teal-50 text-teal-700 border border-teal-200/60'
-  }
-
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-3">
-        <h1 className="text-sm font-extrabold text-slate-800">ระบบบริหารจัดการงานวิจัยและนวัตกรรม</h1>
+    <header className="h-16 bg-white border-b border-[#E2E8F0] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+      {/* Search Input (Neutral High-Contrast Slate Black) */}
+      <div className="flex items-center gap-3 flex-1 max-w-md">
+        <div className="relative w-full">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+          <input
+            type="text"
+            placeholder="ค้นหาข้อมูล คลังผลงาน หรือเอกสาร..."
+            className="w-full pl-10 pr-4 py-2 rounded-full text-xs font-semibold bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0F172A] transition"
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Right controls */}
+      <div className="flex items-center gap-4">
+        <button type="button" className="p-2 rounded-full text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition cursor-pointer" title="การแจ้งเตือน">
+          <Bell className="w-4.5 h-4.5" />
+        </button>
+        <button type="button" className="p-2 rounded-full text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition cursor-pointer" title="ช่วยเหลือ">
+          <HelpCircle className="w-4.5 h-4.5" />
+        </button>
+
         {user ? (
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-              className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100/70 transition cursor-pointer"
+              className="flex items-center gap-2.5 p-1 rounded-full hover:bg-[#F8FAFC] transition cursor-pointer"
             >
               <div className="text-right leading-none hidden sm:block">
-                <div className="text-xs font-extrabold text-slate-800 max-w-[130px] truncate" title={user.email || ''}>
+                <div className="text-xs font-black text-[#0F172A] max-w-[140px] truncate" title={user.email || ''}>
                   {user.email}
                 </div>
                 <div className="mt-1">
@@ -49,12 +62,11 @@ export const Topbar: React.FC = () => {
                 </div>
               </div>
               <div
-                className="w-8 h-8 rounded-full text-white font-extrabold text-xs flex items-center justify-center shadow-sm shrink-0"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #0EA5A0 100%)' }}
+                className="w-9 h-9 rounded-full bg-[#0F172A] text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0 border-2 border-[#0F172A]"
               >
                 {user.email ? user.email.slice(0, 2).toUpperCase() : 'U'}
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             {showProfileDropdown && (
@@ -63,46 +75,46 @@ export const Topbar: React.FC = () => {
                   className="fixed inset-0 z-40 cursor-default"
                   onClick={() => setShowProfileDropdown(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-50 text-xs text-slate-700 animate-fadeIn">
-                  <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100">
-                    <div className="font-bold text-slate-900 truncate" title={user.email || ''}>{user.email}</div>
-                    <div className="text-[9px] font-extrabold uppercase text-slate-400 mt-1">สิทธิ์: {formatUserRolesText(profile?.role)}</div>
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl py-2 z-50 text-xs text-[#0F172A] animate-fadeIn space-y-1">
+                  <div className="px-4 py-3 bg-[#F8FAFC] border-b border-[#E2E8F0] rounded-t-3xl">
+                    <div className="font-black text-[#0F172A] truncate" title={user.email || ''}>{user.email}</div>
+                    <div className="text-[10px] font-mono font-bold uppercase text-[#64748B] mt-1">สิทธิ์: {formatUserRolesText(profile?.role)}</div>
                   </div>
 
-                  <div className="py-1">
+                  <div className="py-1 px-1">
                     <Link
                       href="/"
                       onClick={() => setShowProfileDropdown(false)}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#F8FAFC] font-extrabold text-[#0F172A] flex items-center gap-2.5 transition cursor-pointer group"
                     >
-                      <LayoutDashboard className="w-4 h-4 text-slate-400" />
+                      <LayoutDashboard className="w-4 h-4 text-[#64748B] group-hover:text-[#0F172A]" />
                       สรุปภาพรวม (Dashboard)
                     </Link>
 
                     <Link
                       href="/clinic"
                       onClick={() => setShowProfileDropdown(false)}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#F8FAFC] font-extrabold text-[#0F172A] flex items-center gap-2.5 transition cursor-pointer group"
                     >
-                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <Calendar className="w-4 h-4 text-[#64748B] group-hover:text-[#0F172A]" />
                       คลินิกวิจัย (Clinic)
                     </Link>
 
                     <Link
                       href="/ethics"
                       onClick={() => setShowProfileDropdown(false)}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#F8FAFC] font-extrabold text-[#0F172A] flex items-center gap-2.5 transition cursor-pointer group"
                     >
-                      <Clipboard className="w-4 h-4 text-slate-400" />
+                      <Clipboard className="w-4 h-4 text-[#64748B] group-hover:text-[#0F172A]" />
                       จริยธรรมการวิจัย (Ethics)
                     </Link>
 
                     <Link
                       href="/ip-application"
                       onClick={() => setShowProfileDropdown(false)}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#F8FAFC] font-extrabold text-[#0F172A] flex items-center gap-2.5 transition cursor-pointer group"
                     >
-                      <Award className="w-4 h-4 text-slate-400" />
+                      <Award className="w-4 h-4 text-[#64748B] group-hover:text-[#0F172A]" />
                       ทรัพย์สินทางปัญญา (IP)
                     </Link>
 
@@ -110,24 +122,24 @@ export const Topbar: React.FC = () => {
                       <Link
                         href="/master"
                         onClick={() => setShowProfileDropdown(false)}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 font-semibold text-slate-700 flex items-center gap-2 cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#F8FAFC] font-extrabold text-[#0F172A] flex items-center gap-2.5 transition cursor-pointer group"
                       >
-                        <Settings className="w-4 h-4 text-slate-400" />
+                        <Settings className="w-4 h-4 text-[#64748B] group-hover:text-[#0F172A]" />
                         Masterdata Console
                       </Link>
                     )}
                   </div>
 
-                  <div className="border-t border-slate-150 my-1"></div>
+                  <div className="border-t border-[#E2E8F0] my-1"></div>
 
-                  <div className="py-1">
+                  <div className="py-1 px-1">
                     <button
                       type="button"
                       onClick={() => {
                         signOut()
                         setShowProfileDropdown(false)
                       }}
-                      className="w-full text-left px-4 py-2 hover:bg-red-50 font-bold text-red-600 flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[#FFE4E6] font-extrabold text-[#E11D48] flex items-center gap-2.5 transition cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       ออกจากระบบ
@@ -138,9 +150,9 @@ export const Topbar: React.FC = () => {
             )}
           </div>
         ) : (
-          <Link href="/login" className="btn-primary text-xs flex items-center gap-1.5 !py-2 !px-4">
-            <LogIn className="w-4 h-4 text-white stroke-[2.5]" />
-            เข้าสู่ระบบ / สมัครสมาชิก
+          <Link href="/login" className="btn-gold text-xs flex items-center gap-1.5 !py-2 !px-4">
+            <LogIn className="w-4 h-4 stroke-[2.5]" />
+            เข้าสู่ระบบ
           </Link>
         )}
       </div>

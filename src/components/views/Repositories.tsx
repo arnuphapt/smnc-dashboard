@@ -222,21 +222,20 @@ export const Repositories: React.FC = () => {
     header: 'จัดการ',
     align: 'right',
     render: (item) => (
-      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
         <button
           onClick={() => handleOpenDetail(item)}
-          className="px-2.5 py-1 rounded bg-slate-50 border border-slate-200 hover:border-blue-900 text-slate-600 hover:text-blue-900 font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-sm text-[10px]"
+          className="px-3.5 py-1.5 rounded-full bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] text-[#00796B] font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs text-xs"
         >
-          <Eye className="w-3.5 h-3.5" />
+          <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
           เปิดดู
         </button>
         <button
           onClick={() => exportItemToWord(item, currentMeta.label)}
-          className="px-2.5 py-1 rounded border transition flex items-center justify-center gap-1 cursor-pointer shadow-sm text-[10px] font-bold"
-          style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+          className="px-3.5 py-1.5 rounded-full bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] text-[#00796B] font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs text-xs"
           title="ออกรายงาน Word (.doc) รายการนี้"
         >
-          <FileText className="w-3.5 h-3.5" />
+          <FileText className="w-3.5 h-3.5 stroke-[2.5]" />
           รายงาน Word
         </button>
       </div>
@@ -495,25 +494,25 @@ export const Repositories: React.FC = () => {
     <div className="space-y-6 animate-fadeIn">
       <Breadcrumbs />
       
-      {/* Page Header — plain heading + description, no card */}
+      {/* Page Header */}
       <div className="page-header-band flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <div className="flex items-center justify-between md:justify-start gap-3">
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]" style={{ color: '#64748B' }}>
+            <span className="eyebrow-badge">
               SMNC · Knowledge Repository
             </span>
             <span className="record-tag shrink-0">REC · {categoryRecordCode[activeCategory] || 'RES-01'}</span>
           </div>
-          <h1 className="header-display text-[1.75rem] font-bold leading-tight mt-2 mb-1" style={{ color: '#0B1D3A' }}>
+          <h1 className="header-display text-2xl sm:text-3xl font-black leading-tight mt-2 mb-1 text-[#0F172A]">
             {currentMeta.label}
           </h1>
-          <p className="text-sm font-medium" style={{ color: '#64748B' }}>
+          <p className="text-xs font-semibold text-[#64748B]">
             {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
           </p>
         </div>
         <button
           onClick={() => exportCategoryReportToWord(currentMeta.label, sortedItems)}
-          className="btn-primary text-xs flex items-center gap-2 !py-2.5 !px-4 shadow-md shrink-0 cursor-pointer self-start md:self-auto"
+          className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shrink-0 cursor-pointer self-start md:self-auto"
         >
           <FileDown className="w-4 h-4 stroke-[2.5]" />
           ออกรายงาน Word สรุปสถิติ
@@ -538,7 +537,7 @@ export const Repositories: React.FC = () => {
         getRowKey={(item) => item.id}
         loading={loading}
         loadingLabel="กำลังโหลดรายการผลงาน..."
-        headerVariant="navy"
+        headerVariant="frost"
         sortField={sortField}
         sortAsc={sortAsc}
         onSortChange={handleSort}
@@ -551,7 +550,7 @@ export const Repositories: React.FC = () => {
 
       {/* Detail Modal - High-end intentionally designed sheet */}
       {selectedItem && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 animate-fadeIn">
           <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
