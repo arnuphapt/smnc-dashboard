@@ -1,4 +1,4 @@
-import { WisdomItem } from '../pages/Dashboard'
+import { WisdomItem } from '../components/views/Dashboard'
 
 /**
  * Downloads Word (.doc) document from HTML content string

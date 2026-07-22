@@ -1,5 +1,7 @@
+'use client'
+
 import React from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Breadcrumbs } from './Breadcrumbs'
 
 // Shared across every feature page (Clinic, Ethics, IP Application, Admin) so
@@ -100,7 +102,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, tabs, a
 
               if (tab.to) {
                 return (
-                  <Link key={tab.key} to={tab.to} className={className} style={style}>
+                  <Link key={tab.key} href={tab.to} className={className} style={style}>
                     {content}
                   </Link>
                 )

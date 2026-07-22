@@ -1,5 +1,8 @@
+'use client'
+
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ChevronRight, Home } from 'lucide-react'
 
 // Translation dictionary for Thai labels of URL segments
@@ -22,7 +25,8 @@ const SEGMENT_TRANSLATIONS: Record<string, string> = {
 
   // Admin Panel Sections
   items: 'จัดการผลงาน',
-  lookups: 'ตัวเลือกคัดกรอง',
+  masters: 'ข้อมูลหลัก (Master)',
+  lookups: 'ข้อมูลหลัก (Master)',
   users: 'ผู้ใช้งานและสิทธิ์',
   ip: 'ทรัพย์สินทางปัญญา',
 }
@@ -36,11 +40,10 @@ const formatSegment = (segment: string): string => {
 }
 
 export const Breadcrumbs: React.FC = () => {
-  const location = useLocation()
-  const pathname = location.pathname
+  const pathname = usePathname()
 
   // Don't show breadcrumbs on the homepage / dashboard
-  if (pathname === '/') return null
+  if (!pathname || pathname === '/') return null
 
   const segments = pathname.split('/').filter(Boolean)
   const items = [
@@ -68,7 +71,7 @@ export const Breadcrumbs: React.FC = () => {
               <li className="flex items-center">
                 {item.to && !isLast ? (
                   <Link
-                    to={item.to}
+                    href={item.to}
                     className="hover:text-[#0EA5A0] transition-colors flex items-center gap-1 focus:outline-none focus:underline"
                     style={{ color: '#64748B' }}
                   >

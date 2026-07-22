@@ -1,6 +1,10 @@
+'use client'
+
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
+import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+
+const supabase = createClient()
 
 export interface Profile {
   id: string
