@@ -383,7 +383,7 @@ export const Ethics: React.FC = () => {
             {user && (
               <Button
                 onClick={handleOpenSubmitModal}
-                className="shrink-0 btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5"
+                className="shrink-0 btn-primary text-xs flex items-center gap-2 !py-2.5 !px-5"
               >
                 <UploadCloud className="w-4 h-4 stroke-[2.5]" />
                 ยื่นโครงร่างวิจัยขอรับการพิจารณา
@@ -523,7 +523,7 @@ export const Ethics: React.FC = () => {
                             {sub.status === 'รอแก้ไข' && (
                               <button
                                 onClick={() => handleOpenRevisionModal(sub)}
-                                className="btn-gold text-xs flex items-center gap-1.5 !py-1.5 !px-3"
+                                className="btn-primary text-xs flex items-center gap-1.5 !py-1.5 !px-3"
                               >
                                 <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
                                 ส่งเล่มปรับปรุง
@@ -664,7 +664,7 @@ export const Ethics: React.FC = () => {
               <EmptyState icon={<UploadCloud className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อยื่นเอกสาร" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนอัปโหลดไฟล์และยื่นโครงร่างวิจัย" dashed />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-xs font-semibold text-[#6BAAA6]">แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
+                <p className="text-xs font-semibold text-[#64748B]">แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
 
                 {formError && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-extrabold bg-[#FFF0ED] text-[#EF6C4A] border border-[#FF8A6A]">
@@ -679,24 +679,24 @@ export const Ethics: React.FC = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ชื่อโครงร่างวิจัย *</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ชื่อโครงร่างวิจัย *</label>
                     <Input type="text" required placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..." value={title} onChange={(e) => setTitle(e.target.value)} className={inputBase} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">รายละเอียดสรุปย่อ</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">รายละเอียดสรุปย่อ</label>
                     <Textarea rows={3} placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..." value={desc} onChange={(e) => setDesc(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">อัปโหลดเอกสารประกอบ * <span className="font-normal text-[#6BAAA6]">(เลือกได้หลายไฟล์)</span></label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">อัปโหลดเอกสารประกอบ * <span className="font-normal text-[#64748B]">(เลือกได้หลายไฟล์)</span></label>
                     <Input type="file" id="ethics-files" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                    <p className="text-[10px] mt-1 text-[#6BAAA6] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                    <p className="text-[10px] mt-1 text-[#64748B] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 mt-2 btn-gold"
+                  className="w-full py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 mt-2 btn-primary"
                 >
                   {isSubmitting ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
                 </Button>
@@ -708,10 +708,10 @@ export const Ethics: React.FC = () => {
 
       {/* MODAL: SUBMIT REVISED PROPOSAL */}
       <Dialog open={revisionModalOpen} onOpenChange={setRevisionModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2F1F0] bg-[#F4FAF9]">
-            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#2BA8A2]">แก้ไขส่งปรับปรุง</p>
-            <DialogTitle className="header-display text-lg font-black text-[#1E8C86]">
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">แก้ไขส่งปรับปรุง</p>
+            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
               ส่งเล่มโครงร่างวิจัยฉบับแก้ไข
             </DialogTitle>
           </DialogHeader>
@@ -719,7 +719,7 @@ export const Ethics: React.FC = () => {
           <div className="px-6 py-5">
             {selectedSubForRevision && (
               <form onSubmit={handleSubmitRevision} className="space-y-4">
-                <p className="text-xs font-semibold text-[#6BAAA6]">
+                <p className="text-xs font-semibold text-[#64748B]">
                   อัปโหลดไฟล์เล่มเสนอแนะปรับปรุง หรือเอกสารเพิ่มเติมตามคำแนะนำของผู้ทรงคุณวุฒิ
                 </p>
 
@@ -736,24 +736,24 @@ export const Ethics: React.FC = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ชื่อโครงร่างวิจัย</label>
-                    <Input type="text" disabled value={selectedSubForRevision.project_title} className="w-full text-xs px-4 py-2.5 rounded-2xl bg-[#E8F6F5] text-[#6BAAA6] cursor-not-allowed" style={inputSty} />
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ชื่อโครงร่างวิจัย</label>
+                    <Input type="text" disabled value={selectedSubForRevision.project_title} className="w-full text-xs px-4 py-2.5 rounded-2xl bg-[#F8FAFC] text-[#64748B] cursor-not-allowed" style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">บันทึกแจ้งการแก้ไข / สรุปรายการแก้ *</label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">บันทึกแจ้งการแก้ไข / สรุปรายการแก้ *</label>
                     <Textarea rows={3} required placeholder="ระบุรายการจุดที่ปรับแก้ เช่น แก้แบบชี้แจงยินยอมฉบับที่ 2 แล้ว..." value={revisionNotes} onChange={(e) => setRevisionNotes(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">อัปโหลดเอกสารปรับปรุง * <span className="font-normal text-[#6BAAA6]">(เลือกได้หลายไฟล์)</span></label>
+                    <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">อัปโหลดเอกสารปรับปรุง * <span className="font-normal text-[#64748B]">(เลือกได้หลายไฟล์)</span></label>
                     <Input type="file" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setRevisionFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                    <p className="text-[10px] mt-1 text-[#6BAAA6] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
+                    <p className="text-[10px] mt-1 text-[#64748B] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดรวมไม่เกิน 25 MB</p>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={revisionSubmitting}
-                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold disabled:opacity-50 mt-2 btn-gold"
+                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold disabled:opacity-50 mt-2 btn-primary"
                 >
                   {revisionSubmitting ? 'กำลังอัปโหลดเอกสารแก้ไข...' : 'ยืนยันส่งเอกสารปรับปรุง →'}
                 </Button>
@@ -765,10 +765,10 @@ export const Ethics: React.FC = () => {
 
       {/* MODAL: EXPERT EVALUATION SCORECARD */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2F1F0] bg-[#F4FAF9]">
-            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#2BA8A2]">พิจารณาข้อเสนอ</p>
-            <DialogTitle className="header-display text-lg font-black text-[#1E8C86]">
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">พิจารณาข้อเสนอ</p>
+            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
               ประเมินจริยธรรมโครงร่างวิจัย
             </DialogTitle>
           </DialogHeader>
@@ -777,14 +777,14 @@ export const Ethics: React.FC = () => {
             {selectedSubForReview && (
               <>
                 <div>
-                  <div className="text-xs font-extrabold text-[#6BAAA6]">ชื่อโครงร่างวิจัย</div>
-                  <div className="text-sm font-black mt-0.5 text-[#1E8C86]">
+                  <div className="text-xs font-extrabold text-[#64748B]">ชื่อโครงร่างวิจัย</div>
+                  <div className="text-sm font-black mt-0.5 text-[#0F172A]">
                     {selectedSubForReview.project_title}
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="block text-xs font-extrabold text-[#1E8C86]">ผลประเมินตามรายเกณฑ์</label>
+                  <label className="block text-xs font-extrabold text-[#0F172A]">ผลประเมินตามรายเกณฑ์</label>
                   <div className="space-y-3 bg-[#FFF8E7] border border-[#F3E5C8] p-3.5 rounded-2xl">
                     {(() => {
                       const criteriaOptions = getOptionsByCategory('ethics_criteria')
@@ -797,12 +797,12 @@ export const Ethics: React.FC = () => {
 
                       return activeCriteria.map((criterion) => (
                         <div key={criterion.key} className="space-y-1">
-                          <div className="text-[10px] font-extrabold text-[#1E8C86] leading-snug">{criterion.label}</div>
-                          <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-[#E2F1F0]">
+                          <div className="text-[10px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
+                          <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-[#E2E8F0]">
                             {[
-                              { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-[#27AE60] peer-checked:text-white text-[#27AE60]' },
-                              { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-[#FFD23F] peer-checked:text-[#1E8C86] text-[#D48806]' },
-                              { val: 'na', label: 'N/A', color: 'peer-checked:bg-[#6BAAA6] peer-checked:text-white text-[#6BAAA6]' }
+                              { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-[#16A34A] peer-checked:text-white text-[#16A34A]' },
+                              { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-[#D97706] peer-checked:text-white text-[#D97706]' },
+                              { val: 'na', label: 'N/A', color: 'peer-checked:bg-[#64748B] peer-checked:text-white text-[#64748B]' }
                             ].map(opt => (
                               <label key={opt.val} className="cursor-pointer text-[10px] font-black text-center">
                                 <input
@@ -813,7 +813,7 @@ export const Ethics: React.FC = () => {
                                   onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
                                   className="sr-only peer"
                                 />
-                                <div className={`py-1 rounded-lg transition peer-checked:shadow-xs ${opt.color} hover:bg-[#E8F6F5]`}>
+                                <div className={`py-1 rounded-lg transition peer-checked:shadow-xs ${opt.color} hover:bg-[#F8FAFC]`}>
                                   {opt.label}
                                 </div>
                               </label>
@@ -826,7 +826,7 @@ export const Ethics: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
                   <Select
                     value={reviewerRoleLabel}
                     onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
@@ -842,10 +842,10 @@ export const Ethics: React.FC = () => {
                           ]
                     }
                   >
-                    <SelectTrigger className="w-full bg-[#FFF8E7] border border-[#F3E5C8] text-[#1E8C86] rounded-2xl">
+                    <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-2xl">
+                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                       {expertProfiles.length > 0 ? (
                         expertProfiles.map((p) => (
                           <SelectItem key={p.id} value={p.email}>
@@ -863,16 +863,16 @@ export const Ethics: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">สถานะผลประเมิน</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">สถานะผลประเมิน</label>
                   <Select
                     value={reviewStatus}
                     onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
                     items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
                   >
-                    <SelectTrigger className="w-full bg-[#FFF8E7] border border-[#F3E5C8] text-[#1E8C86] rounded-2xl">
+                    <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-[#E2F1F0] text-[#1E8C86] rounded-2xl">
+                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                       <SelectItem value="กำลังตรวจ">กำลังตรวจ</SelectItem>
                       <SelectItem value="รอแก้ไข">รอแก้ไข (ให้ปรับปรุงเล่ม)</SelectItem>
                       <SelectItem value="อนุมัติ">อนุมัติ</SelectItem>
@@ -882,7 +882,7 @@ export const Ethics: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#1E8C86]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
                   <Textarea
                     rows={3}
                     value={reviewNotes}
@@ -900,7 +900,7 @@ export const Ethics: React.FC = () => {
                     handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
                     setReviewModalOpen(false)
                   }}
-                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold mt-2 btn-gold"
+                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold mt-2 btn-primary"
                 >
                   บันทึกผลการประเมิน
                 </Button>

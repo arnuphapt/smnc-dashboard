@@ -81,7 +81,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
               setEditCategory(opt.category)
             }}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+            style={{ background: '#F0F7FF', color: '#00796B', borderColor: '#DAEEFF' }}
           >
             <Edit2 className="w-3 h-3" />
             แก้ไข
@@ -149,7 +149,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คลังข้อมูล</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#64748B' }}>คลังข้อมูล</p>
             <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
               เพิ่มตัวเลือกตัวกรองใหม่
             </DialogTitle>
@@ -204,7 +204,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
               <button
                 type="submit"
                 className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #00796B 0%, #00695C 100%)' }}
               >
                 บันทึกตัวเลือก
               </button>
@@ -217,7 +217,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
       <Dialog open={!!editingLookup} onOpenChange={(open) => !open && setEditingLookup(null)}>
         <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คลังข้อมูล</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#64748B' }}>คลังข้อมูล</p>
             <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
               แก้ไขตัวเลือกตัวกรอง
             </DialogTitle>
@@ -285,7 +285,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
               <button
                 type="submit"
                 className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #00796B 0%, #00695C 100%)' }}
               >
                 บันทึกการแก้ไข
               </button>

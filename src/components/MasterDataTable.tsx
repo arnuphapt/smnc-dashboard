@@ -63,7 +63,7 @@ export function MasterDataTable<T>({
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           {badge && (
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#64748B' }}>
               {badge}
             </p>
           )}
@@ -73,7 +73,7 @@ export function MasterDataTable<T>({
             </h3>
             <span
               className="px-2 py-0.5 rounded-full text-[9px] font-extrabold shrink-0"
-              style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.15)' }}
+              style={{ background: '#F2F8F7', color: '#00796B', border: '1px solid #D1E5E3' }}
             >
               {data.length} รายการ
             </span>
@@ -83,7 +83,7 @@ export function MasterDataTable<T>({
           <button
             onClick={actionButton.onClick}
             className="w-full sm:w-auto h-9 px-4 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-1.5 focus:outline-none shrink-0"
-            style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #00796B 0%, #00695C 100%)' }}
           >
             {actionButton.icon}
             {actionButton.label}
