@@ -20,32 +20,31 @@ interface PageHeaderProps {
   activeTab?: string
   onTabChange?: (tab: string) => void
   extraBadge?: string
-  recordCode?: string
   compact?: boolean
+  action?: React.ReactNode
 }
 
 const TabBadge: React.FC<{ count: number; isActive: boolean }> = ({ count, isActive }) => (
   <span
     className={`text-[9px] font-mono font-extrabold rounded-full min-w-[1.15rem] h-[1.15rem] px-1 flex items-center justify-center ${
-      isActive ? 'bg-white text-[#0F172A]' : 'bg-[#F1F5F9] text-[#64748B]'
+      isActive ? 'bg-white text-[#0F172A]' : 'bg-[#F1F5F9]'
     }`}
   >
     {count}
   </span>
 )
 
-const MetaRow: React.FC<{ extraBadge?: string; recordCode?: string }> = ({ extraBadge, recordCode }) => (
-  <div className="flex items-center justify-between gap-3">
+const MetaRow: React.FC<{ extraBadge?: string }> = ({ extraBadge }) => (
+  <div className="flex items-center gap-3">
     {extraBadge && (
       <span className="eyebrow-badge">
         SMNC · {extraBadge}
       </span>
     )}
-    {recordCode && <span className="record-tag shrink-0">REC · {recordCode}</span>}
   </div>
 )
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, tabs, activeTab, onTabChange, extraBadge, recordCode, compact }) => (
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, tabs, activeTab, onTabChange, extraBadge, compact, action }) => (
   <div className={compact ? 'shrink-0' : 'mb-6'}>
     {compact ? (
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -53,14 +52,18 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, tabs, a
           <h1 className="header-display text-xl font-extrabold leading-tight truncate text-[#0F172A]">{title}</h1>
           <p className="text-xs font-semibold truncate text-[#64748B]">{subtitle}</p>
         </div>
-        {recordCode && <span className="record-tag shrink-0">REC · {recordCode}</span>}
       </div>
     ) : (
       <div>
         <Breadcrumbs />
-        <MetaRow extraBadge={extraBadge} recordCode={recordCode} />
-        <h1 className="header-display text-2xl sm:text-3xl font-black leading-tight mt-2 mb-1 text-[#0F172A]">{title}</h1>
-        <p className="text-sm font-semibold text-[#64748B]">{subtitle}</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <MetaRow extraBadge={extraBadge} />
+            <h1 className="header-display text-2xl sm:text-3xl font-black leading-tight mt-2 mb-1 text-[#0F172A]">{title}</h1>
+            <p className="text-sm font-semibold text-[#64748B]">{subtitle}</p>
+          </div>
+          {action && <div className="shrink-0">{action}</div>}
+        </div>
 
         {/* Flip7 Pill/Underline Tabs */}
         {tabs && tabs.length > 0 && (

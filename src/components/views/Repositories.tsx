@@ -14,6 +14,7 @@ import { formatExcelDate } from '@/utils/format'
 import { DataTable, DataTableColumn } from '@/components/DataTable'
 import { FilterBar, FilterBarSelect } from '@/components/FilterBar'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
+import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { exportItemToWord, exportCategoryReportToWord } from '@/utils/wordExport'
 
@@ -492,32 +493,21 @@ export const Repositories: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <Breadcrumbs />
-      
       {/* Page Header */}
-      <div className="page-header-band flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center justify-between md:justify-start gap-3">
-            <span className="eyebrow-badge">
-              SMNC · Knowledge Repository
-            </span>
-            <span className="record-tag shrink-0">REC · {categoryRecordCode[activeCategory] || 'RES-01'}</span>
-          </div>
-          <h1 className="header-display text-2xl sm:text-3xl font-black leading-tight mt-2 mb-1 text-[#0F172A]">
-            {currentMeta.label}
-          </h1>
-          <p className="text-xs font-semibold text-[#64748B]">
-            {currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์
-          </p>
-        </div>
-        <button
-          onClick={() => exportCategoryReportToWord(currentMeta.label, sortedItems)}
-          className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shrink-0 cursor-pointer self-start md:self-auto"
-        >
-          <FileDown className="w-4 h-4 stroke-[2.5]" />
-          ออกรายงาน Word สรุปสถิติ
-        </button>
-      </div>
+      <PageHeader
+        title={currentMeta.label}
+        subtitle={`${currentMeta.subtitle} — ค้นหา กรอง และเข้าถึงผลงานได้แบบเรียลไทม์`}
+        extraBadge="Knowledge Repository"
+        action={
+          <button
+            onClick={() => exportCategoryReportToWord(currentMeta.label, sortedItems)}
+            className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shrink-0 cursor-pointer self-start md:self-auto"
+          >
+            <FileDown className="w-4 h-4 stroke-[2.5]" />
+            ออกรายงาน Word สรุปสถิติ
+          </button>
+        }
+      />
 
       {/* Dynamic Filters Bar */}
       <FilterBar

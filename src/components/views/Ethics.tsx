@@ -364,7 +364,6 @@ export const Ethics: React.FC = () => {
         title="จริยธรรมการวิจัย"
         subtitle="Research Ethics — ยื่น ติดตาม และพิจารณาคำขอรับรองจริยธรรมการวิจัยในมนุษย์ (IRB)"
         extraBadge="Ethics Review Board"
-        recordCode="ETH-02"
       />
 
       {/* HERO SECTION: IRB MASTHEAD & STATS */}
@@ -474,77 +473,146 @@ export const Ethics: React.FC = () => {
           ) : submissions.length === 0 ? (
             <EmptyState icon={<Clipboard className="w-10 h-10 stroke-[1.5]" />} title="ยังไม่มีประวัติการยื่นคำขอ" body="คลิกปุ่ม 'ยื่นโครงร่างวิจัยขอรับการพิจารณา' ด้านบนเพื่อส่งเอกสารครั้งแรก" />
           ) : (
-            <div className="overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
-                    {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น', 'จัดการ'].map(h => (
-                      <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8F0]">
-                  {submissions.map((sub) => {
-                    const subAttach = attachments.filter(a => a.submission_id === sub.id)
-                    return (
-                      <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
-                        <td className="py-3.5 px-4">
-                          <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
+            <>
+              {/* Desktop Table View (hidden on mobile) */}
+              <div className="hidden md:block overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
+                      {['ชื่อโครงร่างวิจัย', 'เอกสารแนบ', 'สถานะ', 'ความเห็นผู้ทรงคุณวุฒิ', 'วันที่ยื่น', 'จัดการ'].map(h => (
+                        <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {submissions.map((sub) => {
+                      const subAttach = attachments.filter(a => a.submission_id === sub.id)
+                      return (
+                        <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
+                          <td className="py-3.5 px-4">
+                            <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
+                            {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col gap-1.5 max-w-[180px]">
+                              {subAttach.map((at) => (
+                                <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors truncate cursor-pointer shadow-xs max-w-full" title={at.file_name}>
+                                  <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap"><StatusBadge status={sub.status} size="sm" /></td>
+                          <td className="py-3.5 px-4 max-w-[200px]">
+                            <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
+                              {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-xs font-mono font-bold text-[#64748B] whitespace-nowrap">{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col sm:flex-row gap-1.5">
+                              {sub.reviewer_notes && (
+                                <button
+                                  onClick={() => handleExportClick(sub)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  รายงานผล
+                                </button>
+                              )}
+
+                              {sub.status === 'รอแก้ไข' && (
+                                <button
+                                  onClick={() => handleOpenRevisionModal(sub)}
+                                  className="btn-primary text-xs flex items-center gap-1.5 !py-1.5 !px-3"
+                                >
+                                  <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  ส่งเล่มปรับปรุง
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleDeleteSubmission(sub.id)}
+                                className="btn-coral text-xs flex items-center gap-1.5 !py-1.5 !px-3"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                ลบคำขอ
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card List View (visible on mobile < md) */}
+              <div className="md:hidden space-y-3">
+                {submissions.map((sub) => {
+                  const subAttach = attachments.filter(a => a.submission_id === sub.id)
+                  return (
+                    <div key={sub.id} className="rounded-3xl p-4 bg-white border border-[#E2E8F0] shadow-flip-card space-y-3">
+                      <div className="flex items-start justify-between gap-2 border-b border-[#F1F5F9] pb-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-black text-[#0F172A]">{sub.project_title}</h4>
                           {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-col gap-1.5 max-w-[180px]">
+                        </div>
+                        <StatusBadge status={sub.status} size="sm" />
+                      </div>
+
+                      {subAttach.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-mono font-black uppercase text-[#64748B] tracking-wider">เอกสารแนบ:</span>
+                          <div className="flex flex-wrap gap-1.5">
                             {subAttach.map((at) => (
-                              <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors truncate cursor-pointer shadow-xs max-w-full" title={at.file_name}>
+                              <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors truncate shadow-xs max-w-full" title={at.file_name}>
                                 <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
                               </button>
                             ))}
                           </div>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap"><StatusBadge status={sub.status} size="sm" /></td>
-                        <td className="py-3.5 px-4 max-w-[200px]">
-                          <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
-                            {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-xs font-mono font-bold text-[#64748B] whitespace-nowrap">{new Date(sub.created_at).toLocaleDateString('th-TH')}</td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-col sm:flex-row gap-1.5">
-                            {sub.reviewer_notes && (
-                              <button
-                                onClick={() => handleExportClick(sub)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                รายงานผล
-                              </button>
-                            )}
+                        </div>
+                      )}
 
-                            {sub.status === 'รอแก้ไข' && (
-                              <button
-                                onClick={() => handleOpenRevisionModal(sub)}
-                                className="btn-primary text-xs flex items-center gap-1.5 !py-1.5 !px-3"
-                              >
-                                <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
-                                ส่งเล่มปรับปรุง
-                              </button>
-                            )}
+                      {sub.reviewer_notes && (
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-mono font-black uppercase text-[#64748B] tracking-wider">ความเห็นผู้ทรงคุณวุฒิ:</span>
+                          <p className="text-xs font-semibold italic text-[#64748B]">{sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() || '—'}</p>
+                        </div>
+                      )}
 
+                      <div className="flex items-center justify-between pt-2 border-t border-[#F1F5F9]">
+                        <span className="text-[10px] font-mono font-bold text-[#64748B]">ยื่นเมื่อ: {new Date(sub.created_at).toLocaleDateString('th-TH')}</span>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {sub.reviewer_notes && (
                             <button
-                              onClick={() => handleDeleteSubmission(sub.id)}
-                              className="btn-coral text-xs flex items-center gap-1.5 !py-1.5 !px-3"
+                              onClick={() => handleExportClick(sub)}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] shadow-xs"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              ลบคำขอ
+                              <ExternalLink className="w-3 h-3" /> รายงานผล
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          )}
+                          {sub.status === 'รอแก้ไข' && (
+                            <button
+                              onClick={() => handleOpenRevisionModal(sub)}
+                              className="btn-primary text-xs flex items-center gap-1 !py-1 !px-2.5"
+                            >
+                              <UploadCloud className="w-3 h-3" /> แก้ไข
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteSubmission(sub.id)}
+                            className="btn-coral text-xs flex items-center gap-1 !py-1 !px-2.5"
+                          >
+                            <Trash2 className="w-3 h-3" /> ลบ
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </ContentPanel>
@@ -560,92 +628,167 @@ export const Ethics: React.FC = () => {
             {reviewSubmissions.length === 0 ? (
               <EmptyState icon={<UserCheck className="w-10 h-10 stroke-[1.5]" />} title="ไม่มีรายการในคิวขณะนี้" body="เมื่อแอดมินมอบหมายงาน รายการจะปรากฏที่นี่" dashed />
             ) : (
-              <div className="overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
-                      {['โครงร่างวิจัย / เอกสาร', 'ผู้ยื่นคำขอ', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
-                        <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E2E8F0] bg-white">
-                    {reviewSubmissions.map((sub) => {
-                      const subAttach = attachments.filter(a => a.submission_id === sub.id)
-                      return (
-                        <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
-                          <td className="py-3.5 px-4 max-w-[280px]">
-                            <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
-                            {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
-                            {subAttach.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {subAttach.map((at) => (
-                                  <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] cursor-pointer transition-colors truncate shadow-xs max-w-full" title={at.file_name}>
-                                    <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 text-xs font-extrabold text-[#0F172A]">
-                            {sub.profiles?.email || 'ไม่ระบุผู้ยื่น'}
-                          </td>
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <StatusBadge status={sub.status} size="sm" />
-                          </td>
-                          <td className="py-3.5 px-4 max-w-[200px]">
-                            <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
-                              {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                            <div className="flex gap-1.5 justify-center">
-                              <Button
-                                onClick={() => {
-                                  setSelectedSubForReview(sub)
-                                  setReviewStatus(sub.status)
-                                  const parsed = parseReviewerNotes(sub.reviewer_notes || '')
-                                  setScores(parsed.scores)
-
-                                  let cleanComments = parsed.comments
-                                  const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
-                                  if (tagMatch) {
-                                    setReviewerRoleLabel(tagMatch[1])
-                                    cleanComments = cleanComments.replace(/^\[(.*?)\]\s*\n?/, '')
-                                  } else {
-                                    const currentIsExpert = hasRole(profile?.role, 'expert')
-                                    setReviewerRoleLabel(
-                                      currentIsExpert && profile?.email
-                                        ? profile.email
-                                        : (expertProfiles[0]?.email || 'ผู้ทรงคุณวุฒิท่านที่ 1')
-                                    )
-                                  }
-
-                                  setReviewNotes(cleanComments)
-                                  setReviewModalOpen(true)
-                                }}
-                                className="px-3.5 py-1.5 h-auto rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
-                              >
-                                พิจารณาผล
-                              </Button>
-
-                              {sub.reviewer_notes && (
-                                <button
-                                  onClick={() => handleExportClick(sub)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#E0F2FE] transition cursor-pointer shadow-xs"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5 text-[#00796B]" />
-                                  พิมพ์รายงาน
-                                </button>
+              <>
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto rounded-3xl border border-[#E2E8F0] bg-white shadow-flip-card">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
+                        {['โครงร่างวิจัย / เอกสาร', 'ผู้ยื่นคำขอ', 'สถานะ', 'ความเห็นรีวิว', 'จัดการ'].map(h => (
+                          <th key={h} className="py-3.5 px-4 font-mono font-black uppercase text-[10px] tracking-wider text-[#0F172A]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8F0] bg-white">
+                      {reviewSubmissions.map((sub) => {
+                        const subAttach = attachments.filter(a => a.submission_id === sub.id)
+                        return (
+                          <tr key={sub.id} className="transition-colors hover:bg-[#F8FAFC]">
+                            <td className="py-3.5 px-4 max-w-[280px]">
+                              <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
+                              {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
+                              {subAttach.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {subAttach.map((at) => (
+                                    <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] cursor-pointer transition-colors truncate shadow-xs max-w-full" title={at.file_name}>
+                                      <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs font-extrabold text-[#0F172A]">
+                              {sub.profiles?.email || 'ไม่ระบุผู้ยื่น'}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <StatusBadge status={sub.status} size="sm" />
+                            </td>
+                            <td className="py-3.5 px-4 max-w-[200px]">
+                              <div className="text-xs font-semibold italic text-[#64748B] truncate" title={sub.reviewer_notes}>
+                                {sub.reviewer_notes ? sub.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <div className="flex gap-1.5 justify-center">
+                                <Button
+                                  onClick={() => {
+                                    setSelectedSubForReview(sub)
+                                    setReviewStatus(sub.status)
+                                    const parsed = parseReviewerNotes(sub.reviewer_notes || '')
+                                    setScores(parsed.scores)
+
+                                    let cleanComments = parsed.comments
+                                    const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
+                                    if (tagMatch) {
+                                      setReviewerRoleLabel(tagMatch[1])
+                                      cleanComments = cleanComments.replace(/^\[(.*?)\]\s*\n?/, '')
+                                    } else {
+                                      const currentIsExpert = hasRole(profile?.role, 'expert')
+                                      setReviewerRoleLabel(
+                                        currentIsExpert && profile?.email
+                                          ? profile.email
+                                          : (expertProfiles[0]?.email || 'ผู้ทรงคุณวุฒิท่านที่ 1')
+                                      )
+                                    }
+
+                                    setReviewNotes(cleanComments)
+                                    setReviewModalOpen(true)
+                                  }}
+                                  className="px-3.5 py-1.5 h-auto rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
+                                >
+                                  พิจารณาผล
+                                </Button>
+
+                                {sub.reviewer_notes && (
+                                  <button
+                                    onClick={() => handleExportClick(sub)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#E0F2FE] transition cursor-pointer shadow-xs"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-[#00796B]" />
+                                    พิมพ์รายงาน
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="md:hidden space-y-3">
+                  {reviewSubmissions.map((sub) => {
+                    const subAttach = attachments.filter(a => a.submission_id === sub.id)
+                    return (
+                      <div key={sub.id} className="rounded-3xl p-4 bg-white border border-[#E2E8F0] shadow-flip-card space-y-3">
+                        <div className="flex items-start justify-between gap-2 border-b border-[#F1F5F9] pb-2">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-black text-[#0F172A]">{sub.project_title}</h4>
+                            <p className="text-[10px] font-extrabold text-[#64748B] mt-0.5">ผู้ยื่น: {sub.profiles?.email || 'ไม่ระบุ'}</p>
+                          </div>
+                          <StatusBadge status={sub.status} size="sm" />
+                        </div>
+
+                        {subAttach.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono font-black uppercase text-[#64748B] tracking-wider">เอกสาร:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {subAttach.map((at) => (
+                                <button key={at.id} onClick={() => handleDownloadFile(at.file_url)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] truncate shadow-xs max-w-full" title={at.file_name}>
+                                  <FileText className="w-3.5 h-3.5 shrink-0" /> {at.file_name}
+                                </button>
+                              ))}
                             </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-[#F1F5F9] flex items-center justify-end gap-2">
+                          <Button
+                            onClick={() => {
+                              setSelectedSubForReview(sub)
+                              setReviewStatus(sub.status)
+                              const parsed = parseReviewerNotes(sub.reviewer_notes || '')
+                              setScores(parsed.scores)
+
+                              let cleanComments = parsed.comments
+                              const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
+                              if (tagMatch) {
+                                setReviewerRoleLabel(tagMatch[1])
+                                cleanComments = cleanComments.replace(/^\[(.*?)\]\s*\n?/, '')
+                              } else {
+                                const currentIsExpert = hasRole(profile?.role, 'expert')
+                                setReviewerRoleLabel(
+                                  currentIsExpert && profile?.email
+                                    ? profile.email
+                                    : (expertProfiles[0]?.email || 'ผู้ทรงคุณวุฒิท่านที่ 1')
+                                )
+                              }
+
+                              setReviewNotes(cleanComments)
+                              setReviewModalOpen(true)
+                            }}
+                            className="px-3.5 py-1.5 h-auto rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
+                          >
+                            พิจารณาผล
+                          </Button>
+
+                          {sub.reviewer_notes && (
+                            <button
+                              onClick={() => handleExportClick(sub)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] shadow-xs"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-[#00796B]" />
+                              พิมพ์รายงาน
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </div>
         </ContentPanel>

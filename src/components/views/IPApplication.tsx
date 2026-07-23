@@ -171,7 +171,6 @@ export const IPApplication: React.FC = () => {
         title="ทรัพย์สินทางปัญญา"
         subtitle="Intellectual Property — ยื่นขอขึ้นทะเบียน ติดตาม และจัดการสิทธิ์ผลงาน"
         extraBadge="IP Registration System"
-        recordCode="IPA-03"
       />
 
       {/* HERO SECTION: INTELLECTUAL PROPERTY CATEGORIES */}

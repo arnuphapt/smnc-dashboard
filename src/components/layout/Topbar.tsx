@@ -62,7 +62,7 @@ export const Topbar: React.FC = () => {
                 </div>
               </div>
               <div
-                className="w-9 h-9 rounded-full bg-[#0F172A] text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0 border-2 border-[#0F172A]"
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-[#005F5A] to-[#00796B] text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0 border-2 border-white"
               >
                 {user.email ? user.email.slice(0, 2).toUpperCase() : 'U'}
               </div>

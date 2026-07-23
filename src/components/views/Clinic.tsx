@@ -187,7 +187,7 @@ export const Clinic: React.FC = () => {
   const renderCalendarCells = () => {
     const cells: React.ReactNode[] = []
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`e-${i}`} className="min-h-[76px] bg-[#F4FAF9] border-r border-b border-[#E2F1F0]" />)
+      cells.push(<div key={`e-${i}`} className="min-h-[76px] bg-[#F8FAFC] border-r border-b border-[#E2E8F0]" />)
     }
     for (let day = 1; day <= daysInMonth; day++) {
       const year = currentDate.getFullYear()
@@ -210,7 +210,7 @@ export const Clinic: React.FC = () => {
         >
           <span
             className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors duration-150 ${
-              isToday ? 'bg-[#0F172A] text-white font-extrabold shadow-xs' : 'text-[#0F172A] group-hover:bg-[#0F172A] group-hover:text-white'
+              isToday ? 'bg-[#00796B] text-white font-extrabold shadow-xs' : 'text-[#0F172A] group-hover:bg-[#00796B] group-hover:text-white'
             }`}
           >
             {day}
@@ -245,7 +245,6 @@ export const Clinic: React.FC = () => {
         title="คลินิกวิจัย SMNC"
         subtitle="Research Clinic — ปรึกษา เรียนรู้ และพัฒนางานวิจัยร่วมกัน"
         extraBadge="Research Support Services"
-        recordCode="CLN-01"
       />
 
       {/* SECTION: INFO */}
@@ -312,24 +311,24 @@ export const Clinic: React.FC = () => {
                 title: 'ออกแบบและระเบียบวิธีวิจัย',
                 subtitle: 'Research Methodology',
                 desc: 'การตั้งสมมติฐาน เลือกประชากรกลุ่มตัวอย่าง และออกแบบเครื่องมือวิจัยให้สอดคล้องตามมาตรฐานสากล',
-                borderColor: 'border-[#E2F1F0] hover:border-[#2BA8A2]',
-                iconBg: 'bg-[#E8F6F5] text-[#2BA8A2]'
+                borderColor: 'border-[#E2E8F0] hover:border-[#00796B]',
+                iconBg: 'bg-[#F0F7FF] text-[#00796B]'
               },
               {
                 icon: BarChart3,
                 title: 'วิเคราะห์ข้อมูลและสถิติ',
                 subtitle: 'Data & Statistical Analysis',
                 desc: 'แนะนำสถิติพื้นฐาน สถิติขั้นสูง โปรแกรมประมวลผลข้อมูล (SPSS, R, jamovi) และการแปลผลการวิจัย',
-                borderColor: 'border-[#E2F1F0] hover:border-[#FFD23F]',
-                iconBg: 'bg-[#FFF8E7] text-[#D48806]'
+                borderColor: 'border-[#E2E8F0] hover:border-[#F59E0B]',
+                iconBg: 'bg-[#FFF8E7] text-[#D97706]'
               },
               {
                 icon: ShieldCheck,
                 title: 'จริยธรรม & ทรัพย์สินทางปัญญา',
                 subtitle: 'Research Ethics & IP',
                 desc: 'ขั้นตอนตรวจสอบ แก้ไขแบบฟอร์มยื่นจริยธรรมการวิจัยในมนุษย์ (IRB) และการคุ้มครองทรัพย์สินทางปัญญา',
-                borderColor: 'border-[#E2F1F0] hover:border-[#5DADE2]',
-                iconBg: 'bg-[#EBF7FC] text-[#5DADE2]'
+                borderColor: 'border-[#E2E8F0] hover:border-[#0284C7]',
+                iconBg: 'bg-[#E0F2FE] text-[#0284C7]'
               },
             ].map((s) => {
               const IconComp = s.icon
@@ -343,7 +342,7 @@ export const Clinic: React.FC = () => {
                       <div className={`w-12 h-12 rounded-2xl ${s.iconBg} flex items-center justify-center font-bold shadow-xs`}>
                         <IconComp className="w-6 h-6 stroke-[2]" />
                       </div>
-                      <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#6BAAA6]">
+                      <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#64748B]">
                         SMNC Service
                       </span>
                     </div>
@@ -379,46 +378,44 @@ export const Clinic: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-extrabold" style={{ color: '#0B1D3A' }}>
+              <h3 className="text-base font-extrabold text-[#0F172A]">
                 {monthNamesThai[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
               </h3>
               <div className="flex items-center gap-2">
-                <p className="text-[10px] font-semibold hidden sm:block" style={{ color: '#94A3B8' }}>คลิกวันที่เพื่อดูกิจกรรมหรือจองคิวปรึกษา</p>
-                <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: '#F0F7FF', border: '1px solid #DAEEFF' }}>
-                  <button onClick={prevMonth} className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-white" style={{ color: '#0B1D3A' }}>
+                <p className="text-[10px] font-semibold text-[#64748B] hidden sm:block">คลิกวันที่เพื่อดูกิจกรรมหรือจองคิวปรึกษา</p>
+                <div className="flex items-center gap-1 rounded-xl p-1 bg-[#F8FAFC] border border-[#E2E8F0]">
+                  <button onClick={prevMonth} className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-white text-[#0F172A]">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <button onClick={nextMonth} className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-white" style={{ color: '#0B1D3A' }}>
+                  <button onClick={nextMonth} className="p-1.5 rounded-lg cursor-pointer transition-colors hover:bg-white text-[#0F172A]">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-7 text-center text-[10px] font-extrabold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>
+            <div className="grid grid-cols-7 text-center text-[10px] font-extrabold uppercase tracking-wider mb-1 text-[#64748B]">
               {['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'].map(d => <div key={d} className="py-1">{d}</div>)}
             </div>
 
             <div
-              className="grid grid-cols-7 rounded-xl overflow-hidden"
-              style={{ border: '1px solid #E8F0F8', borderRight: 'none', borderBottom: 'none' }}
+              className="grid grid-cols-7 rounded-2xl overflow-hidden border border-[#E2E8F0]"
             >
               {renderCalendarCells()}
             </div>
           </div>
 
           {/* Booking history — right rail beside the calendar */}
-          <div className="rounded-2xl p-4 flex flex-col" style={{ background: '#F8FAFC', border: '1px solid #F0F7FF' }}>
+          <div className="rounded-3xl p-5 flex flex-col bg-[#F8FAFC] border border-[#E2E8F0] shadow-xs">
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>ของฉัน</p>
-                <h4 className="text-sm font-bold" style={{ color: '#0B1D3A' }}>ประวัติการจองนัดหมาย</h4>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#64748B]">ของฉัน</p>
+                <h4 className="text-sm font-black text-[#0F172A]">ประวัติการจองนัดหมาย</h4>
               </div>
               {user && (
                 <Button
                   onClick={handleBookNowClick}
-                  className="shrink-0 h-auto py-1.5 px-3 rounded-lg text-[10px] font-bold flex items-center gap-1.5"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                  className="shrink-0 h-auto py-2 px-3.5 rounded-full text-xs font-extrabold btn-primary"
                 >
                   <CalendarPlus className="w-3.5 h-3.5" />
                   จองนัดหมาย
@@ -428,13 +425,13 @@ export const Clinic: React.FC = () => {
 
             {!user ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
-                <History className="w-8 h-8 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
-                <p className="text-[10px] font-semibold" style={{ color: '#94A3B8' }}>เข้าสู่ระบบเพื่อดูประวัติการนัดหมาย</p>
+                <History className="w-8 h-8 stroke-[1.5] text-[#94A3B8]" />
+                <p className="text-[10px] font-semibold text-[#64748B]">เข้าสู่ระบบเพื่อดูประวัติการนัดหมาย</p>
               </div>
             ) : appointments.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-6">
-                <History className="w-8 h-8 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
-                <p className="text-[10px] font-semibold" style={{ color: '#94A3B8' }}>ยังไม่มีประวัติการจองนัดหมาย</p>
+                <History className="w-8 h-8 stroke-[1.5] text-[#94A3B8]" />
+                <p className="text-[10px] font-semibold text-[#64748B]">ยังไม่มีประวัติการจองนัดหมาย</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
@@ -442,14 +439,14 @@ export const Clinic: React.FC = () => {
                   const d = new Date(app.requested_at)
                   const fmt = `${d.getDate()} ${monthNamesThai[d.getMonth()].slice(0, 3)} ${d.getFullYear() + 543} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
                   return (
-                    <div key={app.id} className="p-3 bg-white rounded-xl" style={{ border: '1px solid #F0F7FF' }}>
+                    <div key={app.id} className="p-3.5 bg-white rounded-2xl border border-[#E2E8F0] shadow-xs">
                       <div className="flex items-start justify-between gap-2">
-                        <h5 className="font-bold text-xs leading-snug truncate" style={{ color: '#0B1D3A' }} title={app.topic}>{app.topic}</h5>
+                        <h5 className="font-extrabold text-xs leading-snug truncate text-[#0F172A]" title={app.topic}>{app.topic}</h5>
                         <StatusBadge status={app.status} size="sm" />
                       </div>
-                      <p className="text-[10px] font-medium mt-1" style={{ color: '#475569' }}>{fmt}</p>
-                      {app.notes && <p className="text-[10px] mt-1 truncate" style={{ color: '#94A3B8' }} title={app.notes}>{app.notes}</p>}
-                      {app.admin_notes && <p className="text-[10px] mt-1 italic" style={{ color: '#64748B' }}>หมายเหตุ: {app.admin_notes}</p>}
+                      <p className="text-[10px] font-medium text-[#64748B] mt-1">{fmt}</p>
+                      {app.notes && <p className="text-[10px] mt-1 text-[#64748B] truncate" title={app.notes}>{app.notes}</p>}
+                      {app.admin_notes && <p className="text-[10px] mt-1 italic text-[#64748B]">หมายเหตุ: {app.admin_notes}</p>}
                     </div>
                   )
                 })}
@@ -461,38 +458,37 @@ export const Clinic: React.FC = () => {
 
       {/* MODAL: date detail — workshops that day + book a consultation for that date */}
       <Dialog open={dayModalOpen} onOpenChange={setDayModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F0F7FF' }}>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em]" style={{ color: '#0EA5A0' }}>วันที่เลือก</p>
-            <DialogTitle className="header-display text-lg font-bold" style={{ color: '#0B1D3A' }}>{selectedDateStr}</DialogTitle>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#64748B]">วันที่เลือก</p>
+            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">{selectedDateStr}</DialogTitle>
           </DialogHeader>
 
           <div className="px-6 py-5 space-y-5 max-h-[65vh] overflow-y-auto">
             {/* Workshops that day */}
             {selectedDayEvents.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: '#94A3B8' }}>กิจกรรมวันนี้</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#64748B]">กิจกรรมวันนี้</p>
                 {selectedDayEvents.map((ev) => (
-                  <div key={ev.id} className="p-4 rounded-xl space-y-3" style={{ background: '#F8FAFC', border: '1px solid #F0F7FF' }}>
+                  <div key={ev.id} className="p-4 rounded-2xl space-y-3 bg-[#F8FAFC] border border-[#E2E8F0]">
                     <div>
                       <span
-                        className="inline-block text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2"
-                        style={{ background: 'rgba(14,165,160,0.1)', color: '#0EA5A0', border: '1px solid rgba(14,165,160,0.3)' }}
+                        className="inline-block text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 bg-[#F0F7FF] text-[#00796B] border border-[#DAEEFF]"
                       >
                         สัมมนา / อบรม
                       </span>
-                      <h5 className="font-bold text-sm leading-snug" style={{ color: '#0B1D3A' }}>{ev.title}</h5>
-                      {ev.description && <p className="text-xs mt-1" style={{ color: '#64748B' }}>{ev.description}</p>}
+                      <h5 className="font-extrabold text-sm leading-snug text-[#0F172A]">{ev.title}</h5>
+                      {ev.description && <p className="text-xs mt-1 text-[#64748B]">{ev.description}</p>}
                     </div>
-                    <div className="space-y-1.5 text-xs font-medium" style={{ borderTop: '1px solid #F0F7FF', paddingTop: '0.75rem', color: '#475569' }}>
+                    <div className="space-y-1.5 text-xs font-medium border-t border-[#E2E8F0] pt-3 text-[#475569]">
                       {ev.location && (
                         <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
+                          <MapPin className="w-3.5 h-3.5 text-[#00796B]" />
                           {ev.location}
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" style={{ color: '#0EA5A0' }} />
+                        <Users className="w-3.5 h-3.5 text-[#00796B]" />
                         ที่นั่ง: {ev.registered_count} / {ev.capacity ?? 'ไม่จำกัด'}
                       </div>
                     </div>
@@ -500,15 +496,16 @@ export const Clinic: React.FC = () => {
                       <button
                         onClick={() => handleEventRegistration(ev.id, ev.is_registered || false)}
                         disabled={!ev.is_registered && ev.capacity ? (ev.registered_count || 0) >= ev.capacity : false}
-                        className="w-full py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200"
-                        style={ev.is_registered
-                          ? { background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }
-                          : { background: '#0B1D3A', color: '#FFFFFF' }}
+                        className={`w-full py-2.5 rounded-full text-xs font-extrabold cursor-pointer transition-all duration-200 ${
+                          ev.is_registered
+                            ? 'bg-[#FFF1F2] text-[#9F1239] border border-[#FECDD3]'
+                            : 'btn-primary'
+                        }`}
                       >
                         {ev.is_registered ? 'ยกเลิกการลงทะเบียน' : 'ลงทะเบียนเข้าร่วม'}
                       </button>
                     ) : (
-                      <div className="w-full py-2 text-center text-[10px] font-bold rounded-xl" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px dashed #CBD5E1' }}>
+                      <div className="w-full py-2 text-center text-[10px] font-bold rounded-xl bg-[#F8FAFC] text-[#94A3B8] border border-dashed border-[#CBD5E1]">
                         เข้าสู่ระบบเพื่อลงทะเบียน
                       </div>
                     )}
@@ -519,38 +516,38 @@ export const Clinic: React.FC = () => {
 
             {/* Book a consultation for this date */}
             {selectedIsPast ? (
-              <div className="flex items-start gap-2 px-4 py-3 rounded-xl text-xs font-medium" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px dashed #CBD5E1' }}>
+              <div className="flex items-start gap-2 px-4 py-3 rounded-xl text-xs font-medium bg-[#F8FAFC] text-[#94A3B8] border border-dashed border-[#CBD5E1]">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 วันที่นี้ผ่านมาแล้ว ไม่สามารถจองคิวปรึกษาย้อนหลังได้ — เลือกวันที่ในอนาคตแทน
               </div>
             ) : !user ? (
-              <div className="text-center py-8 flex flex-col items-center gap-3" style={{ border: '2px dashed #CBD5E1', borderRadius: '1rem' }}>
-                <CalendarPlus className="w-9 h-9 stroke-[1.5]" style={{ color: '#CBD5E1' }} />
+              <div className="text-center py-8 flex flex-col items-center gap-3 border-2 border-dashed border-[#CBD5E1] rounded-2xl">
+                <CalendarPlus className="w-9 h-9 stroke-[1.5] text-[#CBD5E1]" />
                 <div>
-                  <h4 className="text-xs font-bold" style={{ color: '#0B1D3A' }}>เข้าสู่ระบบเพื่อจองนัด</h4>
-                  <p className="text-[10px] mt-1" style={{ color: '#94A3B8' }}>จำเป็นต้องลงชื่อเข้าใช้ก่อนส่งคำขอนัดปรึกษา</p>
+                  <h4 className="text-xs font-bold text-[#0F172A]">เข้าสู่ระบบเพื่อจองนัด</h4>
+                  <p className="text-[10px] mt-1 text-[#94A3B8]">จำเป็นต้องลงชื่อเข้าใช้ก่อนส่งคำขอนัดปรึกษา</p>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleBooking} className="space-y-4">
-                <div style={selectedDayEvents.length > 0 ? { borderTop: '1px solid #F0F7FF', paddingTop: '1.25rem' } : undefined}>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>จองคิวปรึกษาวันนี้</p>
-                  <p className="text-xs font-medium" style={{ color: '#64748B' }}>เจ้าหน้าที่จะยืนยันนัดหมายและติดต่อกลับโดยเร็ว</p>
+                <div className={selectedDayEvents.length > 0 ? 'border-t border-[#E2E8F0] pt-4' : undefined}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider mb-1 text-[#64748B]">จองคิวปรึกษาวันนี้</p>
+                  <p className="text-xs font-semibold text-[#64748B]">เจ้าหน้าที่จะยืนยันนัดหมายและติดต่อกลับโดยเร็ว</p>
                 </div>
 
                 {formError && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#FFF1F2] text-[#9F1239] border border-[#FECDD3]">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
                   </div>
                 )}
                 {formSuccess && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
                     <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {formSuccess}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>หัวข้อที่ขอปรึกษา *</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">หัวข้อที่ขอปรึกษา *</label>
                   <Input
                     type="text"
                     placeholder="เช่น ขอบข่ายทฤษฎีวิจัย หรือ การใช้โปรแกรม SPSS..."
@@ -561,7 +558,7 @@ export const Clinic: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>รายละเอียดเพิ่มเติม</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">รายละเอียดเพิ่มเติม</label>
                   <Textarea
                     rows={2}
                     placeholder="เขียนรายละเอียดเพิ่มเติมเพื่อให้ทีมเตรียมตัวได้ล่วงหน้า..."
@@ -572,7 +569,7 @@ export const Clinic: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: '#0B1D3A' }}>ช่วงเวลา *</label>
+                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ช่วงเวลา *</label>
                   <Select
                     value={time}
                     onValueChange={(v) => setTime(v ?? '09:00')}
@@ -602,8 +599,7 @@ export const Clinic: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-2.5 h-auto rounded-xl text-sm font-bold disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)', color: '#FFFFFF' }}
+                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold disabled:opacity-50 btn-primary"
                 >
                   {isSubmitting ? 'กำลังส่ง...' : 'ส่งคำขอนัดหมาย →'}
                 </Button>

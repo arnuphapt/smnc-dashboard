@@ -21,6 +21,7 @@ import {
   PieChart as PieIcon,
   Filter
 } from 'lucide-react'
+import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatExcelDate } from '@/utils/format'
 
@@ -327,33 +328,25 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* 1. Header Band */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-[11px] font-mono font-black text-[#64748B] uppercase tracking-[0.15em]">
-            SMNC · DIGITAL RESEARCH WORKSPACE
-          </span>
-          <h1 className="header-display text-3xl sm:text-4xl font-black tracking-tight text-[#0F172A] mt-1">
-            คลังปัญญาดิจิตอล SMNC
-          </h1>
-          <p className="text-sm font-semibold text-[#64748B] mt-1">
-            ระบบแสดงผลข้อมูลเกี่ยวกับคลังผลงาน คลินิกวิจัย จริยธรรมการวิจัย และทรัพย์สินทางปัญญา
-          </p>
-        </div>
+      {/* 1. Header Band using PageHeader component */}
+      <PageHeader
+        title="คลังปัญญาดิจิตอล SMNC"
+        subtitle="ระบบแสดงผลข้อมูลเกี่ยวกับคลังผลงาน คลินิกวิจัย จริยธรรมการวิจัย และทรัพย์สินทางปัญญา"
+        extraBadge="Digital Research Workspace"
+        action={
+          <div className="flex items-center gap-3 shrink-0">
+            <button className="px-4 py-2.5 rounded-full bg-white border border-[#E2E8F0] text-xs font-extrabold text-[#0F172A] hover:bg-[#F8FAFC] transition shadow-xs flex items-center gap-2 cursor-pointer">
+              <CalendarIcon className="w-4 h-4 text-[#0F172A]" />
+              <span>Last 30 Days</span>
+            </button>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 shrink-0">
-          <button className="px-4 py-2.5 rounded-full bg-white border border-[#E2E8F0] text-xs font-extrabold text-[#0F172A] hover:bg-[#F8FAFC] transition shadow-xs flex items-center gap-2 cursor-pointer">
-            <CalendarIcon className="w-4 h-4 text-[#0F172A]" />
-            <span>Last 30 Days</span>
-          </button>
-
-          <button className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shadow-gold-glow">
-            <Download className="w-4 h-4 stroke-[2.5]" />
-            <span>Export Data</span>
-          </button>
-        </div>
-      </div>
+            <button className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shadow-gold-glow">
+              <Download className="w-4 h-4 stroke-[2.5]" />
+              <span>Export Data</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* 2. Top KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -554,7 +547,8 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="bg-[#F2F8F7] border-b border-[#CBD5E1]">
@@ -588,6 +582,31 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-2.5">
+            {recentItems.length === 0 ? (
+              <div className="py-6 text-center text-[#94A3B8] font-semibold text-xs border border-dashed border-[#CBD5E1] rounded-2xl">
+                ยังไม่มีรายการกิจกรรมล่าสุดในระบบ
+              </div>
+            ) : (
+              recentItems.map((item) => (
+                <div key={item.id} className="p-3.5 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-extrabold text-xs text-[#0F172A] leading-snug">{item.title}</div>
+                      <div className="text-[10px] text-[#64748B] font-semibold mt-0.5">{item.authors || 'ไม่ระบุผู้แต่ง'}</div>
+                    </div>
+                    <StatusBadge status={item.category} size="sm" />
+                  </div>
+                  <div className="text-[10px] font-mono font-bold text-[#64748B] pt-1 border-t border-[#E2E8F0] flex justify-between items-center">
+                    <span>วันที่ลงข้อมูล:</span>
+                    <span>{formatExcelDate(item.created_at)}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

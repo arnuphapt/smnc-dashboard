@@ -77,100 +77,191 @@ export function DataTable<T>({
     : { background: '#F2F8F7', borderBottom: '1px solid #CBD5E1', color: '#0F172A' }
 
   return (
-    <div className="rounded-3xl overflow-hidden shadow-flip-card bg-white border border-[#E2E8F0]">
-      <Table className="text-xs">
-        <TableHeader>
-          <TableRow className="border-b-0 hover:bg-transparent" style={headerRowStyle}>
-            <TableHead
-              className="h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-center w-12 text-[#0F172A]"
-            >
-              ลำดับ
-            </TableHead>
-            {columns.map((col) => {
-              const isSorted = col.sortable && sortField === col.key
-              return (
-                <TableHead
-                  key={col.key}
-                  onClick={col.sortable ? () => onSortChange?.(col.key) : undefined}
-                  className={`h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
-                >
-                  {col.header}
-                  {col.sortable && (
-                    <span className="ml-1 font-mono text-[#00796B]">
-                      {isSorted ? (sortAsc ? '▲' : '▼') : '⇅'}
-                    </span>
-                  )}
-                </TableHead>
-              )
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody className="[&_tr:last-child]:border-0 divide-y divide-[#E2E8F0]">
-          {data.length === 0 ? (
-            <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={columns.length + 1} className="text-center py-14 text-[#94A3B8]">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="text-[#94A3B8]">
-                    {empty.icon}
-                  </div>
-                  <p className="font-extrabold text-xs text-[#0F172A]">{empty.title}</p>
-                  {empty.body && <p className="text-[11px] text-[#64748B] font-medium">{empty.body}</p>}
-                </div>
-              </TableCell>
+    <>
+      {/* Desktop Table View (hidden on mobile < md) */}
+      <div className="hidden md:block rounded-3xl overflow-hidden shadow-flip-card bg-white border border-[#E2E8F0]">
+        <Table className="text-xs">
+          <TableHeader>
+            <TableRow className="border-b-0 hover:bg-transparent" style={headerRowStyle}>
+              <TableHead
+                className="h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-center w-12 text-[#0F172A]"
+              >
+                ลำดับ
+              </TableHead>
+              {columns.map((col) => {
+                const isSorted = col.sortable && sortField === col.key
+                return (
+                  <TableHead
+                    key={col.key}
+                    onClick={col.sortable ? () => onSortChange?.(col.key) : undefined}
+                    className={`h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                  >
+                    {col.header}
+                    {col.sortable && (
+                      <span className="ml-1 font-mono text-[#00796B]">
+                        {isSorted ? (sortAsc ? '▲' : '▼') : '⇅'}
+                      </span>
+                    )}
+                  </TableHead>
+                )
+              })}
             </TableRow>
-          ) : (
-            pageRows.map((row, idx) => (
-              <TableRow key={getRowKey(row)} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
-                <TableCell className="whitespace-normal p-4 text-center font-mono font-bold text-[#64748B]">
-                  {start + idx + 1}
+          </TableHeader>
+          <TableBody className="[&_tr:last-child]:border-0 divide-y divide-[#E2E8F0]">
+            {data.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length + 1} className="text-center py-14 text-[#94A3B8]">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="text-[#94A3B8]">
+                      {empty.icon}
+                    </div>
+                    <p className="font-extrabold text-xs text-[#0F172A]">{empty.title}</p>
+                    {empty.body && <p className="text-[11px] text-[#64748B] font-medium">{empty.body}</p>}
+                  </div>
                 </TableCell>
-                {columns.map((col) => (
-                  <TableCell key={col.key} className={`whitespace-normal p-4 text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
-                    {col.render(row)}
-                  </TableCell>
-                ))}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              pageRows.map((row, idx) => (
+                <TableRow key={getRowKey(row)} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+                  <TableCell className="whitespace-normal p-4 text-center font-mono font-bold text-[#64748B]">
+                    {start + idx + 1}
+                  </TableCell>
+                  {columns.map((col) => (
+                    <TableCell key={col.key} className={`whitespace-normal p-4 text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
+                      {col.render(row)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
 
-      {data.length > pageSize && (
-        <div
-          className="flex items-center justify-between px-5 py-3 border-t border-[#E2F1F0] bg-[#F4FAF9]"
-        >
-          <p className="text-[10px] font-mono font-bold text-[#6BAAA6]">
-            แสดง {start + 1}–{Math.min(start + pageSize, data.length)} จาก {data.length} รายการ
-          </p>
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              aria-label="หน้าก่อนหน้า"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              size="icon-sm"
-              variant="ghost"
-              className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-[10px] font-mono font-black px-2 text-[#1E8C86]">
-              หน้า {page} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              aria-label="หน้าถัดไป"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              size="icon-sm"
-              variant="ghost"
-              className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+        {data.length > pageSize && (
+          <div
+            className="flex items-center justify-between px-5 py-3 border-t border-[#E2F1F0] bg-[#F4FAF9]"
+          >
+            <p className="text-[10px] font-mono font-bold text-[#6BAAA6]">
+              แสดง {start + 1}–{Math.min(start + pageSize, data.length)} จาก {data.length} รายการ
+            </p>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                aria-label="หน้าก่อนหน้า"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                size="icon-sm"
+                variant="ghost"
+                className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-[10px] font-mono font-black px-2 text-[#1E8C86]">
+                หน้า {page} / {totalPages}
+              </span>
+              <Button
+                type="button"
+                aria-label="หน้าถัดไป"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                size="icon-sm"
+                variant="ghost"
+                className="rounded-full bg-[#E8F6F5] text-[#2BA8A2] hover:bg-[#2BA8A2] hover:text-white transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+
+      {/* Mobile Card List View (visible on mobile < md) */}
+      <div className="md:hidden space-y-3">
+        {data.length === 0 ? (
+          <div className="rounded-3xl p-8 bg-white border border-[#E2E8F0] shadow-xs text-center text-[#94A3B8]">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div className="text-[#94A3B8]">{empty.icon}</div>
+              <p className="font-extrabold text-xs text-[#0F172A]">{empty.title}</p>
+              {empty.body && <p className="text-[11px] text-[#64748B] font-medium">{empty.body}</p>}
+            </div>
+          </div>
+        ) : (
+          pageRows.map((row, idx) => {
+            const actionCol = columns.find(
+              (c) => c.key === 'actions' || c.key === 'จัดการ' || c.header === 'จัดการ'
+            )
+            const contentCols = columns.filter(
+              (c) => c.key !== 'actions' && c.key !== 'จัดการ' && c.header !== 'จัดการ'
+            )
+
+            return (
+              <div
+                key={getRowKey(row)}
+                className="rounded-3xl p-4 bg-white border border-[#E2E8F0] shadow-flip-card space-y-3"
+              >
+                <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-2">
+                  <span className="text-[10px] font-mono font-black text-[#00796B] bg-[#F0F7FF] px-2.5 py-0.5 rounded-full border border-[#DAEEFF]">
+                    รายการที่ #{start + idx + 1}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  {contentCols.map((col) => (
+                    <div key={col.key} className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-mono font-black uppercase text-[#64748B] tracking-wider">
+                        {col.header}
+                      </span>
+                      <div className="text-[#0F172A] font-semibold">{col.render(row)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {actionCol && (
+                  <div className="pt-2.5 border-t border-[#F1F5F9] flex items-center justify-end gap-2 flex-wrap">
+                    {actionCol.render(row)}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+
+        {/* Mobile Pagination Controls */}
+        {data.length > pageSize && (
+          <div className="flex items-center justify-between px-4 py-3 rounded-2xl border border-[#E2E8F0] bg-white shadow-xs">
+            <p className="text-[10px] font-mono font-bold text-[#64748B]">
+              {start + 1}–{Math.min(start + pageSize, data.length)} จาก {data.length}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                aria-label="หน้าก่อนหน้า"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                size="icon-sm"
+                variant="ghost"
+                className="rounded-full bg-[#F0F7FF] text-[#00796B] border border-[#DAEEFF] hover:bg-[#00796B] hover:text-white transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-[10px] font-mono font-black px-2 text-[#0F172A]">
+                {page} / {totalPages}
+              </span>
+              <Button
+                type="button"
+                aria-label="หน้าถัดไป"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                size="icon-sm"
+                variant="ghost"
+                className="rounded-full bg-[#F0F7FF] text-[#00796B] border border-[#DAEEFF] hover:bg-[#00796B] hover:text-white transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   )
 }

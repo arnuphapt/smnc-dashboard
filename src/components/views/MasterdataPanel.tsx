@@ -957,7 +957,6 @@ export const MasterdataPanel: React.FC = () => {
         title={headerInfo.title}
         subtitle={headerInfo.subtitle}
         extraBadge="Masterdata Console"
-        recordCode={headerInfo.recordCode}
       />
 
       <ContentPanel>
