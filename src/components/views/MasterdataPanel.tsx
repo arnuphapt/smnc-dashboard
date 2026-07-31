@@ -1029,9 +1029,6 @@ export const MasterdataPanel: React.FC = () => {
             case 'clinic':
               return (
                 <ClinicTab
-                  clinicDesc={clinicDesc}
-                  setClinicDesc={setClinicDesc}
-                  onUpdateClinicDesc={handleUpdateClinicDesc}
                   newEvTitle={newEvTitle}
                   setNewEvTitle={setNewEvTitle}
                   newEvDesc={newEvDesc}
@@ -1045,15 +1042,6 @@ export const MasterdataPanel: React.FC = () => {
                   onAddEvent={handleAddEvent}
                   clinicEvents={clinicEvents}
                   onDeleteEvent={handleDeleteEvent}
-                  appointments={appointments}
-                  profiles={profiles}
-                  appEditing={appEditing}
-                  setAppEditing={setAppEditing}
-                  appStatusInput={appStatusInput}
-                  setAppStatusInput={setAppStatusInput}
-                  appNotesInput={appNotesInput}
-                  setAppNotesInput={setAppNotesInput}
-                  onUpdateAppStatus={handleUpdateAppStatus}
                 />
               )
             case 'ethics':
@@ -1068,38 +1056,11 @@ export const MasterdataPanel: React.FC = () => {
                   onAddDownloadableForm={handleAddDownloadableForm}
                   downloadableForms={downloadableForms}
                   onDeleteDownloadableForm={handleDeleteDownloadableForm}
-                  ethicsSubmissions={ethicsSubmissions}
-                  profiles={profiles}
-                  attachments={attachments}
-                  onDownloadPrivateFile={handleDownloadPrivateFile}
-                  subEditing={subEditing}
-                  setSubEditing={setSubEditing}
-                  subReviewerInput={subReviewerInput}
-                  setSubReviewerInput={setSubReviewerInput}
-                  subStatusInput={subStatusInput}
-                  setSubStatusInput={setSubStatusInput}
-                  subNotesInput={subNotesInput}
-                  setSubNotesInput={setSubNotesInput}
-                  onUpdateSubmission={handleUpdateSubmission}
                 />
               )
             case 'ip':
               return (
                 <IpTab
-                  ipApplications={ipApplications}
-                  profiles={profiles}
-                  ipEditing={ipEditing}
-                  setIpEditing={setIpEditing}
-                  ipReqNumInput={ipReqNumInput}
-                  setIpReqNumInput={setIpReqNumInput}
-                  ipStepInput={ipStepInput}
-                  setIpStepInput={setIpStepInput}
-                  ipNotesInput={ipNotesInput}
-                  setIpNotesInput={setIpNotesInput}
-                  ipStatusInput={ipStatusInput}
-                  setIpStatusInput={setIpStatusInput}
-                  onUpdateIPApp={handleUpdateIPApp}
-                  onTransferToCatalog={handleTransferToCatalog}
                   newFormTitle={newFormTitle}
                   setNewFormTitle={setNewFormTitle}
                   newFormCat={newFormCat}

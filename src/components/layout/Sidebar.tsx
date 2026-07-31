@@ -57,21 +57,33 @@ export const Sidebar: React.FC = () => {
       to: '/clinic',
       icon: <Calendar className="w-4 h-4 shrink-0" />,
       label: 'คลินิกวิจัย',
-      active: pathname === '/clinic',
+      active: pathname === '/clinic' || pathname === '/clinic/appointments',
+      children: [
+        { to: '/clinic', label: 'ขอรับคำปรึกษา', active: pathname === '/clinic' },
+        { to: '/clinic/appointments', label: 'รวมคำขอจองนัดหมาย', active: pathname === '/clinic/appointments' },
+      ],
     },
     {
       key: 'ethics',
       to: '/ethics',
       icon: <Clipboard className="w-4 h-4 shrink-0" />,
       label: 'จริยธรรมการวิจัย',
-      active: pathname === '/ethics',
+      active: pathname === '/ethics' || pathname === '/ethics/submissions',
+      children: [
+        { to: '/ethics', label: 'ยื่นโครงร่างวิจัย', active: pathname === '/ethics' },
+        { to: '/ethics/submissions', label: 'รวมคำขอยื่น', active: pathname === '/ethics/submissions' },
+      ],
     },
     {
       key: 'ip-application',
       to: '/ip-application',
       icon: <Award className="w-4 h-4 shrink-0" />,
       label: 'ทรัพย์สินทางปัญญา',
-      active: pathname === '/ip-application',
+      active: pathname === '/ip-application' || pathname === '/ip-application/list',
+      children: [
+        { to: '/ip-application', label: 'ยื่นขอขึ้นทะเบียน', active: pathname === '/ip-application' },
+        { to: '/ip-application/list', label: 'รวมคำขอยื่น', active: pathname === '/ip-application/list' },
+      ],
     },
     ...(hasRole(profile?.role, 'admin')
       ? [{
@@ -201,7 +213,7 @@ export const Sidebar: React.FC = () => {
         <div className="pt-4 border-t border-[#E2E8F0]">
           <Link
             href="/clinic"
-            className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3 shadow-gold-glow"
+            className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3"
           >
             <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
             <span>ขอคำปรึกษาด่วน</span>

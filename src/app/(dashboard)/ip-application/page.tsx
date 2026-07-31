@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { IPApplication } from '@/components/views/IPApplication'
+import { IPApplicationSubmit } from '@/components/views/IPApplicationSubmit'
 
 export default function IpApplicationPage() {
-  return <IPApplication />
+  return <IPApplicationSubmit />
 }

@@ -23,12 +23,34 @@ interface RoleRow {
   isLocked: boolean
 }
 
-const pages = [
+interface PageItem {
+  key: string
+  label: string
+  isSub?: boolean
+}
+
+const pages: PageItem[] = [
   { key: 'dashboard', label: 'สรุปภาพรวม (Dashboard)' },
+
   { key: 'repositories', label: 'คลังผลงานปัญญา 5 ด้าน' },
+  { key: 'repositories_research', label: '↳ คลังผลงานวิจัย', isSub: true },
+  { key: 'repositories_innovation', label: '↳ คลังนวัตกรรม', isSub: true },
+  { key: 'repositories_intellectual_property', label: '↳ คลังทรัพย์สินทางปัญญา', isSub: true },
+  { key: 'repositories_award', label: '↳ คลังรางวัลและความสำเร็จ', isSub: true },
+  { key: 'repositories_utilization', label: '↳ การนำไปใช้ประโยชน์', isSub: true },
+
   { key: 'clinic', label: 'บริการคลินิกวิจัย' },
+  { key: 'clinic_request', label: '↳ ขอรับคำปรึกษา', isSub: true },
+  { key: 'clinic_appointments', label: '↳ รวมคำขอจองนัดหมาย', isSub: true },
+
   { key: 'ethics', label: 'บริการจริยธรรมการวิจัย' },
+  { key: 'ethics_submit', label: '↳ ยื่นโครงร่างวิจัย (IRB)', isSub: true },
+  { key: 'ethics_submissions', label: '↳ รวมคำขอยื่นจริยธรรม', isSub: true },
+
   { key: 'ip_application', label: 'บริการทรัพย์สินทางปัญญา' },
+  { key: 'ip_application_submit', label: '↳ ยื่นขอขึ้นทะเบียน IP', isSub: true },
+  { key: 'ip_application_list', label: '↳ รวมคำขอยื่น IP', isSub: true },
+
   { key: 'masterdata', label: 'ระบบหลังบ้าน (Masterdata)' },
 ]
 
@@ -85,26 +107,27 @@ export const RolesTab: React.FC = () => {
   const handleToggle = async (role: string, pageKey: string, currentVal: boolean) => {
     if (role === 'admin') return
     const newVal = !currentVal
-    setPermissions((prev) =>
-      prev.map((p) => (p.role === role && p.page_key === pageKey ? { ...p, can_view: newVal } : p))
-    )
+    setPermissions((prev) => {
+      const exists = prev.some((p) => p.role === role && p.page_key === pageKey)
+      if (exists) {
+        return prev.map((p) => (p.role === role && p.page_key === pageKey ? { ...p, can_view: newVal } : p))
+      }
+      return [...prev, { id: `${role}-${pageKey}`, role, page_key: pageKey, can_view: newVal }]
+    })
     try {
       const { error } = await supabase
         .from('role_permissions')
-        .update({ can_view: newVal })
-        .match({ role, page_key: pageKey })
+        .upsert({ role, page_key: pageKey, can_view: newVal }, { onConflict: 'role,page_key' })
       if (error) throw error
     } catch (err) {
       console.error('Error updating permission:', err)
-      setPermissions((prev) =>
-        prev.map((p) => (p.role === role && p.page_key === pageKey ? { ...p, can_view: currentVal } : p))
-      )
+      fetchPermissions()
     }
   }
 
   const isAllowed = (role: string, pageKey: string) => {
     const perm = permissions.find((p) => p.role === role && p.page_key === pageKey)
-    return perm ? perm.can_view : false
+    return perm ? perm.can_view : true
   }
 
   const filteredRoles = ROLES.filter(
@@ -178,7 +201,7 @@ export const RolesTab: React.FC = () => {
       {editingRole &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-5">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-5 max-h-[90vh]">
               {/* Modal Header */}
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${editingRole.colorClass}`}>
@@ -191,11 +214,11 @@ export const RolesTab: React.FC = () => {
               </div>
 
               {/* Page toggles */}
-              <div className="space-y-2">
+              <div className="space-y-2 flex-1 min-h-0 flex flex-col">
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0]">
                   หน้าที่สามารถเข้าถึงได้
                 </label>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 overflow-y-auto pr-1.5 max-h-[55vh]">
                   {pages.map((page) => {
                     const active = isAllowed(editingRole.key, page.key)
                     return (
@@ -204,12 +227,14 @@ export const RolesTab: React.FC = () => {
                         type="button"
                         onClick={() => handleToggle(editingRole.key, page.key, active)}
                         className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold text-left transition-all duration-150 cursor-pointer w-full ${
+                          page.isSub ? 'ml-4 w-[calc(100%-1rem)] bg-slate-50/70 text-[11px]' : ''
+                        } ${
                           active
                             ? 'border-[#0EA5A0] bg-[#0EA5A0]/8 text-[#0EA5A0]'
                             : 'border-slate-200 text-slate-400 hover:bg-slate-50'
                         }`}
                       >
-                        <span className={active ? 'text-slate-700' : 'text-slate-400'}>{page.label}</span>
+                        <span className={active ? 'text-slate-700 font-extrabold' : 'text-slate-400'}>{page.label}</span>
                         <span
                           className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                             active ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-50 text-rose-400'
@@ -224,7 +249,7 @@ export const RolesTab: React.FC = () => {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingRole(null)}

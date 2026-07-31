@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { Ethics } from '@/components/views/Ethics'
+import { EthicsSubmit } from '@/components/views/EthicsSubmit'
 
 export default function EthicsPage() {
-  return <Ethics />
+  return <EthicsSubmit />
 }

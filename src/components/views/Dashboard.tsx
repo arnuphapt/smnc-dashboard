@@ -137,21 +137,24 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
 
   const [recentItems, setRecentItems] = useState<WisdomItem[]>([])
   const [allItems, setAllItems] = useState<WisdomItem[]>([])
+  const [downloadableForms, setDownloadableForms] = useState<any[]>([])
   const [docSearch, setDocSearch] = useState('')
   const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'repository'>('all')
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null)
 
   const fetchDashboardData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('wisdom_items')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const [wisdomRes, formsRes] = await Promise.all([
+        supabase.from('wisdom_items').select('*').order('created_at', { ascending: false }),
+        supabase.from('downloadable_forms').select('*').order('sort_order', { ascending: true })
+      ])
 
-      if (error) throw error
-      const items = (data as WisdomItem[]) || []
+      if (wisdomRes.error) throw wisdomRes.error
+
+      const items = (wisdomRes.data as WisdomItem[]) || []
       setAllItems(items)
       setRecentItems(items.slice(0, 5))
+      setDownloadableForms(formsRes.data || [])
 
       const counts: StatCounts = {
         research: 0,
@@ -184,15 +187,23 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
   useEffect(() => {
     fetchDashboardData()
 
-    const channel = supabase
+    const channel1 = supabase
       .channel('wisdom-items-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wisdom_items' }, () => {
         fetchDashboardData()
       })
       .subscribe()
 
+    const channel2 = supabase
+      .channel('downloadable-forms-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'downloadable_forms' }, () => {
+        fetchDashboardData()
+      })
+      .subscribe()
+
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(channel1)
+      supabase.removeChannel(channel2)
     }
   }, [])
 
@@ -296,24 +307,36 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
   // Real IP Timeline Items
   const timelineIpItems = allItems.filter((i) => i.category === 'intellectual_property').slice(0, 5)
 
-  // Download Documents List (Restored from Screenshot 2!)
-  const downloadableDocs = allItems.filter((i) => i.file_url).map((item) => ({
-    uniqueId: item.id,
-    title: item.title,
-    file_url: item.file_url!,
-    is_public: item.is_public,
-    category: item.category,
-    categoryLabel: item.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : item.category === 'intellectual_property' ? 'แบบฟอร์ม IP' : 'เอกสารคลังปัญญา',
-    badgeColor: item.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : item.category === 'intellectual_property' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
-    subInfo: item.authors || 'แบบฟอร์มทางการ',
-  }))
+  // Download Documents List (Combine downloadable_forms and wisdom_items with file_url)
+  const downloadableDocs = [
+    ...downloadableForms.map((form) => ({
+      uniqueId: `form-${form.id}`,
+      title: form.title,
+      file_url: form.file_url,
+      is_public: true,
+      category: form.category,
+      categoryLabel: form.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : form.category === 'ip' ? 'แบบฟอร์ม IP' : 'เอกสารคลังปัญญา',
+      badgeColor: form.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : form.category === 'ip' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+      subInfo: 'แบบฟอร์มทางการ',
+    })),
+    ...allItems.filter((i) => i.file_url).map((item) => ({
+      uniqueId: `item-${item.id}`,
+      title: item.title,
+      file_url: item.file_url!,
+      is_public: item.is_public,
+      category: item.category,
+      categoryLabel: item.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : item.category === 'intellectual_property' ? 'แบบฟอร์ม IP' : 'เอกสารคลังปัญญา',
+      badgeColor: item.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : item.category === 'intellectual_property' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+      subInfo: item.authors || 'เอกสารคลังปัญญา',
+    }))
+  ]
 
   const filteredDownloadList = downloadableDocs.filter((doc) => {
     const matchSearch = doc.title.toLowerCase().includes(docSearch.toLowerCase()) || doc.subInfo.toLowerCase().includes(docSearch.toLowerCase())
     if (docFilterCategory === 'all') return matchSearch
     if (docFilterCategory === 'ethics') return matchSearch && doc.category === 'ethics'
-    if (docFilterCategory === 'ip') return matchSearch && doc.category === 'intellectual_property'
-    return matchSearch && doc.category !== 'ethics' && doc.category !== 'intellectual_property'
+    if (docFilterCategory === 'ip') return matchSearch && (doc.category === 'ip' || doc.category === 'intellectual_property')
+    return matchSearch && doc.category !== 'ethics' && doc.category !== 'ip' && doc.category !== 'intellectual_property'
   })
 
   // 6 KPI Cards
@@ -340,7 +363,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
               <span>Last 30 Days</span>
             </button>
 
-            <button className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5 shadow-gold-glow">
+            <button className="btn-gold text-xs flex items-center gap-2 !py-2.5 !px-5">
               <Download className="w-4 h-4 stroke-[2.5]" />
               <span>Export Data</span>
             </button>
@@ -456,17 +479,6 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
                 const isHovered = hoveredTrendIndex === i
                 return (
                   <g key={i} className="group cursor-pointer">
-                    {/* Pulsing Outer Ring on Hover */}
-                    {isHovered && (
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="14"
-                        fill="rgba(0, 121, 107, 0.15)"
-                        className="animate-ping"
-                      />
-                    )}
-
                     {/* Main Circle Point */}
                     <circle
                       cx={p.x}

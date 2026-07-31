@@ -1,20 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Trash2, ExternalLink, Clipboard, FileText, UserCheck, Shield, Plus, Edit2 } from 'lucide-react'
-import { DataTableColumn } from '@/components/DataTable'
-import { MasterDataTable } from '@/components/MasterDataTable'
-import { StatusBadge } from '@/components/StatusBadge'
-import { SidePanel, FieldLabel } from '@/components/SidePanel'
-import { Profile } from '@/context/AuthContext'
-import { hasRole, formatUserRolesText } from '@/utils/roleHelper'
+import { Clipboard, Edit2, Trash2, ExternalLink, Plus } from 'lucide-react'
+import { DataTable, DataTableColumn } from '@/components/DataTable'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { supabase } from '@/services/supabase'
-
-const NO_REVIEWER = '__none__'
 
 // Core research ethics criteria checklist
 export const EVALUATION_CRITERIA = [
@@ -47,7 +38,6 @@ export const parseReviewerNotes = (notesText: string) => {
     scores.risk = match[5] as any
     scores.benefit = match[6] as any
     
-    // Extract actual comments section after the tag and criteria table
     comments = notesText.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
     comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
   }
@@ -248,19 +238,14 @@ export const handleExportEvaluation = (sub: any, _reviewerName: string, submitte
         </div>
 
         <div class="footer">
-          เอกสารนี้จัดทำโดยระบบงานจริยธรรมการวิจัย คลังปัญญา SMNC (วิทยาลัยพยาบาลศรีมหาสารคาม)<br/>
-          พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}
+          พิมพ์จากระบบคลังปัญญา SMNC • ${new Date().toLocaleString('th-TH')}
         </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-          }
-        </script>
       </body>
     </html>
   `)
   printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => printWindow.print(), 500)
 }
 
 interface EthicsTabProps {
@@ -273,168 +258,15 @@ interface EthicsTabProps {
   onAddDownloadableForm: (e: React.FormEvent) => void
   downloadableForms: any[]
   onDeleteDownloadableForm: (id: string) => void
-
-  ethicsSubmissions: any[]
-  profiles: Profile[]
-  attachments: any[]
-  onDownloadPrivateFile: (path: string) => void
-
-  subEditing: any | null
-  setSubEditing: (sub: any | null) => void
-  subReviewerInput: string
-  setSubReviewerInput: (value: string) => void
-  subStatusInput: string
-  setSubStatusInput: (value: string) => void
-  subNotesInput: string
-  setSubNotesInput: (value: string) => void
-  onUpdateSubmission: (id: string, reviewerId: string | null, status: string, notes: string) => void
 }
 
 export const EthicsTab: React.FC<EthicsTabProps> = ({
   newFormTitle, setNewFormTitle, newFormCat, setNewFormCat, newFormUrl, setNewFormUrl,
   onAddDownloadableForm, downloadableForms, onDeleteDownloadableForm,
-  ethicsSubmissions, profiles, attachments, onDownloadPrivateFile,
-  subEditing, setSubEditing, subReviewerInput, setSubReviewerInput,
-  subStatusInput, setSubStatusInput, subNotesInput, setSubNotesInput, onUpdateSubmission,
 }) => {
   const ethicsForms = downloadableForms.filter((f) => f.category === 'ethics')
 
-  // Evaluation Checklist state
-  const [scores, setScores] = useState<Record<string, 'pass' | 'fail' | 'na'>>({
-    obj: 'pass',
-    method: 'pass',
-    privacy: 'pass',
-    consent: 'pass',
-    risk: 'pass',
-    benefit: 'pass',
-  })
-
-  const columns: DataTableColumn<any>[] = [
-    {
-      key: 'submitter',
-      header: 'ผู้ยื่นคำขอ',
-      render: (sub) => {
-        const submitter = profiles.find((p) => p.id === sub.submitter_id)
-        return (
-          <>
-            <div className="font-bold" style={{ color: '#0B1D3A' }}>{submitter?.email || 'ไม่ระบุผู้ใช้'}</div>
-            <p className="text-[10px] text-slate-400 mt-0.5">🗓️ ยื่นเมื่อ: {new Date(sub.created_at).toLocaleDateString('th-TH')}</p>
-          </>
-        )
-      },
-    },
-    {
-      key: 'project',
-      header: 'โครงร่างวิจัย / เอกสารแนบ',
-      render: (sub) => {
-        const subAttachList = attachments.filter((a) => a.submission_id === sub.id)
-        return (
-          <>
-            <div className="font-bold leading-snug" style={{ color: '#0B1D3A' }}>{sub.project_title}</div>
-            {sub.project_description && <p className="text-[10px] text-slate-400 mt-1">{sub.project_description}</p>}
-            {subAttachList.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {subAttachList.map((at) => (
-                  <button
-                    key={at.id}
-                    onClick={() => onDownloadPrivateFile(at.file_url)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition font-bold cursor-pointer"
-                    style={{ background: 'rgba(14,165,160,0.08)', color: '#0EA5A0' }}
-                    title={at.file_name}
-                  >
-                    <FileText className="w-3 h-3" />
-                    {at.file_name || 'ไฟล์แนบ'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )
-      },
-    },
-    {
-      key: 'reviewer',
-      header: 'ผู้ทรงคุณวุฒิ',
-      render: (sub) => {
-        const reviewer = profiles.find((p) => p.id === sub.assigned_reviewer_id)
-        return (
-          <div className="font-bold text-slate-700">
-            {reviewer ? (
-              <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">{reviewer.email}</span>
-            ) : (
-              <span className="text-slate-400 italic">ยังไม่มอบหมาย</span>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'status',
-      header: 'สถานะ',
-      align: 'center',
-      render: (sub) => (
-        <>
-          <StatusBadge status={sub.status} size="sm" />
-          {sub.reviewer_notes && (
-            <div className="text-[9px] text-slate-400 mt-1 italic max-w-[150px] truncate mx-auto" title={sub.reviewer_notes}>
-              โน้ต: {sub.reviewer_notes.replace(/\[.*?\]/g, '').substring(0, 50)}...
-            </div>
-          )}
-        </>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'จัดการ',
-      align: 'right',
-      render: (sub) => (
-        <div className="flex gap-1.5 justify-end">
-          <button
-            onClick={() => {
-              setSubEditing(sub)
-              setSubReviewerInput(sub.assigned_reviewer_id || '')
-              setSubStatusInput(sub.status)
-              
-              const parsed = parseReviewerNotes(sub.reviewer_notes || '')
-              setScores(parsed.scores)
-              setSubNotesInput(parsed.comments)
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
-          >
-            <UserCheck className="w-3 h-3" />
-            แก้ไข/มอบหมาย
-          </button>
-
-          {sub.reviewer_notes && (
-            <button
-              onClick={() => {
-                const reviewer = profiles.find((p) => p.id === sub.assigned_reviewer_id)
-                const submitter = profiles.find((p) => p.id === sub.submitter_id)
-                handleExportEvaluation(sub, reviewer?.email || '', submitter?.email || '')
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-              style={{ background: '#FFFFFF', color: '#475569' }}
-            >
-              <ExternalLink className="w-3 h-3" />
-              รายงานผล
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ]
-
-  const handleUpdateClick = () => {
-    if (subEditing) {
-      const serializedNotes = serializeReviewerNotes(scores, subNotesInput)
-      onUpdateSubmission(subEditing.id, subReviewerInput || null, subStatusInput, serializedNotes)
-    }
-  }
-
-  const [subSearch, setSubSearch] = useState('')
   const [formSearch, setFormSearch] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
 
   // Edit Form States
@@ -442,17 +274,6 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
   const [editFormTitle, setEditFormTitle] = useState('')
   const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip'>('ethics')
   const [editFormUrl, setEditFormUrl] = useState('')
-
-  const filteredSubmissions = ethicsSubmissions.filter((sub) => {
-    const submitter = profiles.find((p) => p.id === sub.submitter_id)
-    const matchesSearch = !subSearch.trim() ||
-      sub.project_title.toLowerCase().includes(subSearch.toLowerCase()) ||
-      (submitter?.email || '').toLowerCase().includes(subSearch.toLowerCase())
-
-    const matchesStatus = !selectedStatus || sub.status === selectedStatus
-
-    return matchesSearch && matchesStatus
-  })
 
   const filteredForms = formSearch.trim()
     ? ethicsForms.filter((form) =>
@@ -513,42 +334,17 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
     }
   ]
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setNewFormCat('ethics')
+    onAddDownloadableForm(e)
+    setIsAddFormOpen(false)
+  }
+
   return (
     <div className="space-y-6 text-xs text-slate-700">
-      {/* Submissions List */}
-      <MasterDataTable
-        badge="บริการ"
-        title="คำขอยื่นรับรองจริยธรรมการวิจัยทั้งหมด"
-        searchPlaceholder="ค้นหาคำขอจริยธรรม..."
-        searchValue={subSearch}
-        onSearchChange={setSubSearch}
-        filters={[
-          {
-            key: 'status',
-            label: 'สถานะ',
-            value: selectedStatus,
-            onChange: setSelectedStatus,
-            options: [
-              { value: 'ยื่นแล้ว', label: 'ยื่นแล้ว' },
-              { value: 'กำลังตรวจ', label: 'กำลังตรวจสอบ' },
-              { value: 'รอแก้ไข', label: 'ให้ปรับปรุงเล่ม' },
-              { value: 'อนุมัติ', label: 'อนุมัติ' },
-              { value: 'ไม่อนุมัติ', label: 'ไม่อนุมัติ' }
-            ]
-          }
-        ]}
-        columns={columns}
-        data={filteredSubmissions}
-        getRowKey={(sub) => sub.id}
-        empty={{
-          icon: <Clipboard className="w-9 h-9 stroke-[1.5]" />,
-          title: 'ยังไม่มีคำขอยื่นรับรองจริยธรรม',
-          dashed: true
-        }}
-      />
-
       {/* Forms List */}
-      <MasterDataTable
+      <DataTable
         badge="เอกสารประกอบ"
         title="แบบฟอร์มดาวน์โหลดจริยธรรมการวิจัย"
         actionButton={{
@@ -582,13 +378,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
             </DialogDescription>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              onAddDownloadableForm(e)
-              setIsAddFormOpen(false)
-            }}
-            className="space-y-4 text-xs"
-          >
+          <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
             <div>
               <label className="block font-bold text-slate-500 mb-1">ชื่อเอกสาร / แบบฟอร์ม *</label>
               <Input
@@ -596,7 +386,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
                 required
                 value={newFormTitle}
                 onChange={(e) => setNewFormTitle(e.target.value)}
-                placeholder="เช่น แบบฟอร์มขอจริยธรรม วิจัยในมนุษย์..."
+                placeholder="เช่น แบบฟอร์มขอรับการพิจารณาจริยธรรม..."
                 className="w-full light-input text-xs"
               />
             </div>
@@ -612,7 +402,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               </select>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร (จากเว็บหรือฝากไฟล์) *</label>
+              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร *</label>
               <Input
                 type="url"
                 required
@@ -681,7 +471,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
                 required
                 value={editFormTitle}
                 onChange={(e) => setEditFormTitle(e.target.value)}
-                placeholder="เช่น แบบฟอร์มขอจริยธรรม วิจัยในมนุษย์..."
+                placeholder="เช่น แบบฟอร์มขอรับการพิจารณาจริยธรรม..."
                 className="w-full light-input text-xs"
               />
             </div>
@@ -697,7 +487,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               </select>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร (จากเว็บหรือฝากไฟล์) *</label>
+              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร *</label>
               <Input
                 type="url"
                 required
@@ -727,124 +517,6 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
           </form>
         </DialogContent>
       </Dialog>
-
-      <SidePanel
-        open={!!subEditing}
-        onClose={() => setSubEditing(null)}
-        title={subEditing?.project_title || ''}
-        subtitle={profiles.find((p) => p.id === subEditing?.submitter_id)?.email}
-        footer={
-          <>
-            <button
-              onClick={() => setSubEditing(null)}
-              className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
-            >
-              ยกเลิก
-            </button>
-            <button
-              onClick={handleUpdateClick}
-              className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-              style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
-            >
-              บันทึกการเปลี่ยนแปลง
-            </button>
-          </>
-        }
-      >
-        {subEditing && (
-          <div className="space-y-4">
-            {subEditing.project_description && (
-              <div>
-                <FieldLabel>บทคัดย่อที่ยื่น</FieldLabel>
-                <p className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-xl leading-relaxed" style={{ color: '#475569' }}>
-                  {subEditing.project_description}
-                </p>
-              </div>
-            )}
-
-            <div>
-              <FieldLabel>มอบหมายผู้ทรงคุณวุฒิ</FieldLabel>
-              <select
-                value={subReviewerInput || NO_REVIEWER}
-                onChange={(e) => setSubReviewerInput(e.target.value === NO_REVIEWER ? '' : e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
-              >
-                <option value={NO_REVIEWER}>-- ยังไม่มอบหมาย --</option>
-                {profiles
-                  .filter((p) => hasRole(p.role, 'expert') || hasRole(p.role, 'admin'))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.email} ({formatUserRolesText(p.role)})
-                    </option>
-                  ))}
-              </select>
-              <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                <Shield className="w-3 h-3 text-[#0EA5A0]" />
-                สามารถตั้งสิทธิ์ผู้ทรงฯ ทั้งภายใน/ภายนอก ผ่านแท็บ "ผู้ใช้งานและสิทธิ์"
-              </p>
-            </div>
-
-            <div>
-              <FieldLabel>สถานะคำขอ</FieldLabel>
-              <select
-                value={subStatusInput}
-                onChange={(e) => setSubStatusInput(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
-              >
-                <option value="ยื่นแล้ว">ยื่นแล้ว</option>
-                <option value="กำลังตรวจ">กำลังตรวจสอบ (กำลังตรวจ)</option>
-                <option value="รอแก้ไข">ให้ปรับปรุงเล่ม (รอแก้ไข)</option>
-                <option value="อนุมัติ">อนุมัติคำขอ (อนุมัติ)</option>
-                <option value="ไม่อนุมัติ">ไม่อนุมัติคำขอ (ไม่อนุมัติ)</option>
-              </select>
-            </div>
-
-            {/* Scorecard checklist criteria */}
-            <div className="border-t border-slate-100 pt-3 space-y-3">
-              <FieldLabel>รายการประเมินจริยธรรม</FieldLabel>
-              <div className="space-y-3 bg-slate-50/50 border border-slate-100 p-3 rounded-2xl">
-                {EVALUATION_CRITERIA.map((criterion) => (
-                  <div key={criterion.key} className="space-y-1.5">
-                    <div className="text-[10px] font-bold text-slate-700 leading-snug">{criterion.label}</div>
-                    <div className="grid grid-cols-3 gap-1 bg-slate-100 p-0.5 rounded-lg">
-                      {[
-                        { val: 'pass', label: 'ผ่าน', color: 'peer-checked:bg-emerald-500 peer-checked:text-white text-emerald-700' },
-                        { val: 'fail', label: 'ต้องแก้ไข', color: 'peer-checked:bg-amber-500 peer-checked:text-white text-amber-700' },
-                        { val: 'na', label: 'N/A', color: 'peer-checked:bg-slate-400 peer-checked:text-white text-slate-600' }
-                      ].map(opt => (
-                        <label key={opt.val} className="cursor-pointer text-[10px] font-bold text-center">
-                          <input
-                            type="radio"
-                            name={`score-${criterion.key}`}
-                            value={opt.val}
-                            checked={scores[criterion.key] === opt.val}
-                            onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
-                            className="sr-only peer"
-                          />
-                          <div className={`py-1 rounded-md transition peer-checked:shadow-sm ${opt.color} hover:bg-slate-200/50`}>
-                            {opt.label}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <FieldLabel>ความเห็นและข้อเสนอแนะเพิ่มเติม</FieldLabel>
-              <Textarea
-                rows={4}
-                value={subNotesInput}
-                onChange={(e) => setSubNotesInput(e.target.value)}
-                placeholder="เขียนความเห็น คำแนะนำโดยละเอียด หรือระบุจุดที่ต้องแก้ไข..."
-                className="w-full light-input text-xs resize-none"
-              />
-            </div>
-          </div>
-        )}
-      </SidePanel>
     </div>
   )
 }
