@@ -5,7 +5,7 @@ import { Clipboard, Edit2, Trash2, ExternalLink, Plus } from 'lucide-react'
 import { DataTable, DataTableColumn } from '@/components/DataTable'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { supabase } from '@/services/supabase'
+import { supabase, getMediaUrl } from '@/services/supabase'
 
 // Core research ethics criteria checklist
 export const EVALUATION_CRITERIA = [
@@ -220,6 +220,15 @@ export const handleExportEvaluation = (sub: any, _reviewerName: string, submitte
   setTimeout(() => printWindow.print(), 500)
 }
 
+const CATEGORY_OPTIONS: { value: 'ethics' | 'ip' | 'utilization'; label: string; badgeClass: string }[] = [
+  { value: 'ethics', label: 'จริยธรรมการวิจัย (Ethics)', badgeClass: 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' },
+  { value: 'ip', label: 'ทรัพย์สินทางปัญญา (IP)', badgeClass: 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' },
+  { value: 'utilization', label: 'การนำผลงานวิจัยไปใช้ประโยชน์ (Utilization)', badgeClass: 'bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]' },
+]
+
+const categoryLabel = (cat: string) => CATEGORY_OPTIONS.find((c) => c.value === cat)?.label || cat
+const categoryBadgeClass = (cat: string) => CATEGORY_OPTIONS.find((c) => c.value === cat)?.badgeClass || 'bg-slate-100 text-slate-600 border-slate-200'
+
 interface EthicsTabProps {
   newFormTitle: string
   setNewFormTitle: (value: string) => void
@@ -227,31 +236,36 @@ interface EthicsTabProps {
   setNewFormCat: (value: 'ethics' | 'ip' | 'utilization') => void
   newFormUrl: string
   setNewFormUrl: (value: string) => void
-  onAddDownloadableForm: (e: React.FormEvent) => void
+  onAddDownloadableForm: (e: React.FormEvent, urlOverride?: string) => void
   downloadableForms: any[]
   onDeleteDownloadableForm: (id: string) => void
+  uploadFile: (file: File, folder: string, isPublic: boolean) => Promise<string>
 }
 
 export const EthicsTab: React.FC<EthicsTabProps> = ({
   newFormTitle, setNewFormTitle, newFormCat, setNewFormCat, newFormUrl, setNewFormUrl,
-  onAddDownloadableForm, downloadableForms, onDeleteDownloadableForm,
+  onAddDownloadableForm, downloadableForms, onDeleteDownloadableForm, uploadFile,
 }) => {
-  const ethicsForms = downloadableForms.filter((f) => f.category === 'ethics')
-
   const [formSearch, setFormSearch] = useState('')
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
+  const [addSourceType, setAddSourceType] = useState<'link' | 'upload'>('link')
+  const [addFile, setAddFile] = useState<File | null>(null)
+  const [addUploading, setAddUploading] = useState(false)
 
   // Edit Form States
   const [editingForm, setEditingForm] = useState<any | null>(null)
   const [editFormTitle, setEditFormTitle] = useState('')
   const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip' | 'utilization'>('ethics')
   const [editFormUrl, setEditFormUrl] = useState('')
+  const [editSourceType, setEditSourceType] = useState<'link' | 'upload'>('link')
+  const [editFile, setEditFile] = useState<File | null>(null)
+  const [editUploading, setEditUploading] = useState(false)
 
   const filteredForms = formSearch.trim()
-    ? ethicsForms.filter((form) =>
+    ? downloadableForms.filter((form) =>
         form.title.toLowerCase().includes(formSearch.toLowerCase())
       )
-    : ethicsForms
+    : downloadableForms
 
   const formColumns: DataTableColumn<any>[] = [
     {
@@ -260,11 +274,20 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
       render: (form) => <span className="font-bold text-slate-850">{form.title}</span>
     },
     {
+      key: 'category',
+      header: 'หมวดหมู่',
+      render: (form) => (
+        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${categoryBadgeClass(form.category)}`}>
+          {categoryLabel(form.category)}
+        </span>
+      )
+    },
+    {
       key: 'file_url',
       header: 'ลิงก์ดาวน์โหลด',
       render: (form) => (
         <a
-          href={form.file_url}
+          href={getMediaUrl(form.file_url)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
@@ -286,6 +309,8 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               setEditFormTitle(form.title)
               setEditFormCat(form.category)
               setEditFormUrl(form.file_url)
+              setEditSourceType('link')
+              setEditFile(null)
             }}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
             style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
@@ -306,11 +331,24 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
     }
   ]
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setNewFormCat('ethics')
-    onAddDownloadableForm(e)
+    if (addSourceType === 'upload') {
+      if (!addFile) return
+      setAddUploading(true)
+      try {
+        const path = await uploadFile(addFile, 'downloadable-forms', true)
+        setNewFormUrl(path)
+        onAddDownloadableForm(e, path)
+      } finally {
+        setAddUploading(false)
+      }
+    } else {
+      onAddDownloadableForm(e)
+    }
     setIsAddFormOpen(false)
+    setAddFile(null)
+    setAddSourceType('link')
   }
 
   return (
@@ -318,7 +356,7 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
       {/* Forms List */}
       <DataTable
         badge="เอกสารประกอบ"
-        title="แบบฟอร์มดาวน์โหลดจริยธรรมการวิจัย"
+        title="แบบฟอร์มดาวน์โหลดและเอกสารประกอบ"
         actionButton={{
           label: 'เพิ่มแบบฟอร์มดาวน์โหลด',
           onClick: () => setIsAddFormOpen(true),
@@ -369,21 +407,48 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
                 onChange={(e) => setNewFormCat(e.target.value as 'ethics' | 'ip' | 'utilization')}
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
               >
-                <option value="ethics">จริยธรรมการวิจัย (Ethics)</option>
-                <option value="ip">ทรัพย์สินทางปัญญา (IP)</option>
-                <option value="utilization">เอกสารการนำไปใช้ประโยชน์ (Utilization)</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร *</label>
-              <Input
-                type="url"
-                required
-                value={newFormUrl}
-                onChange={(e) => setNewFormUrl(e.target.value)}
-                placeholder="https://example.com/form.pdf"
-                className="w-full light-input text-xs"
-              />
+              <label className="block font-bold text-slate-500 mb-1">แหล่งที่มาของเอกสาร *</label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setAddSourceType('link')}
+                  className="flex-1 h-9 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer"
+                  style={addSourceType === 'link' ? { background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' } : { background: '#fff', color: '#475569', borderColor: '#E2E8F0' }}
+                >
+                  แปะลิงก์
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddSourceType('upload')}
+                  className="flex-1 h-9 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer"
+                  style={addSourceType === 'upload' ? { background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' } : { background: '#fff', color: '#475569', borderColor: '#E2E8F0' }}
+                >
+                  อัพโหลดไฟล์
+                </button>
+              </div>
+              {addSourceType === 'link' ? (
+                <Input
+                  type="url"
+                  required
+                  value={newFormUrl}
+                  onChange={(e) => setNewFormUrl(e.target.value)}
+                  placeholder="https://example.com/form.pdf"
+                  className="w-full light-input text-xs"
+                />
+              ) : (
+                <input
+                  type="file"
+                  required
+                  onChange={(e) => setAddFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:h-9 file:px-4 file:rounded-xl file:border-0 file:bg-[#F0F7FF] file:text-[#0EA5A0] file:text-xs file:font-bold file:cursor-pointer"
+                />
+              )}
             </div>
 
             <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
@@ -396,10 +461,11 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               </button>
               <button
                 type="submit"
-                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                disabled={addUploading}
+                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none disabled:opacity-60"
+                style={{ background: '#0EA5A0' }}
               >
-                บันทึกแบบฟอร์ม
+                {addUploading ? 'กำลังอัพโหลด...' : 'บันทึกแบบฟอร์ม'}
               </button>
             </div>
           </form>
@@ -422,17 +488,26 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
           <form
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!editingForm || !editFormTitle || !editFormUrl) return
+              if (!editingForm || !editFormTitle) return
+              if (editSourceType === 'link' && !editFormUrl) return
+              if (editSourceType === 'upload' && !editFile) return
               try {
+                let fileUrl = editFormUrl
+                if (editSourceType === 'upload' && editFile) {
+                  setEditUploading(true)
+                  fileUrl = await uploadFile(editFile, 'downloadable-forms', true)
+                }
                 const { error } = await supabase.from('downloadable_forms').update({
                   title: editFormTitle,
                   category: editFormCat,
-                  file_url: editFormUrl
+                  file_url: fileUrl
                 }).eq('id', editingForm.id)
                 if (error) throw error
                 setEditingForm(null)
               } catch (err: any) {
                 console.error('Error updating downloadable form:', err)
+              } finally {
+                setEditUploading(false)
               }
             }}
             className="space-y-4 text-xs"
@@ -452,23 +527,50 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               <label className="block font-bold text-slate-500 mb-1">หมวดหมู่เอกสาร *</label>
               <select
                 value={editFormCat}
-                onChange={(e) => setEditFormCat(e.target.value as 'ethics' | 'ip')}
+                onChange={(e) => setEditFormCat(e.target.value as 'ethics' | 'ip' | 'utilization')}
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
               >
-                <option value="ethics">จริยธรรมการวิจัย (Ethics)</option>
-                <option value="ip">ทรัพย์สินทางปัญญา (IP)</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">URL ไฟล์เอกสาร *</label>
-              <Input
-                type="url"
-                required
-                value={editFormUrl}
-                onChange={(e) => setEditFormUrl(e.target.value)}
-                placeholder="https://example.com/form.pdf"
-                className="w-full light-input text-xs"
-              />
+              <label className="block font-bold text-slate-500 mb-1">แหล่งที่มาของเอกสาร *</label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setEditSourceType('link')}
+                  className="flex-1 h-9 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer"
+                  style={editSourceType === 'link' ? { background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' } : { background: '#fff', color: '#475569', borderColor: '#E2E8F0' }}
+                >
+                  แปะลิงก์
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditSourceType('upload')}
+                  className="flex-1 h-9 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer"
+                  style={editSourceType === 'upload' ? { background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' } : { background: '#fff', color: '#475569', borderColor: '#E2E8F0' }}
+                >
+                  อัพโหลดไฟล์
+                </button>
+              </div>
+              {editSourceType === 'link' ? (
+                <Input
+                  type="url"
+                  required
+                  value={editFormUrl}
+                  onChange={(e) => setEditFormUrl(e.target.value)}
+                  placeholder="https://example.com/form.pdf"
+                  className="w-full light-input text-xs"
+                />
+              ) : (
+                <input
+                  type="file"
+                  onChange={(e) => setEditFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:h-9 file:px-4 file:rounded-xl file:border-0 file:bg-[#F0F7FF] file:text-[#0EA5A0] file:text-xs file:font-bold file:cursor-pointer"
+                />
+              )}
             </div>
 
             <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
@@ -481,10 +583,11 @@ export const EthicsTab: React.FC<EthicsTabProps> = ({
               </button>
               <button
                 type="submit"
-                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                disabled={editUploading}
+                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none disabled:opacity-60"
+                style={{ background: '#0EA5A0' }}
               >
-                บันทึกการแก้ไข
+                {editUploading ? 'กำลังอัพโหลด...' : 'บันทึกการแก้ไข'}
               </button>
             </div>
           </form>

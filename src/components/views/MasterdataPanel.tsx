@@ -19,7 +19,6 @@ import { MastersTab } from './masterdata/MastersTab'
 import { UsersTab } from './masterdata/UsersTab'
 import { ClinicTab } from './masterdata/ClinicTab'
 import { EthicsTab } from './masterdata/EthicsTab'
-import { IpTab } from './masterdata/IpTab'
 import { RolesTab } from './masterdata/RolesTab'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
@@ -684,14 +683,15 @@ export const MasterdataPanel: React.FC = () => {
   }
 
   // Add Downloadable Form
-  const handleAddDownloadableForm = async (e: React.FormEvent) => {
+  const handleAddDownloadableForm = async (e: React.FormEvent, urlOverride?: string) => {
     e.preventDefault()
-    if (!newFormTitle || !newFormUrl) return
+    const fileUrl = urlOverride || newFormUrl
+    if (!newFormTitle || !fileUrl) return
     try {
       const { error } = await supabase.from('downloadable_forms').insert({
         title: newFormTitle,
         category: newFormCat,
-        file_url: newFormUrl
+        file_url: fileUrl
       })
       if (error) throw error
       setNewFormTitle('')
@@ -955,7 +955,7 @@ export const MasterdataPanel: React.FC = () => {
         }
       default:
         return {
-          title: 'โต๊ะทำงานของแอดมินวันนี้',
+          title: 'Masterdata',
           subtitle: 'สรุปคิวงานด่วนที่รอดำเนินการ (นัดหมายคลินิก คิวจริยธรรม และทรัพย์สินทางปัญญา)',
           recordCode: 'MST-DASH'
         }
@@ -1069,17 +1069,7 @@ export const MasterdataPanel: React.FC = () => {
                   onAddDownloadableForm={handleAddDownloadableForm}
                   downloadableForms={downloadableForms}
                   onDeleteDownloadableForm={handleDeleteDownloadableForm}
-                />
-                <IpTab
-                  newFormTitle={newFormTitle}
-                  setNewFormTitle={setNewFormTitle}
-                  newFormCat={newFormCat}
-                  setNewFormCat={setNewFormCat}
-                  newFormUrl={newFormUrl}
-                  setNewFormUrl={setNewFormUrl}
-                  onAddDownloadableForm={handleAddDownloadableForm}
-                  downloadableForms={downloadableForms}
-                  onDeleteDownloadableForm={handleDeleteDownloadableForm}
+                  uploadFile={uploadFile}
                 />
               </div>
             )

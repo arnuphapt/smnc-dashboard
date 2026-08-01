@@ -5,18 +5,16 @@ import Link from 'next/link'
 import {
   ShieldCheck,
   Users,
-  Database,
   BookOpen,
   Award,
   Lightbulb,
   Trophy,
   Share2,
-  ClipboardCheck,
-  FileCheck,
   Calendar,
   ArrowRight,
   ChevronRight,
-  Clock
+  Clipboard,
+  Settings
 } from 'lucide-react'
 
 export interface DeskItem {
@@ -65,10 +63,118 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           badgeStyle: 'bg-blue-50 text-blue-700 border-blue-200',
         },
         {
-          title: 'ตารางข้อมูลพื้นฐาน (Master Lookups)',
-          desc: 'จัดการข้อมูล Master Options เช่น ภาควิชา, ปี พ.ศ., ประเภทงานวิจัย, ฐานข้อมูลวารสาร',
-          href: '/master/masters',
-          icon: Database,
+          title: 'ประเภทงานวิจัย (Master Creator Type)',
+          desc: 'จัดการข้อมูลตัวเลือกประเภทงานวิจัย/ผู้จัดทำ',
+          href: '/master/masters/research_type',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ภาควิชา (Master Department)',
+          desc: 'จัดการข้อมูลตัวเลือกภาควิชา',
+          href: '/master/masters/department',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ประเภททรัพย์สินทางปัญญา (Master IP Type)',
+          desc: 'จัดการข้อมูลตัวเลือกประเภททรัพย์สินทางปัญญา',
+          href: '/master/masters/ip_type',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ระดับรางวัล (Master Award Level)',
+          desc: 'จัดการข้อมูลตัวเลือกระดับรางวัล',
+          href: '/master/masters/award_level',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ประเภทการนำไปใช้ประโยชน์ (Master Utilization Type)',
+          desc: 'จัดการข้อมูลตัวเลือกประเภทการนำไปใช้ประโยชน์',
+          href: '/master/masters/utilization_type',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ระดับวารสาร (Master Journal Rank)',
+          desc: 'จัดการข้อมูลตัวเลือกระดับวารสารวิชาการ',
+          href: '/master/masters/journal_rank',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ขอบเขตงาน (Master Scope)',
+          desc: 'จัดการข้อมูลตัวเลือกขอบเขตงานวิจัย',
+          href: '/master/masters/scope',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ประเภทนวัตกรรม (Master Innovation Type)',
+          desc: 'จัดการข้อมูลตัวเลือกประเภทนวัตกรรม',
+          href: '/master/masters/innovation_type',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'แหล่งที่มา (Master Source)',
+          desc: 'จัดการข้อมูลตัวเลือกแหล่งที่มาของผลงาน',
+          href: '/master/masters/source',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'สถานะทรัพย์สินทางปัญญา (Master IP Status)',
+          desc: 'จัดการข้อมูลตัวเลือกสถานะทรัพย์สินทางปัญญา',
+          href: '/master/masters/ip_current_status',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'สถานที่จัดงาน (Master Venue)',
+          desc: 'จัดการข้อมูลตัวเลือกสถานที่จัดงาน/ตีพิมพ์',
+          href: '/master/masters/venue',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'ปี พ.ศ. (Master Year)',
+          desc: 'จัดการข้อมูลตัวเลือกปี พ.ศ.',
+          href: '/master/masters/year',
+          icon: Settings,
+          iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+          badge: 'System Settings',
+          badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          title: 'เกณฑ์จริยธรรม (Master Ethics Criteria)',
+          desc: 'จัดการข้อมูลตัวเลือกเกณฑ์การพิจารณาจริยธรรม',
+          href: '/master/masters/ethics_criteria',
+          icon: Settings,
           iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-200',
           badge: 'System Settings',
           badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -131,31 +237,22 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       subtitle: 'พิจารณาคำขอรับรองจริยธรรม บริการทรัพย์สินทางปัญญา และคลินิกปรึกษางานวิจัย',
       items: [
         {
-          title: 'จริยธรรมการวิจัย (Research Ethics IRB)',
-          desc: 'พิจารณาโครงร่างวิจัย มอบหมายผู้ทรงคุณวุฒิประเมินผล และจัดการแบบฟอร์มเอกสาร',
-          href: '/master/ethics',
-          icon: ClipboardCheck,
-          iconBg: 'bg-teal-50 text-teal-700 border-teal-200',
-          badge: pendingEthicsCount > 0 ? `${pendingEthicsCount} คำขอค้าง` : 'Services',
-          badgeStyle: pendingEthicsCount > 0 ? 'bg-amber-100 text-amber-800 border-amber-300 font-black' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
-        },
-        {
-          title: 'บริการทรัพย์สินทางปัญญา (IP Services)',
-          desc: 'ติดตามและจัดการคำขอยื่นขึ้นทะเบียนทรัพย์สินทางปัญญาและเอกสารดาวน์โหลดทางการ',
-          href: '/master/ip',
-          icon: FileCheck,
-          iconBg: 'bg-sky-50 text-sky-700 border-sky-200',
-          badge: pendingIpCount > 0 ? `${pendingIpCount} คำขอค้าง` : 'Services',
-          badgeStyle: pendingIpCount > 0 ? 'bg-amber-100 text-amber-800 border-amber-300 font-black' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
-        },
-        {
-          title: 'คลินิกวิจัยและสัมมนา (Research Clinic)',
-          desc: 'จัดการตารางนัดหมายขอคำปรึกษางานวิจัย หัวข้อสัมมนาวิชาการ และการลงทะเบียน',
-          href: '/master/clinic',
+          title: 'กิจกรรมและอบรม (Events)',
+          desc: 'จัดการปฏิทินกิจกรรม อบรม และสัมมนาวิชาการของสถาบัน',
+          href: '/master/event',
           icon: Calendar,
-          iconBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-          badge: pendingAppointmentsCount > 0 ? `${pendingAppointmentsCount} นัดหมายค้าง` : 'Services',
-          badgeStyle: pendingAppointmentsCount > 0 ? 'bg-amber-100 text-amber-800 border-amber-300 font-black' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+          iconBg: 'bg-violet-50 text-violet-700 border-violet-200',
+          badge: 'Services',
+          badgeStyle: 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+        },
+        {
+          title: 'แบบฟอร์มและเอกสารดาวน์โหลด (Downloadable Forms)',
+          desc: 'จัดการแบบฟอร์มจริยธรรม เอกสาร IP และเอกสารการนำผลงานวิจัยไปใช้ประโยชน์',
+          href: '/master/forms',
+          icon: Clipboard,
+          iconBg: 'bg-orange-50 text-orange-700 border-orange-200',
+          badge: 'Services',
+          badgeStyle: 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
         },
       ]
     }
@@ -163,40 +260,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* PENDING SUMMARY BANNER */}
-      {(pendingAppointmentsCount > 0 || pendingEthicsCount > 0 || pendingIpCount > 0) && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-teal-900 to-slate-900 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-teal-300" />
-            </div>
-            <div>
-              <div className="text-xs font-mono font-extrabold text-teal-300 uppercase tracking-wider">รายการค้างดำเนินการ (Pending Inbox)</div>
-              <div className="text-sm font-bold mt-0.5 text-slate-100">
-                มี {pendingAppointmentsCount + pendingEthicsCount + pendingIpCount} รายการรอแอดมินดำเนินการตรวจสอบและอนุมัติ
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {pendingEthicsCount > 0 && (
-              <Link href="/master/ethics" className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-extrabold transition">
-                จริยธรรม ({pendingEthicsCount})
-              </Link>
-            )}
-            {pendingIpCount > 0 && (
-              <Link href="/master/ip" className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-extrabold transition">
-                IP ({pendingIpCount})
-              </Link>
-            )}
-            {pendingAppointmentsCount > 0 && (
-              <Link href="/master/clinic" className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-extrabold transition">
-                นัดหมาย ({pendingAppointmentsCount})
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* SECTIONS GRID */}
       {sections.map((section, idx) => (
         <div key={idx} className="space-y-4">

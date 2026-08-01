@@ -55,6 +55,7 @@ interface EthicsSubmission {
   project_description?: string
   status: string
   assigned_reviewer_id?: string
+  assigned_reviewer_id_2?: string
   submitter_id?: string
   reviewer_notes?: string
   created_at: string
@@ -116,6 +117,7 @@ export const EthicsSubmissions: React.FC = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [selectedSubForAssign, setSelectedSubForAssign] = useState<EthicsSubmission | null>(null)
   const [assignReviewerId, setAssignReviewerId] = useState<string>('')
+  const [assignReviewerId2, setAssignReviewerId2] = useState<string>('')
 
   // Temp Expert Credential States
   const [showNewExpertForm, setShowNewExpertForm] = useState(false)
@@ -170,11 +172,15 @@ export const EthicsSubmissions: React.FC = () => {
     benefit: 'pass',
   })
 
-  const handleAssignReviewer = async (subId: string, reviewerId: string | null) => {
+  const handleAssignReviewer = async (subId: string, reviewerId: string | null, reviewerId2: string | null) => {
+    if (reviewerId && reviewerId2 && reviewerId === reviewerId2) {
+      triggerAlert('เกิดข้อผิดพลาด', 'กรุณาเลือกผู้ทรงคุณวุฒิ 2 ท่านไม่ให้ซ้ำกัน', 'danger')
+      return
+    }
     try {
       const { error } = await supabase
         .from('ethics_submissions')
-        .update({ assigned_reviewer_id: reviewerId || null })
+        .update({ assigned_reviewer_id: reviewerId || null, assigned_reviewer_id_2: reviewerId2 || null })
         .eq('id', subId)
       if (error) throw error
       fetchReviewSubmissions()
@@ -199,7 +205,7 @@ export const EthicsSubmissions: React.FC = () => {
     try {
       let query = supabase.from('ethics_submissions').select('*, profiles:submitter_id(email)').order('created_at', { ascending: false })
       if (hasRole(profile?.role, 'expert') && !hasRole(profile?.role, 'admin')) {
-        query = query.eq('assigned_reviewer_id', user.id)
+        query = query.or(`assigned_reviewer_id.eq.${user.id},assigned_reviewer_id_2.eq.${user.id}`)
       }
       const { data, error } = await query
       if (error) throw error
@@ -485,9 +491,13 @@ export const EthicsSubmissions: React.FC = () => {
       header: 'ผู้ทรงคุณวุฒิที่มอบหมาย',
       render: (sub) => {
         const assignedUser = expertProfiles.find((p) => p.id === sub.assigned_reviewer_id)
+        const assignedUser2 = expertProfiles.find((p) => p.id === sub.assigned_reviewer_id_2)
+        if (!assignedUser && !assignedUser2) {
+          return <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">ยังไม่ได้มอบหมาย</span>
+        }
         return (
           <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">
-            {assignedUser ? assignedUser.email : 'ยังไม่ได้มอบหมาย'}
+            {[assignedUser?.email, assignedUser2?.email].filter(Boolean).join(', ')}
           </span>
         )
       },
@@ -536,6 +546,7 @@ export const EthicsSubmissions: React.FC = () => {
                 onClick={() => {
                   setSelectedSubForAssign(sub)
                   setAssignReviewerId(sub.assigned_reviewer_id || '')
+                  setAssignReviewerId2(sub.assigned_reviewer_id_2 || '')
                   setAssignModalOpen(true)
                 }}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-extrabold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap"
@@ -1109,7 +1120,7 @@ export const EthicsSubmissions: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">เลือกผู้ทรงคุณวุฒิ *</label>
+                  <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">ผู้ทรงคุณวุฒิท่านที่ 1</label>
                   {(() => {
                     const selectedProfile = expertProfiles.find((p) => p.id === assignReviewerId)
                     const displayName = selectedProfile ? (selectedProfile.full_name || selectedProfile.email) : ''
@@ -1127,6 +1138,43 @@ export const EthicsSubmissions: React.FC = () => {
                         <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                           <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ...">
                             {labelText}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
+                          <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
+                          {expertProfiles.map((p) => {
+                            const nameText = p.full_name ? `${p.full_name} (${p.email})` : p.email
+                            return (
+                              <SelectItem key={p.id} value={p.id}>
+                                {nameText} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )
+                  })()}
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">ผู้ทรงคุณวุฒิท่านที่ 2 (ถ้ามี)</label>
+                  {(() => {
+                    const selectedProfile2 = expertProfiles.find((p) => p.id === assignReviewerId2)
+                    const displayName2 = selectedProfile2 ? (selectedProfile2.full_name || selectedProfile2.email) : ''
+                    const labelText2 = selectedProfile2
+                      ? `${displayName2} (${formatUserRolesText(selectedProfile2.role)}${(selectedProfile2 as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
+                      : assignReviewerId2 === 'unassigned' || !assignReviewerId2
+                      ? '— ยังไม่ได้มอบหมาย —'
+                      : assignReviewerId2
+
+                    return (
+                      <Select
+                        value={assignReviewerId2 || 'unassigned'}
+                        onValueChange={(val) => setAssignReviewerId2(val === 'unassigned' ? '' : val ?? '')}
+                      >
+                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ...">
+                            {labelText2}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
@@ -1165,7 +1213,7 @@ export const EthicsSubmissions: React.FC = () => {
                   </Button>
                   <Button
                     onClick={async () => {
-                      await handleAssignReviewer(selectedSubForAssign.id, assignReviewerId || null)
+                      await handleAssignReviewer(selectedSubForAssign.id, assignReviewerId || null, assignReviewerId2 || null)
                       setAssignModalOpen(false)
                     }}
                     className="btn-primary rounded-full text-xs font-extrabold"
