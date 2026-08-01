@@ -50,10 +50,20 @@ export const Breadcrumbs: React.FC = () => {
     { label: 'หน้าแรก', to: '/' }
   ]
 
+  // Intermediate route segments that don't have standalone pages
+  const SKIP_INTERMEDIATE_SEGMENTS = new Set(['items', 'masters', 'lookups', 'masterdata'])
+
   let accumulatedPath = ''
   segments.forEach((segment) => {
     accumulatedPath += `/${segment}`
-    const label = SEGMENT_TRANSLATIONS[segment.toLowerCase()] || formatSegment(segment)
+    const lowerSegment = segment.toLowerCase()
+
+    // Skip intermediate segments if there are sub-paths after them
+    if (SKIP_INTERMEDIATE_SEGMENTS.has(lowerSegment) && accumulatedPath !== pathname) {
+      return
+    }
+
+    const label = SEGMENT_TRANSLATIONS[lowerSegment] || formatSegment(segment)
     items.push({
       label,
       to: accumulatedPath,

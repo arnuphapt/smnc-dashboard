@@ -45,7 +45,6 @@ export default function AdminLayout({
         </main>
         <footer className="bg-white py-6 border-t border-slate-200 mt-12 text-center text-xs text-slate-500">
           <p>© {new Date().getFullYear()} คลังปัญญาดิจิทัล วิทยาลัยพยาบาลศรีมหาสารคาม. All rights reserved.</p>
-          <p className="mt-1 text-slate-400">พัฒนาด้วย Next.js 16 App Router และ Supabase SSR</p>
         </footer>
       </div>
     </div>
