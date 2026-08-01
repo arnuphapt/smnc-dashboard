@@ -31,6 +31,22 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_temp_account, temp_expires_at')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.is_temp_account && profile.temp_expires_at && new Date(profile.temp_expires_at) < new Date()) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('expired', '1')
+      const res = NextResponse.redirect(url)
+      return res
+    }
+  }
+
   // Guard protected routes if necessary
   const path = request.nextUrl.pathname
   if (!user && (path.startsWith('/master') || path.startsWith('/clinic') || path.startsWith('/ethics') || path.startsWith('/ip-application'))) {

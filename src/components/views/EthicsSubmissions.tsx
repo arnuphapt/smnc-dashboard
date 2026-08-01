@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, Profile } from '@/context/AuthContext'
 
@@ -115,6 +116,44 @@ export const EthicsSubmissions: React.FC = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [selectedSubForAssign, setSelectedSubForAssign] = useState<EthicsSubmission | null>(null)
   const [assignReviewerId, setAssignReviewerId] = useState<string>('')
+
+  // Temp Expert Credential States
+  const [showNewExpertForm, setShowNewExpertForm] = useState(false)
+  const [newExpertEmail, setNewExpertEmail] = useState('')
+  const [creatingTempExpert, setCreatingTempExpert] = useState(false)
+  const [tempCredentialResult, setTempCredentialResult] = useState<{
+    email: string
+    password: string
+    loginUrl: string
+    expiresAt: string
+  } | null>(null)
+
+  const handleCreateTempExpert = async (submissionId: string) => {
+    if (!newExpertEmail.trim()) {
+      triggerAlert('เกิดข้อผิดพลาด', 'กรุณาระบุอีเมลผู้ทรงคุณวุฒิ', 'danger')
+      return
+    }
+    setCreatingTempExpert(true)
+    try {
+      const res = await fetch('/api/admin/create-temp-expert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newExpertEmail.trim(), submissionId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด')
+      setTempCredentialResult(data)
+      setShowNewExpertForm(false)
+      setNewExpertEmail('')
+      setAssignModalOpen(false)
+      fetchReviewSubmissions()
+      triggerAlert('สำเร็จ', 'สร้างบัญชีผู้ทรงคุณวุฒิชั่วคราวและมอบหมายเรียบร้อยแล้ว!', 'primary')
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger')
+    } finally {
+      setCreatingTempExpert(false)
+    }
+  }
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [reviewStep, setReviewStep] = useState<number>(1)
@@ -407,6 +446,20 @@ export const EthicsSubmissions: React.FC = () => {
     setReviewNotes(cleanComments)
     setReviewModalOpen(true)
   }
+
+  // Task 7: Auto-open assigned submission when landing via ?highlight=<id>
+  const searchParams = useSearchParams()
+  const highlightId = searchParams ? searchParams.get('highlight') : null
+  const [hasAutoOpened, setHasAutoOpened] = useState(false)
+
+  useEffect(() => {
+    if (!highlightId || hasAutoOpened || reviewSubmissions.length === 0) return
+    const target = reviewSubmissions.find((s) => s.id === highlightId)
+    if (target) {
+      openReviewModalFor(target)
+      setHasAutoOpened(true)
+    }
+  }, [highlightId, hasAutoOpened, reviewSubmissions])
 
   const columns: DataTableColumn<EthicsSubmission>[] = [
     {
@@ -1057,22 +1110,45 @@ export const EthicsSubmissions: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">เลือกผู้ทรงคุณวุฒิ *</label>
-                  <Select
-                    value={assignReviewerId || 'unassigned'}
-                    onValueChange={(val) => setAssignReviewerId(val === 'unassigned' ? '' : val ?? '')}
-                  >
-                    <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                      <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
-                      <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
-                      {expertProfiles.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.email} ({formatUserRolesText(p.role)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const selectedProfile = expertProfiles.find((p) => p.id === assignReviewerId)
+                    const labelText = selectedProfile
+                      ? `${selectedProfile.email} (${formatUserRolesText(selectedProfile.role)}${(selectedProfile as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
+                      : assignReviewerId === 'unassigned' || !assignReviewerId
+                      ? '— ยังไม่ได้มอบหมาย —'
+                      : assignReviewerId
+
+                    return (
+                      <Select
+                        value={assignReviewerId || 'unassigned'}
+                        onValueChange={(val) => setAssignReviewerId(val === 'unassigned' ? '' : val ?? '')}
+                      >
+                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ...">
+                            {labelText}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
+                          <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
+                          {expertProfiles.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.email} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )
+                  })()}
+
+                  <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between gap-2">
+                    <span>ต้องการเพิ่มผู้ทรงคุณวุฒิชั่วคราวใหม่?</span>
+                    <Link
+                      href="/master/users"
+                      className="text-[#0EA5A0] font-extrabold hover:underline shrink-0"
+                    >
+                      ไปที่หน้าจัดการผู้ใช้ →
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-3 border-t border-[#E2E8F0]">
@@ -1098,6 +1174,70 @@ export const EthicsSubmissions: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: TEMP EXPERT CREDENTIAL RESULT */}
+      {tempCredentialResult && (
+        <Dialog open onOpenChange={() => setTempCredentialResult(null)}>
+          <DialogContent className="max-w-md bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-2xl space-y-4">
+            <DialogHeader>
+              <DialogTitle className="text-base font-black text-[#0F172A] flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm">🔑</span>
+                สร้างบัญชีผู้ทรงคุณวุฒิชั่วคราวสำเร็จ
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3 text-xs text-[#334155] bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <p className="font-extrabold text-slate-800">ส่งข้อมูลบัญชีและลิงก์นี้ให้ผู้ทรงคุณวุฒิเพื่อประเมินโครงการ:</p>
+              
+              <div className="space-y-1.5 font-mono text-[11px]">
+                <div className="p-2 bg-white rounded-xl border border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-500 font-sans">อีเมล:</span>
+                  <span className="font-bold text-[#0F172A]">{tempCredentialResult.email}</span>
+                </div>
+                <div className="p-2 bg-white rounded-xl border border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-500 font-sans">รหัสผ่านชั่วคราว:</span>
+                  <span className="font-bold text-[#00796B] text-sm">{tempCredentialResult.password}</span>
+                </div>
+                <div className="p-2 bg-white rounded-xl border border-slate-200 flex flex-col gap-1">
+                  <span className="text-slate-500 font-sans">ลิงก์เข้าสู่ระบบตรง:</span>
+                  <a
+                    href={tempCredentialResult.loginUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#0EA5A0] font-bold underline break-all"
+                  >
+                    {tempCredentialResult.loginUrl}
+                  </a>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
+                ⏳ หมดอายุในวันที่: <strong>{new Date(tempCredentialResult.expiresAt).toLocaleString('th-TH')}</strong>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                onClick={() => {
+                  const textToCopy = `เรียน ผู้ทรงคุณวุฒิ\n\nท่านได้รับการมอบหมายให้พิจารณาจริยธรรมการวิจัย\nอีเมล: ${tempCredentialResult.email}\nรหัสผ่านชั่วคราว: ${tempCredentialResult.password}\nลิงก์เข้าสู่ระบบ: ${tempCredentialResult.loginUrl}\n(หมดอายุ: ${new Date(tempCredentialResult.expiresAt).toLocaleString('th-TH')})`
+                  navigator.clipboard.writeText(textToCopy)
+                  triggerAlert('คัดลอกสำเร็จ', 'คัดลอกข้อมูลบัญชีชั่วคราวเรียบร้อยแล้ว!', 'primary')
+                }}
+                className="btn-primary rounded-full text-xs font-bold px-5"
+              >
+                📋 คัดลอกข้อมูลทั้งหมด
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setTempCredentialResult(null)}
+                className="rounded-full text-xs font-bold"
+              >
+                ปิดหน้าต่าง
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <ConfirmDialog
         isOpen={deleteConfirmOpen}

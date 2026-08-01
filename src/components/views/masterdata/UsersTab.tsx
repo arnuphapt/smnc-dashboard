@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2 } from 'lucide-react'
 import { DataTableColumn } from '@/components/DataTable'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { Profile } from '@/context/AuthContext'
@@ -26,11 +26,56 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
   const [addEmail, setAddEmail] = useState('')
   const [addPassword, setAddPassword] = useState('')
   const [addRole, setAddRole] = useState('teacher')
+  const [isTempAccount, setIsTempAccount] = useState(false)
+  const [tempHours, setTempHours] = useState('72')
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState('')
+  const [resettingPassword, setResettingPassword] = useState(false)
+
+  const [tempCredentialResult, setTempCredentialResult] = useState<{
+    email: string
+    password: string
+    loginUrl: string
+    expiresAt: string
+  } | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
+
+  const handleViewOrResetTempUser = async (profile: Profile) => {
+    setResettingPassword(true)
+    try {
+      const res = await fetch('/api/admin/reset-temp-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = typeof data.error === 'string' ? data.error : (data.error?.message || JSON.stringify(data.error))
+        throw new Error(msg || 'เกิดข้อผิดพลาดในการดึงข้อมูลบัญชีชั่วคราว')
+      }
+      setTempCredentialResult(data)
+    } catch (err: any) {
+      alert(err.message || 'ไม่สามารถดึงข้อมูลบัญชีชั่วคราวได้')
+    } finally {
+      setResettingPassword(false)
+    }
+  }
 
   const columns: DataTableColumn<Profile>[] = [
-    { key: 'email', header: 'อีเมลผู้ใช้งาน', render: (p) => <span className="font-bold" style={{ color: '#0B1D3A' }}>{p.email}</span> },
+    {
+      key: 'email',
+      header: 'อีเมลผู้ใช้งาน',
+      render: (p) => (
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-[#0F172A]">{p.email}</span>
+          {(p as any).is_temp_account && (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+              ⏳ ชั่วคราว (Temp)
+            </span>
+          )}
+        </div>
+      )
+    },
     {
       key: 'role',
       header: 'ระดับสิทธิ์การใช้งาน (Roles)',
@@ -58,21 +103,39 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
     {
       key: 'created_at',
       header: 'วันที่ลงทะเบียน',
-      render: (p) => <span className="text-slate-500 font-medium">{new Date(p.created_at).toLocaleDateString('th-TH')}</span>,
+      render: (p) => (
+        <div className="text-slate-500 font-medium text-xs">
+          <div>{new Date(p.created_at).toLocaleDateString('th-TH')}</div>
+          {(p as any).temp_expires_at && (
+            <div className="text-[10px] text-amber-700 font-mono mt-0.5">
+              หมดอายุ: {new Date((p as any).temp_expires_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions',
       header: 'จัดการ',
       align: 'right',
       render: (p) => (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-1.5">
+          {(p as any).is_temp_account && (
+            <button
+              onClick={() => handleViewOrResetTempUser(p)}
+              disabled={resettingPassword}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100 disabled:opacity-50"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-700" />
+              <span>ข้อมูลเข้าสู่ระบบ</span>
+            </button>
+          )}
           <button
             onClick={() => {
               setSelectedProfile(p)
               setNewRole(p.role)
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-[#F0F7FF] text-[#0EA5A0] border-[#DAEEFF]"
           >
             <Edit2 className="w-3.5 h-3.5" />
             แก้ไขสิทธิ์
@@ -102,18 +165,40 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
       return
     }
 
-    if (!addPassword || addPassword.length < 6) {
-      setAddError('กรุณากรอกรหัสผ่านอย่างน้อย 6 ตัวอักษร')
-      return
-    }
-
     setAddLoading(true)
     try {
-      await onAddUser(trimmedEmail, addPassword, addRole)
-      setIsAddModalOpen(false)
-      setAddEmail('')
-      setAddPassword('')
-      setAddRole('teacher')
+      if (isTempAccount) {
+        // Create Temp Expert Account via API
+        const res = await fetch('/api/admin/create-temp-expert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail, expiresInHours: Number(tempHours) }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          const errorMsg = typeof data.error === 'string' ? data.error : (data.error?.message || JSON.stringify(data.error))
+          throw new Error(errorMsg || 'เกิดข้อผิดพลาดในการสร้างบัญชีชั่วคราว')
+        }
+        setTempCredentialResult(data)
+        setIsAddModalOpen(false)
+        setAddEmail('')
+        setAddPassword('')
+        setIsTempAccount(false)
+        window.location.reload()
+      } else {
+        // Standard user creation
+        if (!addPassword || addPassword.length < 6) {
+          setAddError('กรุณากรอกรหัสผ่านอย่างน้อย 6 ตัวอักษร')
+          setAddLoading(false)
+          return
+        }
+        await onAddUser(trimmedEmail, addPassword, addRole)
+        setIsAddModalOpen(false)
+        setAddEmail('')
+        setAddPassword('')
+        setAddRole('teacher')
+        setIsTempAccount(false)
+      }
     } catch (err: any) {
       setAddError(err.message || 'เกิดข้อผิดพลาดในการสร้างผู้ใช้งาน')
     } finally {
@@ -132,6 +217,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
             setAddEmail('')
             setAddPassword('')
             setAddRole('teacher')
+            setIsTempAccount(false)
+            setTempHours('72')
             setAddError('')
             setIsAddModalOpen(true)
           },
@@ -207,20 +294,68 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
-                  รหัสผ่านเริ่มต้น * (อย่างน้อย 6 ตัวอักษร)
+              {/* Temp Account Option Toggle Box */}
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-700" />
+                    <div>
+                      <div className="text-xs font-bold text-amber-950">สร้างเป็นบัญชีผู้ทรงคุณวุฒิชั่วคราว (Temp Account)</div>
+                      <div className="text-[10px] text-amber-800 font-medium">กำหนดวันหมดอายุสำหรับผู้ประเมินภายนอก</div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isTempAccount}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setIsTempAccount(checked)
+                      if (checked) {
+                        const current = getUserRoles(addRole)
+                        if (!current.includes('expert')) {
+                          setAddRole([...current, 'expert'].join(','))
+                        }
+                      }
+                    }}
+                    className="w-4 h-4 accent-[#00796B] rounded cursor-pointer shrink-0"
+                  />
                 </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  placeholder="••••••••"
-                  value={addPassword}
-                  onChange={(e) => setAddPassword(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
-                />
+
+                {isTempAccount && (
+                  <div className="pt-2 border-t border-amber-200/60 space-y-1.5 animate-fadeIn">
+                    <label className="block text-[10px] font-bold text-amber-900">
+                      ระยะเวลาที่สามารถใช้งานได้ (อายุบัญชี) *
+                    </label>
+                    <select
+                      value={tempHours}
+                      onChange={(e) => setTempHours(e.target.value)}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-amber-200 bg-white text-amber-950 font-medium"
+                    >
+                      <option value="24">24 ชั่วโมง (1 วัน)</option>
+                      <option value="48">48 ชั่วโมง (2 วัน)</option>
+                      <option value="72">72 ชั่วโมง (3 วัน - ค่าเริ่มต้น)</option>
+                      <option value="168">168 ชั่วโมง (7 วัน)</option>
+                    </select>
+                  </div>
+                )}
               </div>
+
+              {!isTempAccount && (
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                    รหัสผ่านเริ่มต้น * (อย่างน้อย 6 ตัวอักษร)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0]">
@@ -367,6 +502,76 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
                 className="btn-primary text-xs !py-2 !px-4 h-auto cursor-pointer"
               >
                 บันทึกสิทธิ์
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal for showing Temp Expert Credentials Result */}
+      {tempCredentialResult && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center text-lg font-bold shrink-0">
+                🔑
+              </div>
+              <div>
+                <h3 className="text-base font-black text-[#0F172A]">สร้างบัญชีผู้ทรงคุณวุฒิชั่วคราวสำเร็จ</h3>
+                <p className="text-xs text-slate-500">สามารถส่งข้อมูลนี้ให้ผู้ทรงคุณวุฒิเพื่อเข้าประเมินงานได้ทันที</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs text-[#334155] bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <div className="space-y-2 font-mono text-[11px]">
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-500 font-sans font-bold">อีเมล:</span>
+                  <span className="font-bold text-[#0F172A]">{tempCredentialResult.email}</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-500 font-sans font-bold">รหัสผ่านชั่วคราว:</span>
+                  <span className="font-bold text-[#00796B] text-sm">{tempCredentialResult.password}</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex flex-col gap-1">
+                  <span className="text-slate-500 font-sans font-bold">ลิงก์เข้าสู่ระบบตรง:</span>
+                  <a
+                    href={tempCredentialResult.loginUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#0EA5A0] font-bold underline break-all"
+                  >
+                    {tempCredentialResult.loginUrl}
+                  </a>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
+                ⏳ หมดอายุในวันที่: <strong>{new Date(tempCredentialResult.expiresAt).toLocaleString('th-TH')}</strong>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const textToCopy = `เรียน ผู้ทรงคุณวุฒิ\n\nข้อมูลบัญชีผู้ใช้ชั่วคราวสำหรับเข้าสู่ระบบคลังปัญญาดิจิทัล:\nอีเมล: ${tempCredentialResult.email}\nรหัสผ่านชั่วคราว: ${tempCredentialResult.password}\nลิงก์เข้าสู่ระบบ: ${tempCredentialResult.loginUrl}\n(หมดอายุวันที่: ${new Date(tempCredentialResult.expiresAt).toLocaleString('th-TH')})`
+                  navigator.clipboard.writeText(textToCopy)
+                  setCopySuccess(true)
+                  setTimeout(() => setCopySuccess(false), 3000)
+                }}
+                className="btn-primary rounded-full text-xs font-bold px-4 py-2 flex items-center gap-1.5 cursor-pointer"
+              >
+                {copySuccess ? <CheckCircle2 className="w-4 h-4 text-teal-200" /> : <Copy className="w-4 h-4" />}
+                <span>{copySuccess ? 'คัดลอกเรียบร้อย!' : 'คัดลอกข้อมูลทั้งหมด'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTempCredentialResult(null)}
+                className="px-5 py-2 border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                ปิดหน้าต่าง
               </button>
             </div>
           </div>

@@ -2,20 +2,25 @@
 
 import React, { useEffect } from 'react'
 import { AuthScreen } from '@/components/views/AuthScreen'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const isExpired = searchParams ? searchParams.get('expired') === '1' : false
+  const redirectTarget = searchParams ? searchParams.get('redirect') : null
 
   useEffect(() => {
-    if (user) {
-      router.replace('/')
+    if (user && !isExpired) {
+      router.replace(redirectTarget ? decodeURIComponent(redirectTarget) : '/')
     }
-  }, [user, router])
+  }, [user, router, redirectTarget, isExpired])
 
-  if (user) {
+  if (user && !isExpired) {
     return null
   }
 
@@ -28,6 +33,21 @@ export default function LoginPage() {
       >
         ← กลับหน้าเว็บหลัก
       </button>
+
+      {isExpired && (
+        <div className="max-w-md mx-auto pt-16 px-4">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-start gap-3 shadow-sm">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-extrabold text-amber-950">บัญชีผู้ทรงคุณวุฒิชั่วคราวหมดอายุแล้ว</div>
+              <div className="mt-0.5 text-amber-800">
+                สิทธิ์การเข้าใช้งานแบบชั่วคราวของคุณสิ้นสุดลงแล้ว หากต้องการเข้าสู่ระบบใหม่ กรุณาติดต่อผู้ดูแลระบบเพื่อขอรับสิทธิ์เข้าใช้งานอีกครั้งค่ะ
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AuthScreen />
     </div>
   )
