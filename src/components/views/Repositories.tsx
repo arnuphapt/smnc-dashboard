@@ -309,17 +309,17 @@ export const Repositories: React.FC = () => {
 
     if (activeCategory === 'award') {
       return [
-        { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
+        { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500 min-w-[48px] block">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
-        { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors, profiles) || 'ไม่ระบุ'}</span> },
-        { key: 'award_level', header: 'ระดับเวทีการนำเสนอ', sortable: true, render: (item) => item.metadata?.award_level ? <StatusBadge status={item.metadata.award_level} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
+        { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600 min-w-[160px] max-w-[240px] break-words block">{formatAuthorsForDisplay(item.authors, profiles) || 'ไม่ระบุ'}</span> },
+        { key: 'award_level', header: 'ระดับเวทีการนำเสนอ', sortable: true, render: (item) => <div className="min-w-[120px]">{item.metadata?.award_level ? <StatusBadge status={item.metadata.award_level} size="sm" /> : <span className="text-slate-400 font-medium">-</span>}</div> },
         { key: 'organizer', header: 'รายละเอียดเวทีการนำเสนอ', sortable: true, render: (item) => (
-          <span className="text-slate-500 max-w-[240px] break-words block" title={item.metadata?.organizer}>{item.metadata?.organizer || '-'}</span>
+          <span className="text-slate-500 min-w-[200px] max-w-[300px] break-words block" title={item.metadata?.organizer}>{item.metadata?.organizer || '-'}</span>
         ) },
-        { key: 'award_name', header: 'รางวัล', sortable: true, render: (item) => item.metadata?.award_name && (
+        { key: 'award_name', header: 'รางวัล', sortable: true, render: (item) => <div className="min-w-[140px]">{item.metadata?.award_name ? (
           <span className="whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">🏆 {item.metadata.award_name}</span>
-        ) },
+        ) : <span className="text-slate-400 font-medium">-</span>}</div> },
         linkColumn,
       ]
     }
