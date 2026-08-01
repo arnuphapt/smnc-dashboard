@@ -1,8 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import React from 'react'
-import { MasterdataPanel } from '@/components/views/MasterdataPanel'
-
-export default function MasterEthicsPage() {
-  return <MasterdataPanel />
+export default function MasterEthicsRedirect() {
+  redirect('/master/forms')
 }

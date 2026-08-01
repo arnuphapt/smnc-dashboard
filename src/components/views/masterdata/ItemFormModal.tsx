@@ -85,6 +85,10 @@ interface ItemFormModalProps {
   setMetaAwardName: (value: string) => void
   metaUtilizationDate: string
   setMetaUtilizationDate: (value: string) => void
+  metaPublished: string
+  setMetaPublished: (value: string) => void
+  metaPresented: string
+  setMetaPresented: (value: string) => void
 }
 
 const SCOPE_CATEGORIES: Array<WisdomItem['category']> = ['research', 'innovation', 'award', 'intellectual_property']
@@ -120,6 +124,7 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   metaIpCurrentStatus, setMetaIpCurrentStatus, metaPatentNum, setMetaPatentNum,
   metaCreatorType, setMetaCreatorType, metaAwardName, setMetaAwardName,
   metaUtilizationDate, setMetaUtilizationDate,
+  metaPublished, setMetaPublished, metaPresented, setMetaPresented,
   // setFormCategory is not needed in the form body anymore since it is locked to page category
   // but we keep it in props to avoid breaking consumers
 }) => {
@@ -431,6 +436,23 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               {formCategory === 'innovation' && (
                 <>
                   <div>
+                    <label className="block text-slate-500 font-bold mb-1">ผู้สร้างสรรค์ / ประเภทผู้สร้างสรรค์</label>
+                    <Select
+                      value={metaCreatorType}
+                      onValueChange={(v) => setMetaCreatorType(v ?? '')}
+                      items={getOptionsByCategory('research_type').map((opt) => ({ value: opt.value, label: opt.value }))}
+                    >
+                      <SelectTrigger className="w-full light-input">
+                        <SelectValue placeholder="เลือกประเภทผู้สร้างสรรค์..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getOptionsByCategory('research_type').map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <label className="block text-slate-500 font-bold mb-1">การขอขึ้นทะเบียนทรัพย์สินทางปัญญา</label>
                     <Select
                       value={metaIpStatus}
@@ -454,6 +476,26 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                       value={metaAwardName}
                       onChange={(e) => setMetaAwardName(e.target.value)}
                       placeholder="เช่น รางวัลชนะเลิศนวัตกรรมดีเด่น"
+                      className="w-full light-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">ตีพิมพ์ (Published)</label>
+                    <Input
+                      type="text"
+                      value={metaPublished}
+                      onChange={(e) => setMetaPublished(e.target.value)}
+                      placeholder="เช่น ตีพิมพ์ในวารสารพยาบาลศาสตร์ 2568"
+                      className="w-full light-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">นำเสนอผลงาน (Presented)</label>
+                    <Input
+                      type="text"
+                      value={metaPresented}
+                      onChange={(e) => setMetaPresented(e.target.value)}
+                      placeholder="เช่น นำเสนอในงานประชุมวิชาการแห่งชาติ ครั้งที่ 5"
                       className="w-full light-input"
                     />
                   </div>

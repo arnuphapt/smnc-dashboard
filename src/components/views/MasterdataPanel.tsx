@@ -110,6 +110,8 @@ export const MasterdataPanel: React.FC = () => {
   const [metaCreatorType, setMetaCreatorType] = useState('')
   const [metaAwardName, setMetaAwardName] = useState('')
   const [metaUtilizationDate, setMetaUtilizationDate] = useState('')
+  const [metaPublished, setMetaPublished] = useState('')
+  const [metaPresented, setMetaPresented] = useState('')
 
   // Lookups Form State
   const [lookupCategory, setLookupCategory] = useState('research_type')
@@ -327,6 +329,8 @@ export const MasterdataPanel: React.FC = () => {
     setMetaPatentNum('')
     setMetaAwardName('')
     setMetaUtilizationDate('')
+    setMetaPublished('')
+    setMetaPresented('')
 
     setIsFormOpen(true)
   }
@@ -374,6 +378,8 @@ export const MasterdataPanel: React.FC = () => {
     setMetaCreatorType(item.metadata.creator_type || '')
     setMetaAwardName(item.metadata.award_name || '')
     setMetaUtilizationDate(item.metadata.utilization_date || '')
+    setMetaPublished(item.metadata.published || '')
+    setMetaPresented(item.metadata.presented || '')
 
     setIsFormOpen(true)
   }
@@ -427,6 +433,9 @@ export const MasterdataPanel: React.FC = () => {
         metadata.source = metaSource
         metadata.ip_status = metaIpStatus
         metadata.award_name = metaAwardName
+        metadata.creator_type = metaCreatorType
+        metadata.published = metaPublished
+        metadata.presented = metaPresented
       } else if (formCategory === 'intellectual_property') {
         metadata.ip_type = metaSubtype
         metadata.registration_number = metaRegNum
@@ -932,23 +941,17 @@ export const MasterdataPanel: React.FC = () => {
           subtitle: 'กำหนดสิทธิ์ว่าผู้ใช้งานระดับต่างๆ (Admin, Expert, Teacher) สามารถมองเห็นหรือเข้าใช้งานหน้าส่วนใดได้บ้าง',
           recordCode: 'MST-ROLES'
         }
-      case 'clinic':
+      case 'event':
         return {
-          title: 'คลินิกวิจัย (ระบบนัดหมาย)',
-          subtitle: 'จัดการคำขอนัดหมายขอคำปรึกษางานวิจัยและประสานงานอาจารย์ผู้เชี่ยวชาญ',
-          recordCode: 'MST-CLN'
+          title: 'Master Event (คลินิกวิจัย)',
+          subtitle: 'จัดการกิจกรรม คำขอนัดหมายขอคำปรึกษางานวิจัย และประสานงานอาจารย์ผู้เชี่ยวชาญ',
+          recordCode: 'MST-EVT'
         }
-      case 'ethics':
+      case 'forms':
         return {
-          title: 'คิวพิจารณาจริยธรรมการวิจัย',
-          subtitle: 'ตรวจสอบข้อเสนอโครงการวิจัยที่ยื่นขอรับการรับรองจริยธรรมการวิจัยในมนุษย์และมอบหมายผู้ทรงคุณวุฒิ',
-          recordCode: 'MST-ETH'
-        }
-      case 'ip':
-        return {
-          title: 'คิวคำขอจดสิทธิ์ทางปัญญา',
-          subtitle: 'ตรวจสอบ ติดตามความคืบหน้า และขึ้นทะเบียนผลงานทรัพย์สินทางปัญญาเข้าสู่ระบบคลังหลัก',
-          recordCode: 'MST-IP'
+          title: 'Master Forms (จริยธรรม & ทรัพย์สินทางปัญญา)',
+          subtitle: 'จัดการแบบฟอร์มดาวน์โหลดสำหรับจริยธรรมการวิจัย ทรัพย์สินทางปัญญา และการนำไปใช้ประโยชน์',
+          recordCode: 'MST-FORM'
         }
       default:
         return {
@@ -972,9 +975,8 @@ export const MasterdataPanel: React.FC = () => {
       {(() => {
         const getActiveTab = () => {
           const path = pathname
-          if (path.startsWith('/master/clinic')) return 'clinic'
-          if (path.startsWith('/master/ethics')) return 'ethics'
-          if (path.startsWith('/master/ip')) return 'ip'
+          if (path.startsWith('/master/event') || path.startsWith('/master/clinic')) return 'event'
+          if (path.startsWith('/master/forms') || path.startsWith('/master/ethics') || path.startsWith('/master/ip')) return 'forms'
           if (path.startsWith('/master/masters') || path.startsWith('/master/lookups')) return 'masters'
           if (path.startsWith('/master/users')) return 'users'
           if (path.startsWith('/master/roles')) return 'roles'
@@ -1036,7 +1038,7 @@ export const MasterdataPanel: React.FC = () => {
             )
           case 'roles':
             return <RolesTab />
-          case 'clinic':
+          case 'event':
             return (
               <ClinicTab
                 newEvTitle={newEvTitle}
@@ -1054,33 +1056,32 @@ export const MasterdataPanel: React.FC = () => {
                 onDeleteEvent={handleDeleteEvent}
               />
             )
-          case 'ethics':
+          case 'forms':
             return (
-              <EthicsTab
-                newFormTitle={newFormTitle}
-                setNewFormTitle={setNewFormTitle}
-                newFormCat={newFormCat}
-                setNewFormCat={setNewFormCat}
-                newFormUrl={newFormUrl}
-                setNewFormUrl={setNewFormUrl}
-                onAddDownloadableForm={handleAddDownloadableForm}
-                downloadableForms={downloadableForms}
-                onDeleteDownloadableForm={handleDeleteDownloadableForm}
-              />
-            )
-          case 'ip':
-            return (
-              <IpTab
-                newFormTitle={newFormTitle}
-                setNewFormTitle={setNewFormTitle}
-                newFormCat={newFormCat}
-                setNewFormCat={setNewFormCat}
-                newFormUrl={newFormUrl}
-                setNewFormUrl={setNewFormUrl}
-                onAddDownloadableForm={handleAddDownloadableForm}
-                downloadableForms={downloadableForms}
-                onDeleteDownloadableForm={handleDeleteDownloadableForm}
-              />
+              <div className="space-y-8">
+                <EthicsTab
+                  newFormTitle={newFormTitle}
+                  setNewFormTitle={setNewFormTitle}
+                  newFormCat={newFormCat}
+                  setNewFormCat={setNewFormCat}
+                  newFormUrl={newFormUrl}
+                  setNewFormUrl={setNewFormUrl}
+                  onAddDownloadableForm={handleAddDownloadableForm}
+                  downloadableForms={downloadableForms}
+                  onDeleteDownloadableForm={handleDeleteDownloadableForm}
+                />
+                <IpTab
+                  newFormTitle={newFormTitle}
+                  setNewFormTitle={setNewFormTitle}
+                  newFormCat={newFormCat}
+                  setNewFormCat={setNewFormCat}
+                  newFormUrl={newFormUrl}
+                  setNewFormUrl={setNewFormUrl}
+                  onAddDownloadableForm={handleAddDownloadableForm}
+                  downloadableForms={downloadableForms}
+                  onDeleteDownloadableForm={handleDeleteDownloadableForm}
+                />
+              </div>
             )
           default:
             return null
@@ -1155,6 +1156,10 @@ export const MasterdataPanel: React.FC = () => {
         setMetaAwardName={setMetaAwardName}
         metaUtilizationDate={metaUtilizationDate}
         setMetaUtilizationDate={setMetaUtilizationDate}
+        metaPublished={metaPublished}
+        setMetaPublished={setMetaPublished}
+        metaPresented={metaPresented}
+        setMetaPresented={setMetaPresented}
       />
 
       <ConfirmDialog

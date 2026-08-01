@@ -1,8 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import React from 'react'
-import { MasterdataPanel } from '@/components/views/MasterdataPanel'
-
-export default function MasterIpPage() {
-  return <MasterdataPanel />
+export default function MasterIpRedirect() {
+  redirect('/master/forms')
 }
