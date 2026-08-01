@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, Suspense } from 'react'
 import { AuthScreen } from '@/components/views/AuthScreen'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { AlertCircle } from 'lucide-react'
 
-export default function LoginPage() {
+export const dynamic = 'force-dynamic'
+
+function LoginContent() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -50,5 +52,13 @@ export default function LoginPage() {
 
       <AuthScreen />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500 font-medium">กำลังโหลด...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }
