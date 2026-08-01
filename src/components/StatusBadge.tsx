@@ -112,6 +112,8 @@ const EXACT_STATUS_MAP: Record<string, StatusConfig> = {
   'รอพิจารณา': { tone: 'pending', label: 'รอพิจารณา' },
 
   'อนุมัติ': { tone: 'success', label: 'อนุมัติ' },
+  'เห็นชอบ': { tone: 'success', label: 'เห็นชอบ' },
+  'เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล': { tone: 'action_required', label: 'เห็นชอบ (แก้ไขตามข้อเสนอแนะ)' },
   'อนุมัติแล้ว': { tone: 'success', label: 'อนุมัติแล้ว' },
   'ผ่าน': { tone: 'success', label: 'ผ่าน' },
   'ผ่านการอนุมัติ': { tone: 'success', label: 'ผ่านการอนุมัติ' },
@@ -120,6 +122,7 @@ const EXACT_STATUS_MAP: Record<string, StatusConfig> = {
   'เปิดใช้งาน': { tone: 'success', label: 'เปิดใช้งาน' },
 
   'ไม่อนุมัติ': { tone: 'danger', label: 'ไม่อนุมัติ' },
+  'ไม่เห็นชอบ': { tone: 'danger', label: 'ไม่เห็นชอบ' },
   'ไม่อนุมัติ/ไม่ผ่าน': { tone: 'danger', label: 'ไม่ผ่าน' },
   'ไม่ผ่าน': { tone: 'danger', label: 'ไม่ผ่าน' },
   'ปฏิเสธ': { tone: 'danger', label: 'ปฏิเสธ' },

@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Trash2, Calendar, Edit2, Plus } from 'lucide-react'
-import { DataTableColumn } from '@/components/DataTable'
-import { MasterDataTable } from '@/components/MasterDataTable'
+import { Trash2, Calendar, Edit2, Plus, Clock, MapPin, Users } from 'lucide-react'
+import { DataTable, DataTableColumn } from '@/components/DataTable'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { supabase } from '@/services/supabase'
 
@@ -46,39 +46,51 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
       key: 'title',
       header: 'หัวข้อกิจกรรม',
       render: (ev) => (
-        <>
-          <div className="font-bold" style={{ color: '#0B1D3A' }}>{ev.title}</div>
-          {ev.description && <div className="text-[10px] text-slate-400 mt-0.5">{ev.description}</div>}
-        </>
+        <div className="space-y-0.5">
+          <div className="font-extrabold text-[#0F172A]">{ev.title}</div>
+          {ev.description && <div className="text-[11px] text-[#64748B] line-clamp-1">{ev.description}</div>}
+        </div>
       )
     },
     {
       key: 'event_date',
       header: 'วันเวลาจัดงาน',
       render: (ev) => (
-        <span className="font-bold" style={{ color: '#0EA5A0' }}>
-          🗓️ {new Date(ev.event_date).toLocaleString('th-TH')}
-        </span>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8F6F5] text-[#00796B] border border-[#BCE5E2] text-[11px] font-bold">
+          <Clock className="w-3 h-3 shrink-0" />
+          <span>{new Date(ev.event_date).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+        </div>
       )
     },
     {
       key: 'location',
       header: 'สถานที่',
-      render: (ev) => <span className="text-slate-500">{ev.location || '-'}</span>
+      render: (ev) => (
+        <div className="flex items-center gap-1 text-[#475569] font-medium">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span>{ev.location || '—'}</span>
+        </div>
+      )
     },
     {
       key: 'capacity',
-      header: 'จำนวนที่รับ (คน)',
+      header: 'จำนวนที่รับ',
       align: 'center',
-      render: (ev) => <span className="text-slate-500 font-mono">{ev.capacity || 'ไม่จำกัด'}</span>
+      render: (ev) => (
+        <div className="flex items-center justify-center gap-1 font-mono text-xs text-slate-600 font-bold">
+          <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span>{ev.capacity ? `${ev.capacity} คน` : 'ไม่จำกัด'}</span>
+        </div>
+      )
     },
     {
       key: 'actions',
       header: 'จัดการ',
-      align: 'right',
+      align: 'center',
       render: (ev) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-center gap-2">
           <button
+            type="button"
             onClick={() => {
               setEditingEvent(ev)
               setEditEvTitle(ev.title)
@@ -87,16 +99,15 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
               setEditEvLoc(ev.location || '')
               setEditEvCap(ev.capacity ? String(ev.capacity) : '')
             }}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#F0F7FF', color: '#0EA5A0', borderColor: '#DAEEFF' }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-[#F0F7FF] text-[#0EA5A0] border-[#DAEEFF]"
           >
             <Edit2 className="w-3 h-3" />
             แก้ไข
           </button>
           <button
+            type="button"
             onClick={() => onDeleteEvent(ev.id)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-sm cursor-pointer"
-            style={{ background: '#FFF1F2', color: '#9F1239', borderColor: '#FECDD3' }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-[#FFF1F2] text-[#9F1239] border-[#FECDD3]"
           >
             <Trash2 className="w-3.5 h-3.5" />
             ลบ
@@ -117,7 +128,7 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
   return (
     <div className="space-y-6 text-xs text-slate-700">
       {/* Events Management */}
-      <MasterDataTable
+      <DataTable
         badge="คอร์สสัมมนา"
         title="กิจกรรมสัมมนา / Workshop ทั้งหมด"
         actionButton={{
@@ -140,13 +151,13 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
 
       {/* Add Event Dialog */}
       <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
-        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
+        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-3xl shadow-2xl border border-[#E2E8F0] bg-white animate-fadeIn">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คอร์สสัมมนา</p>
-            <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] mb-1 text-[#00796B]">คอร์สสัมมนา</p>
+            <DialogTitle className="text-base font-black text-[#0F172A] leading-snug">
               เพิ่มกิจกรรมสัมมนา / Workshop
             </DialogTitle>
-            <DialogDescription className="text-[11px] text-slate-400">
+            <DialogDescription className="text-xs text-[#64748B] font-semibold">
               สร้างหัวข้อสัมมนาและกำหนดจำนวนผู้เข้าร่วมกิจกรรม
             </DialogDescription>
           </div>
@@ -159,74 +170,74 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
             className="space-y-4 text-xs"
           >
             <div>
-              <label className="block font-bold text-slate-500 mb-1">หัวข้อกิจกรรม *</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">หัวข้อกิจกรรม *</label>
               <Input
                 type="text"
                 required
                 value={newEvTitle}
                 onChange={(e) => setNewEvTitle(e.target.value)}
                 placeholder="เช่น การใช้สถิติเบื้องต้นในงานวิจัย"
-                className="w-full light-input text-xs"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">รายละเอียด</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">รายละเอียด</label>
               <Textarea
                 value={newEvDesc}
                 onChange={(e) => setNewEvDesc(e.target.value)}
                 placeholder="อธิบายกิจกรรมคร่าวๆ..."
-                className="w-full light-input text-xs resize-none"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] resize-none"
                 rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-500 mb-1">วันเวลาจัดงาน *</label>
+                <label className="block font-extrabold text-[#0F172A] mb-1">วันเวลาจัดงาน *</label>
                 <Input
                   type="datetime-local"
                   required
                   value={newEvDate}
                   onChange={(e) => setNewEvDate(e.target.value)}
-                  className="w-full light-input text-xs"
+                  className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-500 mb-1">จำนวนที่รับ (คน)</label>
+                <label className="block font-extrabold text-[#0F172A] mb-1">จำนวนที่รับ (คน)</label>
                 <Input
                   type="number"
                   value={newEvCap}
                   onChange={(e) => setNewEvCap(e.target.value)}
                   placeholder="ไม่จำกัด"
-                  className="w-full light-input text-xs"
+                  className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
                 />
               </div>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">สถานที่จัดงาน</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">สถานที่จัดงาน</label>
               <Input
                 type="text"
                 value={newEvLoc}
                 onChange={(e) => setNewEvLoc(e.target.value)}
                 placeholder="เช่น ห้องประชุมอาคาร 3"
-                className="w-full light-input text-xs"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
               />
             </div>
 
-            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-              <button
+            <div className="flex items-center gap-3 justify-end pt-3 border-t border-[#E2E8F0]">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setIsAddEventOpen(false)}
-                className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
+                className="rounded-full text-xs font-bold px-5"
               >
                 ยกเลิก
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                className="btn-primary rounded-full text-xs font-extrabold px-6"
               >
                 บันทึกกิจกรรม
-              </button>
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -234,13 +245,13 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
 
       {/* Edit Event Dialog */}
       <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
-        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-2xl shadow-2xl border border-slate-200 animate-fadeIn">
+        <DialogContent className="max-w-[480px] w-full p-6 space-y-4 rounded-3xl shadow-2xl border border-[#E2E8F0] bg-white animate-fadeIn">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] mb-1" style={{ color: '#0EA5A0' }}>คอร์สสัมมนา</p>
-            <DialogTitle className="text-sm font-black text-slate-900 leading-snug">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] mb-1 text-[#00796B]">คอร์สสัมมนา</p>
+            <DialogTitle className="text-base font-black text-[#0F172A] leading-snug">
               แก้ไขกิจกรรมสัมมนา / Workshop
             </DialogTitle>
-            <DialogDescription className="text-[11px] text-slate-400">
+            <DialogDescription className="text-xs text-[#64748B] font-semibold">
               แก้ไขรายละเอียด กิจกรรม หรือข้อมูลวันจัดงาน
             </DialogDescription>
           </div>
@@ -266,74 +277,74 @@ export const ClinicTab: React.FC<ClinicTabProps> = ({
             className="space-y-4 text-xs"
           >
             <div>
-              <label className="block font-bold text-slate-500 mb-1">หัวข้อกิจกรรม *</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">หัวข้อกิจกรรม *</label>
               <Input
                 type="text"
                 required
                 value={editEvTitle}
                 onChange={(e) => setEditEvTitle(e.target.value)}
                 placeholder="เช่น การใช้สถิติเบื้องต้นในงานวิจัย"
-                className="w-full light-input text-xs"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">รายละเอียด</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">รายละเอียด</label>
               <Textarea
                 value={editEvDesc}
                 onChange={(e) => setEditEvDesc(e.target.value)}
                 placeholder="อธิบายกิจกรรมคร่าวๆ..."
-                className="w-full light-input text-xs resize-none"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] resize-none"
                 rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-500 mb-1">วันเวลาจัดงาน *</label>
+                <label className="block font-extrabold text-[#0F172A] mb-1">วันเวลาจัดงาน *</label>
                 <Input
                   type="datetime-local"
                   required
                   value={editEvDate}
                   onChange={(e) => setEditEvDate(e.target.value)}
-                  className="w-full light-input text-xs"
+                  className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-500 mb-1">จำนวนที่รับ (คน)</label>
+                <label className="block font-extrabold text-[#0F172A] mb-1">จำนวนที่รับ (คน)</label>
                 <Input
                   type="number"
                   value={editEvCap}
                   onChange={(e) => setEditEvCap(e.target.value)}
                   placeholder="ไม่จำกัด"
-                  className="w-full light-input text-xs"
+                  className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
                 />
               </div>
             </div>
             <div>
-              <label className="block font-bold text-slate-500 mb-1">สถานที่จัดงาน</label>
+              <label className="block font-extrabold text-[#0F172A] mb-1">สถานที่จัดงาน</label>
               <Input
                 type="text"
                 value={editEvLoc}
                 onChange={(e) => setEditEvLoc(e.target.value)}
                 placeholder="เช่น ห้องประชุมอาคาร 3"
-                className="w-full light-input text-xs"
+                className="w-full text-xs px-3.5 py-2 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC]"
               />
             </div>
 
-            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-              <button
+            <div className="flex items-center gap-3 justify-end pt-3 border-t border-[#E2E8F0]">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setEditingEvent(null)}
-                className="h-9 px-5 rounded-xl text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-all duration-200 cursor-pointer focus:outline-none"
+                className="rounded-full text-xs font-bold px-5"
               >
                 ยกเลิก
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="h-9 px-5 rounded-xl text-xs font-bold text-white transition-all duration-200 shadow-md hover:-translate-y-0.5 cursor-pointer focus:outline-none"
-                style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                className="btn-primary rounded-full text-xs font-extrabold px-6"
               >
                 บันทึกการแก้ไข
-              </button>
+              </Button>
             </div>
           </form>
         </DialogContent>

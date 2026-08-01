@@ -14,8 +14,9 @@ export const getMediaUrl = (urlOrPath?: string | null, isPublic: boolean = true)
   if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://') || urlOrPath.startsWith('data:') || urlOrPath.startsWith('blob:')) {
     return urlOrPath
   }
-  const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
-  const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
+  const cleanPath = urlOrPath.replace(/^(wisdom-public\/|wisdom-private\/)/, '')
+  const bucket = (cleanPath.startsWith('images/') || isPublic) ? 'wisdom-public' : 'wisdom-private'
+  const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath)
   return data.publicUrl
 }
 

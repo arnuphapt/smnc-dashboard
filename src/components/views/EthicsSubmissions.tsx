@@ -22,7 +22,12 @@ import {
   FileCheck,
   Eye,
   RotateCcw,
-  ClipboardCheck
+  ClipboardCheck,
+  UserCheck,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Download
 } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
@@ -35,6 +40,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   EVALUATION_CRITERIA,
+  RISK_LEVEL_OPTIONS,
+  REPORT_INTERVAL_OPTIONS,
   parseReviewerNotes,
   serializeReviewerNotes,
   handleExportEvaluation
@@ -105,8 +112,16 @@ export const EthicsSubmissions: React.FC = () => {
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [selectedSubForNotes, setSelectedSubForNotes] = useState<EthicsSubmission | null>(null)
 
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [selectedSubForAssign, setSelectedSubForAssign] = useState<EthicsSubmission | null>(null)
+  const [assignReviewerId, setAssignReviewerId] = useState<string>('')
+
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewStep, setReviewStep] = useState<number>(1)
+  const [reviewFiles, setReviewFiles] = useState<FileList | null>(null)
   const [selectedSubForReview, setSelectedSubForReview] = useState<any | null>(null)
+  const [riskLevel, setRiskLevel] = useState<string>('1')
+  const [progressReportInterval, setProgressReportInterval] = useState<string>('12')
   const [scores, setScores] = useState<Record<string, 'pass' | 'fail' | 'na'>>({
     obj: 'pass',
     method: 'pass',
@@ -115,6 +130,21 @@ export const EthicsSubmissions: React.FC = () => {
     risk: 'pass',
     benefit: 'pass',
   })
+
+  const handleAssignReviewer = async (subId: string, reviewerId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('ethics_submissions')
+        .update({ assigned_reviewer_id: reviewerId || null })
+        .eq('id', subId)
+      if (error) throw error
+      fetchReviewSubmissions()
+      fetchSubmissions()
+      triggerAlert('สำเร็จ', 'มอบหมายผู้ทรงคุณวุฒิเรียบร้อยแล้ว!', 'primary')
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger')
+    }
+  }
 
   const fetchSubmissions = async () => {
     if (!user) return
@@ -181,9 +211,34 @@ export const EthicsSubmissions: React.FC = () => {
     try {
       const { error } = await supabase.from('ethics_submissions').update({ status, reviewer_notes: notes }).eq('id', subId)
       if (error) throw error
+
+      if (reviewFiles && reviewFiles.length > 0) {
+        for (let i = 0; i < reviewFiles.length; i++) {
+          const file = reviewFiles[i]
+          const extIndex = file.name.lastIndexOf('.')
+          const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
+          const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
+          const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
+          const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
+          const storagePath = `ethics/${user?.id || 'eval'}/eval_${Date.now()}_${safeName}${ext}`
+
+          const { error: uploadError } = await supabase.storage.from('wisdom-private').upload(storagePath, file)
+          if (!uploadError) {
+            await supabase.from('ethics_attachments').insert({
+              submission_id: subId,
+              file_url: storagePath,
+              file_name: `[เอกสารประเมิน] ${file.name}`,
+              file_type: file.type
+            })
+          }
+        }
+        setReviewFiles(null)
+      }
+
       fetchReviewSubmissions()
       fetchSubmissions()
-      triggerAlert('บันทึกสำเร็จ', 'บันทึกผลการพิจารณาเรียบร้อยแล้ว!', 'primary')
+      fetchAttachments()
+      triggerAlert('บันทึกสำเร็จ', 'บันทึกผลการพิจารณาและอัปโหลดเอกสารเรียบร้อยแล้ว!', 'primary')
     } catch (err: any) { triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger') }
   }
 
@@ -326,9 +381,14 @@ export const EthicsSubmissions: React.FC = () => {
 
   const openReviewModalFor = (sub: any) => {
     setSelectedSubForReview(sub)
-    setReviewStatus(sub.status)
+    setReviewStep(1)
+    setReviewFiles(null)
+    const validStatuses = ['อนุมัติ', 'รอแก้ไข', 'ไม่อนุมัติ']
+    setReviewStatus(validStatuses.includes(sub.status) ? sub.status : 'อนุมัติ')
     const parsed = parseReviewerNotes(sub.reviewer_notes || '')
     setScores(parsed.scores)
+    setRiskLevel(parsed.riskLevel)
+    setProgressReportInterval(parsed.progressReportInterval)
 
     let cleanComments = parsed.comments
     const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
@@ -368,6 +428,18 @@ export const EthicsSubmissions: React.FC = () => {
       },
     } as DataTableColumn<EthicsSubmission>] : []),
     {
+      key: 'assigned_reviewer',
+      header: 'ผู้ทรงคุณวุฒิที่มอบหมาย',
+      render: (sub) => {
+        const assignedUser = expertProfiles.find((p) => p.id === sub.assigned_reviewer_id)
+        return (
+          <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">
+            {assignedUser ? assignedUser.email : 'ยังไม่ได้มอบหมาย'}
+          </span>
+        )
+      },
+    },
+    {
       key: 'status',
       header: 'สถานะ',
       render: (sub) => <StatusBadge status={sub.status} size="sm" />,
@@ -402,9 +474,24 @@ export const EthicsSubmissions: React.FC = () => {
       align: 'center',
       render: (sub) => {
         const isOwner = sub.submitter_id === user?.id
-        const subAttach = attachments.filter(a => a.submission_id === sub.id)
+        const canAssign = hasRole(profile?.role, 'admin') || hasRole(profile?.role, 'assistant_admin')
+        const subAttach = attachments.filter((a) => a.submission_id === sub.id)
         return (
           <div className="flex flex-wrap gap-1.5 items-center justify-center">
+            {canAssign && (
+              <button
+                onClick={() => {
+                  setSelectedSubForAssign(sub)
+                  setAssignReviewerId(sub.assigned_reviewer_id || '')
+                  setAssignModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-extrabold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap"
+                title="มอบหมายผู้ทรงคุณวุฒิ"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                มอบหมายผู้ทรงคุณวุฒิ
+              </button>
+            )}
             {subAttach.map((at) => (
               <button
                 key={at.id}
@@ -611,147 +698,401 @@ export const EthicsSubmissions: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: EXPERT EVALUATION SCORECARD */}
+      {/* MODAL: EXPERT EVALUATION SCORECARD (STEPPER WIZARD) */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
         <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">พิจารณาข้อเสนอ</p>
-            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#00796B]">พิจารณาข้อเสนอ</p>
+            <DialogTitle className="header-display text-base font-black text-[#0F172A]">
               ประเมินจริยธรรมโครงร่างวิจัย
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-4">
-            {selectedSubForReview && (
+          {selectedSubForReview && (
+            <>
+              {/* STEPPER PROGRESS INDICATOR */}
+              <div className="px-6 py-4 bg-[#FAFDFD] border-b border-[#E2E8F0]">
+                <div className="flex items-center justify-between relative max-w-sm mx-auto">
+                  {/* Connecting line */}
+                  <div className="absolute top-4 left-6 right-6 h-0.5 bg-[#E2E8F0] -z-0" />
+                  <div
+                    className="absolute top-4 left-6 h-0.5 bg-[#00796B] transition-all duration-300 -z-0"
+                    style={{ width: reviewStep === 1 ? '0%' : reviewStep === 2 ? '50%' : '100%' }}
+                  />
+
+                  {[
+                    { step: 1, label: 'เกณฑ์จริยธรรม' },
+                    { step: 2, label: 'ความเสี่ยง & รายงาน' },
+                    { step: 3, label: 'สรุปผล & บันทึก' }
+                  ].map((s) => {
+                    const isActive = reviewStep === s.step
+                    const isDone = reviewStep > s.step
+                    return (
+                      <div key={s.step} className="flex flex-col items-center relative z-10">
+                        <button
+                          type="button"
+                          onClick={() => setReviewStep(s.step)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-[#00796B] text-white ring-4 ring-[#00796B]/20 scale-110 shadow-md'
+                              : isDone
+                              ? 'bg-[#00796B] text-white'
+                              : 'bg-white text-slate-400 border border-slate-300'
+                          }`}
+                        >
+                          {isDone ? <Check className="w-4 h-4" /> : s.step}
+                        </button>
+                        <span
+                          className={`text-[10px] font-extrabold mt-1.5 transition-colors whitespace-nowrap ${
+                            isActive ? 'text-[#00796B]' : isDone ? 'text-[#00796B]' : 'text-slate-400'
+                          }`}
+                        >
+                          {s.label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* STEP CONTENT CONTAINER */}
+              <div className="px-6 py-5 overflow-y-auto max-h-[58vh] space-y-4">
+                {/* PROJECT TITLE HEADER & ATTACHMENTS LIST */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div>
+                    <div className="text-[10px] font-mono font-extrabold text-[#64748B] uppercase tracking-wider">ชื่อโครงร่างวิจัย</div>
+                    <div className="text-xs font-extrabold mt-0.5 text-[#0F172A]">
+                      {selectedSubForReview.project_title}
+                    </div>
+                  </div>
+
+                  {/* ATTACHED DOCUMENTS LIST FOR REVIEWER */}
+                  <div className="pt-2 border-t border-slate-200/80">
+                    <div className="text-[10px] font-mono font-extrabold text-[#00796B] uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>เอกสารแนบประกอบโครงร่างวิจัย ({attachments.filter((a) => a.submission_id === selectedSubForReview.id).length} ไฟล์)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {attachments.filter((a) => a.submission_id === selectedSubForReview.id).length === 0 ? (
+                        <span className="text-[11px] text-slate-400 italic">ไม่มีเอกสารแนบจากผู้ยื่น</span>
+                      ) : (
+                        attachments.filter((a) => a.submission_id === selectedSubForReview.id).map((at) => (
+                          <button
+                            key={at.id}
+                            type="button"
+                            onClick={() => handleDownloadFile(at.file_url)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-teal-200 text-[#00796B] hover:bg-teal-50 transition cursor-pointer shadow-2xs"
+                            title={at.file_name}
+                          >
+                            <Download className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[200px]">{at.file_name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* STEP 1: ETHICAL CRITERIA ASSESSMENT */}
+                {reviewStep === 1 && (
+                  <div className="space-y-3 animate-fadeIn">
+                    <label className="block text-xs font-black text-[#0F172A]">ขั้นตอนที่ 1: ประเมินผลตามรายเกณฑ์ (6 เกณฑ์)</label>
+                    <div className="space-y-3 bg-[#FFF8E7] border border-[#F3E5C8] p-3.5 rounded-2xl">
+                      {(() => {
+                        const criteriaOptions = getOptionsByCategory('ethics_criteria')
+                        const activeCriteria = criteriaOptions.length > 0
+                          ? criteriaOptions.map((opt, idx) => ({
+                              key: `opt_${opt.id}`,
+                              label: opt.value.startsWith(`${idx + 1}.`) ? opt.value : `${idx + 1}. ${opt.value}`
+                            }))
+                          : EVALUATION_CRITERIA
+
+                        return activeCriteria.map((criterion) => (
+                          <div key={criterion.key} className="space-y-1">
+                            <div className="text-[10px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
+                            <div className="grid grid-cols-3 gap-1.5 bg-white p-1.5 rounded-xl border border-[#E2E8F0]">
+                              {[
+                                {
+                                  val: 'pass',
+                                  label: 'ผ่าน',
+                                  active: 'bg-[#16A34A] text-white border-[#16A34A] shadow-xs',
+                                  inactive: 'bg-white text-[#16A34A] border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                                },
+                                {
+                                  val: 'fail',
+                                  label: 'ต้องแก้ไข',
+                                  active: 'bg-[#D97706] text-white border-[#D97706] shadow-xs',
+                                  inactive: 'bg-white text-[#D97706] border-slate-200 hover:bg-amber-50 hover:border-amber-300'
+                                },
+                                {
+                                  val: 'na',
+                                  label: 'N/A',
+                                  active: 'bg-[#64748B] text-white border-[#64748B] shadow-xs',
+                                  inactive: 'bg-white text-[#64748B] border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                                }
+                              ].map((opt) => {
+                                const isSelected = scores[criterion.key] === opt.val
+                                return (
+                                  <label key={opt.val} className="cursor-pointer text-[10px] font-black text-center">
+                                    <input
+                                      type="radio"
+                                      name={`expert-score-${criterion.key}`}
+                                      value={opt.val}
+                                      checked={isSelected}
+                                      onChange={() => setScores((prev) => ({ ...prev, [criterion.key]: opt.val as any }))}
+                                      className="sr-only"
+                                    />
+                                    <div className={`py-1.5 rounded-lg border transition-all duration-150 font-extrabold ${isSelected ? opt.active : opt.inactive}`}>
+                                      {opt.label}
+                                    </div>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: RISK LEVEL & PROGRESS REPORT INTERVAL */}
+                {reviewStep === 2 && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div>
+                      <label className="block text-xs font-black text-[#0F172A] mb-1.5">ขั้นตอนที่ 2: เลือกระดับความเสี่ยงของโครงการวิจัย *</label>
+                      <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                        {RISK_LEVEL_OPTIONS.map((opt) => (
+                          <label key={opt.value} className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${riskLevel === opt.value ? 'bg-teal-50/70 border-teal-300 ring-1 ring-teal-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                            <input
+                              type="radio"
+                              name="risk-level-option"
+                              value={opt.value}
+                              checked={riskLevel === opt.value}
+                              onChange={(e) => setRiskLevel(e.target.value)}
+                              className="mt-0.5 text-teal-600 focus:ring-teal-500"
+                            />
+                            <span className="text-xs font-bold text-slate-800 leading-snug">{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-black text-[#0F172A] mb-1.5">รอบการรายงานความก้าวหน้าโครงการ *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {REPORT_INTERVAL_OPTIONS.map((opt) => (
+                          <label key={opt.value} className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer font-extrabold text-xs transition ${progressReportInterval === opt.value ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                            <input
+                              type="radio"
+                              name="progress-report-interval"
+                              value={opt.value}
+                              checked={progressReportInterval === opt.value}
+                              onChange={(e) => setProgressReportInterval(e.target.value)}
+                              className="sr-only"
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: FINAL STATUS & COMMENTS */}
+                {reviewStep === 3 && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <label className="block text-xs font-black text-[#0F172A]">ขั้นตอนที่ 3: สรุปผลการประเมินและข้อเสนอแนะ</label>
+
+                    <div>
+                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
+                      <Select
+                        value={reviewerRoleLabel}
+                        onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
+                        items={
+                          expertProfiles.length > 0
+                            ? expertProfiles.map((p) => ({
+                                value: p.email,
+                                label: `${p.email} (${formatUserRolesText(p.role)})`
+                              }))
+                            : [
+                                { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
+                                { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
+                              ]
+                        }
+                      >
+                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          {expertProfiles.length > 0 ? (
+                            expertProfiles.map((p) => (
+                              <SelectItem key={p.id} value={p.email}>
+                                {p.email} ({formatUserRolesText(p.role)})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
+                              <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">สถานะผลประเมิน *</label>
+                      <Select
+                        value={reviewStatus}
+                        onValueChange={(v) => setReviewStatus(v ?? 'อนุมัติ')}
+                        items={[
+                          { value: 'อนุมัติ', label: 'เห็นชอบ' },
+                          { value: 'รอแก้ไข', label: 'เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล' },
+                          { value: 'ไม่อนุมัติ', label: 'ไม่เห็นชอบ' },
+                        ]}
+                      >
+                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
+                          <SelectItem value="อนุมัติ">เห็นชอบ</SelectItem>
+                          <SelectItem value="รอแก้ไข">เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล</SelectItem>
+                          <SelectItem value="ไม่อนุมัติ">ไม่เห็นชอบ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
+                      <Textarea
+                        rows={3}
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        placeholder="เขียนรายละเอียดจุดแก้ไข หรือความเห็นเพิ่มเติม..."
+                        className={inputBase + ' resize-none'}
+                        style={inputSty}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">
+                        แนบเอกสารผลประเมิน / ใบรับรองเพิ่มเติม <span className="font-normal text-[#64748B]">(ถ้ามี)</span>
+                      </label>
+                      <Input
+                        type="file"
+                        multiple
+                        accept=".pdf,.doc,.docx,.png,.jpg"
+                        onChange={(e) => setReviewFiles(e.target.files)}
+                        className={inputBase + ' h-auto'}
+                        style={inputSty}
+                      />
+                      <p className="text-[10px] mt-1 text-[#64748B] font-semibold">รองรับไฟล์ PDF, Word, รูปภาพ สำหรับแนบหนังสือแจ้งผลการประเมินหรือแบบฟอร์มลงนาม</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP NAVIGATION FOOTER */}
+              <div className="px-6 py-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setReviewStep((s) => Math.max(1, s - 1))}
+                  disabled={reviewStep === 1}
+                  className="rounded-full text-xs font-bold gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  ย้อนกลับ
+                </Button>
+
+                {reviewStep < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={() => setReviewStep((s) => Math.min(3, s + 1))}
+                    className="btn-primary rounded-full text-xs font-extrabold gap-1"
+                  >
+                    ถัดไป
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const taggedNotes = `[${reviewerRoleLabel}]\n${reviewNotes}`
+                      const serialized = serializeReviewerNotes(scores, taggedNotes, riskLevel, progressReportInterval)
+                      handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
+                      setReviewModalOpen(false)
+                    }}
+                    className="btn-primary rounded-full text-xs font-extrabold gap-1"
+                  >
+                    <Check className="w-4 h-4" />
+                    บันทึกผลการประเมิน
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: ASSIGN REVIEWER */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="max-w-md p-6 rounded-3xl bg-white border border-[#E2E8F0] shadow-2xl">
+          <DialogHeader className="pb-3 border-b border-[#E2E8F0]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#7C3AED]">
+              มอบหมายงานวิจัย
+            </p>
+            <DialogTitle className="header-display text-base font-black text-[#0F172A]">
+              มอบหมายผู้ทรงคุณวุฒิ (Expert Reviewer)
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 text-xs">
+            {selectedSubForAssign && (
               <>
                 <div>
-                  <div className="text-xs font-extrabold text-[#64748B]">ชื่อโครงร่างวิจัย</div>
-                  <div className="text-sm font-black mt-0.5 text-[#0F172A]">
-                    {selectedSubForReview.project_title}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-xs font-extrabold text-[#0F172A]">ผลประเมินตามรายเกณฑ์</label>
-                  <div className="space-y-3 bg-[#FFF8E7] border border-[#F3E5C8] p-3.5 rounded-2xl">
-                    {(() => {
-                      const criteriaOptions = getOptionsByCategory('ethics_criteria')
-                      const activeCriteria = criteriaOptions.length > 0
-                        ? criteriaOptions.map((opt, idx) => ({
-                            key: `opt_${opt.id}`,
-                            label: opt.value.startsWith(`${idx + 1}.`) ? opt.value : `${idx + 1}. ${opt.value}`
-                          }))
-                        : EVALUATION_CRITERIA
-
-                      return activeCriteria.map((criterion) => (
-                        <div key={criterion.key} className="space-y-1">
-                          <div className="text-[10px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
-                          <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-[#E2E8F0]">
-                            {[
-                              { val: 'pass', label: 'ผ่าน', color: 'text-[#16A34A] hover:bg-emerald-100 hover:text-[#15803D] peer-checked:bg-[#16A34A] peer-checked:text-white peer-checked:hover:bg-[#15803D]' },
-                              { val: 'fail', label: 'ต้องแก้ไข', color: 'text-[#D97706] hover:bg-amber-100 hover:text-[#B45309] peer-checked:bg-[#D97706] peer-checked:text-white peer-checked:hover:bg-[#B45309]' },
-                              { val: 'na', label: 'N/A', color: 'text-[#64748B] hover:bg-slate-200 hover:text-[#1E293B] peer-checked:bg-[#64748B] peer-checked:text-white peer-checked:hover:bg-[#475569]' }
-                            ].map(opt => (
-                              <label key={opt.val} className="cursor-pointer text-[10px] font-black text-center">
-                                <input
-                                  type="radio"
-                                  name={`expert-score-${criterion.key}`}
-                                  value={opt.val}
-                                  checked={scores[criterion.key] === opt.val}
-                                  onChange={() => setScores(prev => ({ ...prev, [criterion.key]: opt.val as any }))}
-                                  className="sr-only peer"
-                                />
-                                <div className={`py-1.5 rounded-lg transition-colors font-extrabold peer-checked:shadow-xs ${opt.color}`}>
-                                  {opt.label}
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    })()}
-                  </div>
+                  <label className="block text-[11px] font-bold text-[#64748B]">ชื่อโครงร่างวิจัย</label>
+                  <p className="font-extrabold text-[#0F172A] mt-0.5 text-xs">{selectedSubForAssign.project_title}</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
+                  <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">เลือกผู้ทรงคุณวุฒิ *</label>
                   <Select
-                    value={reviewerRoleLabel}
-                    onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
-                    items={
-                      expertProfiles.length > 0
-                        ? expertProfiles.map((p) => ({
-                            value: p.email,
-                            label: `${p.email} (${formatUserRolesText(p.role)})`
-                          }))
-                        : [
-                            { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
-                            { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
-                          ]
-                    }
+                    value={assignReviewerId || 'unassigned'}
+                    onValueChange={(val) => setAssignReviewerId(val === 'unassigned' ? '' : val ?? '')}
                   >
                     <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                      <SelectValue />
+                      <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                      {expertProfiles.length > 0 ? (
-                        expertProfiles.map((p) => (
-                          <SelectItem key={p.id} value={p.email}>
-                            {p.email} ({formatUserRolesText(p.role)})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
-                          <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
-                        </>
-                      )}
+                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
+                      <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
+                      {expertProfiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.email} ({formatUserRolesText(p.role)})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">สถานะผลประเมิน</label>
-                  <Select
-                    value={reviewStatus}
-                    onValueChange={(v) => setReviewStatus(v ?? 'กำลังตรวจ')}
-                    items={['กำลังตรวจ', 'รอแก้ไข', 'อนุมัติ', 'ไม่อนุมัติ'].map((s) => ({ value: s, label: s }))}
+                <div className="flex gap-2 justify-end pt-3 border-t border-[#E2E8F0]">
+                  <Button
+                    variant="outline"
+                    onClick={() => setAssignModalOpen(false)}
+                    className="rounded-full text-xs font-bold"
                   >
-                    <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                      <SelectItem value="กำลังตรวจ">กำลังตรวจ</SelectItem>
-                      <SelectItem value="รอแก้ไข">รอแก้ไข (ให้ปรับปรุงเล่ม)</SelectItem>
-                      <SelectItem value="อนุมัติ">อนุมัติ</SelectItem>
-                      <SelectItem value="ไม่อนุมัติ">ไม่อนุมัติ</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await handleAssignReviewer(selectedSubForAssign.id, assignReviewerId || null)
+                      setAssignModalOpen(false)
+                    }}
+                    className="btn-primary rounded-full text-xs font-extrabold"
+                  >
+                    บันทึกการมอบหมาย
+                  </Button>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
-                  <Textarea
-                    rows={3}
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="เขียนรายละเอียดจุดแก้ไข หรือความเห็นเพิ่มเติม..."
-                    className={inputBase + ' resize-none'}
-                    style={inputSty}
-                  />
-                </div>
-
-                <Button
-                  onClick={() => {
-                    const taggedNotes = `[${reviewerRoleLabel}]\n${reviewNotes}`
-                    const serialized = serializeReviewerNotes(scores, taggedNotes)
-                    handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
-                    setReviewModalOpen(false)
-                  }}
-                  className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold mt-2 btn-primary"
-                >
-                  บันทึกผลการประเมิน
-                </Button>
               </>
             )}
           </div>

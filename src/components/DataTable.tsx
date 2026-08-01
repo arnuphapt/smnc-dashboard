@@ -225,11 +225,15 @@ export function DataTable<T>({
                   </TableHead>
                   {columns.map((col) => {
                     const isSorted = col.sortable && sortField === col.key
+                    const isActionsCol = col.key === 'จัดการ' || col.key === 'actions' || col.header === 'จัดการ'
+                    const effectiveAlign = col.align || (isActionsCol ? 'center' : 'left')
+                    const alignClass = effectiveAlign === 'center' ? 'text-center' : effectiveAlign === 'right' ? 'text-right' : 'text-left'
+
                     return (
                       <TableHead
                         key={col.key}
                         onClick={col.sortable ? () => onSortChange?.(col.key) : undefined}
-                        className={`h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-[#0F172A] ${col.align === 'left' ? 'text-left' : col.align === 'right' ? 'text-right' : 'text-center'} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                        className={`h-auto whitespace-normal p-4 font-mono font-black uppercase text-[11px] tracking-widest text-[#0F172A] ${alignClass} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
                       >
                         {col.header}
                         {col.sortable && (
@@ -259,11 +263,17 @@ export function DataTable<T>({
                       <TableCell className="whitespace-normal p-4 text-center font-mono font-bold text-[#64748B]">
                         {start + idx + 1}
                       </TableCell>
-                      {columns.map((col) => (
-                        <TableCell key={col.key} className={`whitespace-normal p-4 text-[#0F172A] ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
-                          {col.render(row)}
-                        </TableCell>
-                      ))}
+                      {columns.map((col) => {
+                        const isActionsCol = col.key === 'จัดการ' || col.key === 'actions' || col.header === 'จัดการ'
+                        const effectiveAlign = col.align || (isActionsCol ? 'center' : 'left')
+                        const alignClass = effectiveAlign === 'center' ? 'text-center' : effectiveAlign === 'right' ? 'text-right' : 'text-left'
+
+                        return (
+                          <TableCell key={col.key} className={`whitespace-normal p-4 text-[#0F172A] ${alignClass}`}>
+                            {col.render(row)}
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
                   ))
                 )}

@@ -55,7 +55,7 @@ export const MasterdataPanel: React.FC = () => {
   const [newEvCap, setNewEvCap] = useState('')
 
   const [newFormTitle, setNewFormTitle] = useState('')
-  const [newFormCat, setNewFormCat] = useState<'ethics' | 'ip'>('ethics')
+  const [newFormCat, setNewFormCat] = useState<'ethics' | 'ip' | 'utilization'>('ethics')
   const [newFormUrl, setNewFormUrl] = useState('')
 
   const [appEditing, setAppEditing] = useState<any | null>(null)
@@ -379,14 +379,14 @@ export const MasterdataPanel: React.FC = () => {
   }
 
   const uploadFile = async (file: File, folder: string, isPublic: boolean): Promise<string> => {
-    const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
+    const bucket = folder === 'images' ? 'wisdom-public' : (isPublic ? 'wisdom-public' : 'wisdom-private')
     const extIndex = file.name.lastIndexOf('.')
     const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
     const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
     const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
     const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'file'
     const fileName = `${folder}/${Date.now()}_${safeName}${ext}`
-    
+
     const { error } = await supabase.storage.from(bucket).upload(fileName, file)
     if (error) throw error
     return fileName
@@ -570,6 +570,11 @@ export const MasterdataPanel: React.FC = () => {
       const { data, error } = await tempClient.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: {
+            created_by_admin: true
+          }
+        }
       })
 
       if (error) throw error
@@ -591,8 +596,9 @@ export const MasterdataPanel: React.FC = () => {
       triggerAlert('สำเร็จ', `เพิ่มผู้ใช้งาน ${email} เรียบร้อยแล้ว!`, 'primary')
       fetchProfiles()
     } catch (err: any) {
-      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถเพิ่มผู้ใช้งานได้: ${err.message}`, 'danger')
-      throw err
+      const rawMsg = err?.message || err?.error_description || (typeof err === 'string' ? err : 'เกิดข้อผิดพลาดในการสร้างผู้ใช้งาน')
+      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถเพิ่มผู้ใช้งานได้: ${rawMsg}`, 'danger')
+      throw new Error(rawMsg)
     }
   }
 
@@ -959,124 +965,122 @@ export const MasterdataPanel: React.FC = () => {
         extraBadge="Masterdata Console"
       />
 
-      <ContentPanel>
-        {(() => {
-          const getActiveTab = () => {
-            const path = pathname
-            if (path.startsWith('/master/clinic')) return 'clinic'
-            if (path.startsWith('/master/ethics')) return 'ethics'
-            if (path.startsWith('/master/ip')) return 'ip'
-            if (path.startsWith('/master/masters') || path.startsWith('/master/lookups')) return 'masters'
-            if (path.startsWith('/master/users')) return 'users'
-            if (path.startsWith('/master/roles')) return 'roles'
-            if (path.startsWith('/master/items')) return 'items'
-            return 'overview'
-          }
-          const activeTab = getActiveTab()
-          // Extract category slug from path e.g. /master/items/research -> 'research'
-          const itemCategory = pathname.startsWith('/master/items/')
-            ? pathname.split('/master/items/')[1]?.split('/')[0] || ''
-            : ''
-          const lookupPathCategory = pathname.startsWith('/master/masters/')
-            ? pathname.split('/master/masters/')[1]?.split('/')[0] || ''
-            : pathname.startsWith('/master/lookups/')
-            ? pathname.split('/master/lookups/')[1]?.split('/')[0] || ''
-            : ''
+      {(() => {
+        const getActiveTab = () => {
+          const path = pathname
+          if (path.startsWith('/master/clinic')) return 'clinic'
+          if (path.startsWith('/master/ethics')) return 'ethics'
+          if (path.startsWith('/master/ip')) return 'ip'
+          if (path.startsWith('/master/masters') || path.startsWith('/master/lookups')) return 'masters'
+          if (path.startsWith('/master/users')) return 'users'
+          if (path.startsWith('/master/roles')) return 'roles'
+          if (path.startsWith('/master/items')) return 'items'
+          return 'overview'
+        }
+        const activeTab = getActiveTab()
+        // Extract category slug from path e.g. /master/items/research -> 'research'
+        const itemCategory = pathname.startsWith('/master/items/')
+          ? pathname.split('/master/items/')[1]?.split('/')[0] || ''
+          : ''
+        const lookupPathCategory = pathname.startsWith('/master/masters/')
+          ? pathname.split('/master/masters/')[1]?.split('/')[0] || ''
+          : pathname.startsWith('/master/lookups/')
+          ? pathname.split('/master/lookups/')[1]?.split('/')[0] || ''
+          : ''
 
-          switch (activeTab) {
-            case 'overview':
-              return (
-                <OverviewTab
-                  pendingAppointmentsCount={pendingAppointments.length}
-                  pendingEthicsCount={pendingEthicsSubs.length}
-                  pendingIpCount={pendingIpApps.length}
-                  deskItems={deskItems}
-                />
-              )
-            case 'items':
-              return (
-                <ItemsTab
-                  items={items}
-                  itemsLoading={itemsLoading}
-                  itemSearch={itemSearch}
-                  setItemSearch={setItemSearch}
-                  getCategoryLabel={getCategoryLabel}
-                  onOpenAddForm={handleOpenAddForm}
-                  onOpenEditForm={handleOpenEditForm}
-                  onDeleteItem={handleDeleteItem}
-                  category={itemCategory}
-                />
-              )
-            case 'masters':
-              return (
-                <MastersTab
-                  options={options}
-                  lookupCategory={lookupCategory}
-                  setLookupCategory={setLookupCategory}
-                  lookupValue={lookupValue}
-                  setLookupValue={setLookupValue}
-                  onAddLookup={handleAddLookup}
-                  onDeleteLookup={handleDeleteLookup}
-                  defaultCategory={lookupPathCategory}
-                />
-              )
-            case 'users':
-              return (
-                <UsersTab profiles={profiles} usersLoading={usersLoading} onUpdateRole={handleUpdateRole} onAddUser={handleAddUser} />
-              )
-            case 'roles':
-              return <RolesTab />
-            case 'clinic':
-              return (
-                <ClinicTab
-                  newEvTitle={newEvTitle}
-                  setNewEvTitle={setNewEvTitle}
-                  newEvDesc={newEvDesc}
-                  setNewEvDesc={setNewEvDesc}
-                  newEvDate={newEvDate}
-                  setNewEvDate={setNewEvDate}
-                  newEvLoc={newEvLoc}
-                  setNewEvLoc={setNewEvLoc}
-                  newEvCap={newEvCap}
-                  setNewEvCap={setNewEvCap}
-                  onAddEvent={handleAddEvent}
-                  clinicEvents={clinicEvents}
-                  onDeleteEvent={handleDeleteEvent}
-                />
-              )
-            case 'ethics':
-              return (
-                <EthicsTab
-                  newFormTitle={newFormTitle}
-                  setNewFormTitle={setNewFormTitle}
-                  newFormCat={newFormCat}
-                  setNewFormCat={setNewFormCat}
-                  newFormUrl={newFormUrl}
-                  setNewFormUrl={setNewFormUrl}
-                  onAddDownloadableForm={handleAddDownloadableForm}
-                  downloadableForms={downloadableForms}
-                  onDeleteDownloadableForm={handleDeleteDownloadableForm}
-                />
-              )
-            case 'ip':
-              return (
-                <IpTab
-                  newFormTitle={newFormTitle}
-                  setNewFormTitle={setNewFormTitle}
-                  newFormCat={newFormCat}
-                  setNewFormCat={setNewFormCat}
-                  newFormUrl={newFormUrl}
-                  setNewFormUrl={setNewFormUrl}
-                  onAddDownloadableForm={handleAddDownloadableForm}
-                  downloadableForms={downloadableForms}
-                  onDeleteDownloadableForm={handleDeleteDownloadableForm}
-                />
-              )
-            default:
-              return null
-          }
-        })()}
-      </ContentPanel>
+        switch (activeTab) {
+          case 'overview':
+            return (
+              <OverviewTab
+                pendingAppointmentsCount={pendingAppointments.length}
+                pendingEthicsCount={pendingEthicsSubs.length}
+                pendingIpCount={pendingIpApps.length}
+                deskItems={deskItems}
+              />
+            )
+          case 'items':
+            return (
+              <ItemsTab
+                items={items}
+                itemsLoading={itemsLoading}
+                itemSearch={itemSearch}
+                setItemSearch={setItemSearch}
+                getCategoryLabel={getCategoryLabel}
+                onOpenAddForm={handleOpenAddForm}
+                onOpenEditForm={handleOpenEditForm}
+                onDeleteItem={handleDeleteItem}
+                category={itemCategory}
+              />
+            )
+          case 'masters':
+            return (
+              <MastersTab
+                options={options}
+                lookupCategory={lookupCategory}
+                setLookupCategory={setLookupCategory}
+                lookupValue={lookupValue}
+                setLookupValue={setLookupValue}
+                onAddLookup={handleAddLookup}
+                onDeleteLookup={handleDeleteLookup}
+                defaultCategory={lookupPathCategory}
+              />
+            )
+          case 'users':
+            return (
+              <UsersTab profiles={profiles} usersLoading={usersLoading} onUpdateRole={handleUpdateRole} onAddUser={handleAddUser} />
+            )
+          case 'roles':
+            return <RolesTab />
+          case 'clinic':
+            return (
+              <ClinicTab
+                newEvTitle={newEvTitle}
+                setNewEvTitle={setNewEvTitle}
+                newEvDesc={newEvDesc}
+                setNewEvDesc={setNewEvDesc}
+                newEvDate={newEvDate}
+                setNewEvDate={setNewEvDate}
+                newEvLoc={newEvLoc}
+                setNewEvLoc={setNewEvLoc}
+                newEvCap={newEvCap}
+                setNewEvCap={setNewEvCap}
+                onAddEvent={handleAddEvent}
+                clinicEvents={clinicEvents}
+                onDeleteEvent={handleDeleteEvent}
+              />
+            )
+          case 'ethics':
+            return (
+              <EthicsTab
+                newFormTitle={newFormTitle}
+                setNewFormTitle={setNewFormTitle}
+                newFormCat={newFormCat}
+                setNewFormCat={setNewFormCat}
+                newFormUrl={newFormUrl}
+                setNewFormUrl={setNewFormUrl}
+                onAddDownloadableForm={handleAddDownloadableForm}
+                downloadableForms={downloadableForms}
+                onDeleteDownloadableForm={handleDeleteDownloadableForm}
+              />
+            )
+          case 'ip':
+            return (
+              <IpTab
+                newFormTitle={newFormTitle}
+                setNewFormTitle={setNewFormTitle}
+                newFormCat={newFormCat}
+                setNewFormCat={setNewFormCat}
+                newFormUrl={newFormUrl}
+                setNewFormUrl={setNewFormUrl}
+                onAddDownloadableForm={handleAddDownloadableForm}
+                downloadableForms={downloadableForms}
+                onDeleteDownloadableForm={handleDeleteDownloadableForm}
+              />
+            )
+          default:
+            return null
+        }
+      })()}
 
       <ItemFormModal
         isFormOpen={isFormOpen}

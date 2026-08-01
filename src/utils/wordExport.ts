@@ -1,4 +1,5 @@
 import { WisdomItem } from '../components/views/Dashboard'
+import { formatAuthorsForDisplay } from './authorHelper'
 
 /**
  * Downloads Word (.doc) document from HTML content string
@@ -185,7 +186,7 @@ export const exportItemToWord = (item: WisdomItem, categoryLabel: string) => {
       </tr>
       <tr>
         <td style="font-weight: bold; background: #f8fafc;">คณะผู้จัดทำ / เจ้าของผลงาน</td>
-        <td>${item.authors || 'ไม่ระบุ'}</td>
+        <td>${formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</td>
       </tr>
       <tr>
         <td style="font-weight: bold; background: #f8fafc;">สถานะการเผยแพร่</td>
@@ -238,7 +239,7 @@ export const exportCategoryReportToWord = (categoryLabel: string, items: WisdomI
   const itemRows = items
     .map((item, idx) => {
       const yearStr = item.metadata?.year || '-'
-      const authorsStr = item.authors || '-'
+      const authorsStr = formatAuthorsForDisplay(item.authors) || '-'
       const subInfo = item.metadata?.organizer || item.metadata?.journal_name || item.metadata?.ip_type || item.metadata?.innovation_type || item.metadata?.award_name || '-'
       return `<tr>
         <td style="text-align: center;">${idx + 1}</td>

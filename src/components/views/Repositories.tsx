@@ -17,6 +17,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { exportItemToWord, exportCategoryReportToWord } from '@/utils/wordExport'
+import { formatAuthorsForDisplay } from '@/utils/authorHelper'
 
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
@@ -248,7 +249,7 @@ export const Repositories: React.FC = () => {
       return [
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อเรื่อง', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
-        { key: 'authors', header: 'นักวิจัย', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
+        { key: 'authors', header: 'นักวิจัย', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</span> },
         { key: 'contribution', header: 'บทบาท', sortable: true, render: (item) => item.metadata?.contribution ? <StatusBadge status={item.metadata.contribution} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'scope', header: 'ขอบเขต', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'funding', header: 'ทุนวิจัย', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.funding || 'ไม่มี'}</span> },
@@ -263,7 +264,7 @@ export const Repositories: React.FC = () => {
     if (activeCategory === 'intellectual_property') {
       return [
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
-        { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
+        { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</span> },
         { key: 'ip_type', header: 'ประเภทของงาน', sortable: true, render: (item) => item.metadata?.ip_type ? <StatusBadge status={item.metadata.ip_type} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'creator_type', header: 'ผู้สร้างสรรค์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.creator_type || '-'}</span> },
@@ -281,7 +282,7 @@ export const Repositories: React.FC = () => {
       return [
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
-        { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
+        { key: 'authors', header: 'เจ้าของผลงานหลัก', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</span> },
         { key: 'creator_type', header: 'ผู้สร้างสรรค์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.creator_type || '-'}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'source', header: 'ที่มาของชิ้นงาน', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.source || '-'}</span> },
@@ -301,7 +302,7 @@ export const Repositories: React.FC = () => {
         { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
         { key: 'title', header: 'ชื่อผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 min-w-[220px] max-w-[380px] break-words block">{item.title}</span> },
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
-        { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
+        { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</span> },
         { key: 'award_level', header: 'ระดับเวทีการนำเสนอ', sortable: true, render: (item) => item.metadata?.award_level ? <StatusBadge status={item.metadata.award_level} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'organizer', header: 'รายละเอียดเวทีการนำเสนอ', sortable: true, render: (item) => (
           <span className="text-slate-500 max-w-[240px] break-words block" title={item.metadata?.organizer}>{item.metadata?.organizer || '-'}</span>
@@ -317,7 +318,7 @@ export const Repositories: React.FC = () => {
     return [
       { key: 'year', header: 'ปี', sortable: true, render: (item) => <span className="font-mono font-semibold text-slate-500">{item.metadata?.year || '2569'}</span> },
       { key: 'title', header: 'ผลงาน', sortable: true, render: (item) => <span className="font-semibold text-slate-800 max-w-[450px] break-words block">{item.title}</span> },
-      { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{item.authors || 'ไม่ระบุ'}</span> },
+      { key: 'authors', header: 'เจ้าของผลงาน', sortable: true, render: (item) => <span className="font-medium text-slate-600">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุ'}</span> },
       { key: 'utilization_type', header: 'ประเภทผลงาน', sortable: true, render: (item) => item.metadata?.utilization_type ? <StatusBadge status={item.metadata.utilization_type} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
       { key: 'organization_used', header: 'หน่วยงานที่นำไปใช้ประโยชน์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.organization_used || '-'}</span> },
       { key: 'utilization_date', header: 'วันที่ขอนำไปใช้ประโยชน์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.utilization_date || '-'}</span> },

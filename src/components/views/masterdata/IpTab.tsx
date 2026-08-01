@@ -10,8 +10,8 @@ import { supabase } from '@/services/supabase'
 interface IpTabProps {
   newFormTitle: string
   setNewFormTitle: (value: string) => void
-  newFormCat: 'ethics' | 'ip'
-  setNewFormCat: (value: 'ethics' | 'ip') => void
+  newFormCat: 'ethics' | 'ip' | 'utilization'
+  setNewFormCat: (value: 'ethics' | 'ip' | 'utilization') => void
   newFormUrl: string
   setNewFormUrl: (value: string) => void
   onAddDownloadableForm: (e: React.FormEvent) => void
@@ -31,7 +31,7 @@ export const IpTab: React.FC<IpTabProps> = ({
   // Edit Form States
   const [editingForm, setEditingForm] = useState<any | null>(null)
   const [editFormTitle, setEditFormTitle] = useState('')
-  const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip'>('ip')
+  const [editFormCat, setEditFormCat] = useState<'ethics' | 'ip' | 'utilization'>('ip')
   const [editFormUrl, setEditFormUrl] = useState('')
 
   const filteredForms = formSearch.trim()
@@ -153,11 +153,12 @@ export const IpTab: React.FC<IpTabProps> = ({
               <label className="block font-bold text-slate-500 mb-1">หมวดหมู่เอกสาร *</label>
               <select
                 value={newFormCat}
-                onChange={(e) => setNewFormCat(e.target.value as 'ethics' | 'ip')}
+                onChange={(e) => setNewFormCat(e.target.value as 'ethics' | 'ip' | 'utilization')}
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200"
               >
                 <option value="ip">ทรัพย์สินทางปัญญา (IP)</option>
                 <option value="ethics">จริยธรรมการวิจัย (Ethics)</option>
+                <option value="utilization">เอกสารการนำไปใช้ประโยชน์ (Utilization)</option>
               </select>
             </div>
             <div>

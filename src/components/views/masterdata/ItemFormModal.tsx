@@ -13,6 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
+import { parseAuthors, AuthorItem } from '@/utils/authorHelper'
+
 interface ItemFormModalProps {
   isFormOpen: boolean
   setIsFormOpen: (open: boolean) => void
@@ -126,14 +128,23 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
 
   // Authors are stored as one comma-separated string on the row, but picked
   // from the researcher master list (or typed ad-hoc) as individual chips.
-  const authorList = formAuthors.split(',').map((a) => a.trim()).filter(Boolean)
+  const authorList: AuthorItem[] = parseAuthors(formAuthors)
+
   const addAuthor = (name: string) => {
     const trimmed = name.trim()
-    if (!trimmed || authorList.includes(trimmed)) return
-    setFormAuthors([...authorList, trimmed].join(', '))
+    if (!trimmed || authorList.some((a) => a.name === trimmed)) return
+    const nextList = [...authorList, { name: trimmed, contribution: 'First author' }]
+    setFormAuthors(JSON.stringify(nextList))
   }
-  const removeAuthor = (name: string) => {
-    setFormAuthors(authorList.filter((a) => a !== name).join(', '))
+
+  const updateAuthorContribution = (index: number, contribution: string) => {
+    const nextList = authorList.map((item, idx) => (idx === index ? { ...item, contribution } : item))
+    setFormAuthors(JSON.stringify(nextList))
+  }
+
+  const removeAuthor = (index: number) => {
+    const nextList = authorList.filter((_, idx) => idx !== index)
+    setFormAuthors(JSON.stringify(nextList))
   }
 
   return (
@@ -208,17 +219,30 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               {/* Hidden field just to keep native "required" validation working now that the visible control is a picker, not a text input. */}
               <input type="text" required value={formAuthors} readOnly tabIndex={-1} aria-hidden className="sr-only" />
 
-              <div className="flex flex-wrap gap-1.5 mb-2 min-h-[1.5rem]">
+              <div className="space-y-2 mb-2 min-h-[1.5rem]">
                 {authorList.length === 0 ? (
                   <span className="text-slate-400 italic">ยังไม่ได้เลือกคณะผู้จัดทำ</span>
                 ) : (
-                  authorList.map((name) => (
-                    <span key={name} className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-bold">
-                      {name}
-                      <button type="button" onClick={() => removeAuthor(name)} className="hover:text-red-600 cursor-pointer">
-                        <X className="w-3 h-3" />
+                  authorList.map((author, index) => (
+                    <div key={`${author.name}-${index}`} className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs">
+                      <span className="font-bold shrink-0">{author.name}</span>
+                      <Select
+                        value={author.contribution || 'Co author'}
+                        onValueChange={(val) => val && updateAuthorContribution(index, val)}
+                      >
+                        <SelectTrigger className="h-7 text-[11px] font-bold bg-white border border-teal-200 text-teal-800 rounded-lg px-2 min-w-[150px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white text-xs border border-slate-200 rounded-xl">
+                          <SelectItem value="First author">First author</SelectItem>
+                          <SelectItem value="Corresponding author">Corresponding author</SelectItem>
+                          <SelectItem value="Co author">Co author</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <button type="button" onClick={() => removeAuthor(index)} className="hover:text-red-600 cursor-pointer ml-auto p-1">
+                        <X className="w-3.5 h-3.5" />
                       </button>
-                    </span>
+                    </div>
                   ))
                 )}
               </div>
@@ -607,7 +631,7 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               {(imageFile || editingItem?.image_url) && (
                 <div className="mb-2 p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
                   <img
-                    src={imageFile ? URL.createObjectURL(imageFile) : getMediaUrl(editingItem?.image_url, editingItem?.is_public)}
+                    src={imageFile ? URL.createObjectURL(imageFile) : getMediaUrl(editingItem?.image_url, true)}
                     alt="Preview"
                     className="w-20 h-16 object-cover rounded-lg border border-slate-200 shadow-sm shrink-0"
                   />

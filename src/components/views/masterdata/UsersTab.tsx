@@ -148,6 +148,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
             onChange: setSelectedRole,
             options: [
               { value: 'admin', label: 'ผู้ดูแลระบบ (Admin)' },
+              { value: 'assistant_admin', label: 'ผู้ช่วยแอดมิน (Assistant Admin)' },
               { value: 'expert', label: 'ผู้ทรงคุณวุฒิ (Expert)' },
               { value: 'teacher', label: 'อาจารย์ (Teacher)' }
             ]

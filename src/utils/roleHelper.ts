@@ -1,5 +1,5 @@
 export interface RoleOption {
-  value: 'admin' | 'teacher' | 'expert'
+  value: 'admin' | 'assistant_admin' | 'teacher' | 'expert'
   label: string
   shortLabel: string
   colorClass: string
@@ -20,6 +20,13 @@ export const ROLE_OPTIONS: RoleOption[] = [
     shortLabel: 'ผู้ทรงคุณวุฒิ',
     colorClass: 'text-purple-700',
     bgClass: 'bg-purple-50 text-purple-700 border border-purple-200/60',
+  },
+  {
+    value: 'assistant_admin',
+    label: 'ผู้ช่วยแอดมิน (Assistant Admin)',
+    shortLabel: 'ผู้ช่วยแอดมิน',
+    colorClass: 'text-orange-700',
+    bgClass: 'bg-orange-50 text-orange-700 border border-orange-200/60',
   },
   {
     value: 'admin',

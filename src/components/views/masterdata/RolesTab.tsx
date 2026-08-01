@@ -72,6 +72,14 @@ const ROLES: RoleRow[] = [
     isLocked: false,
   },
   {
+    key: 'assistant_admin',
+    label: 'ผู้ช่วยแอดมิน (Assistant Admin)',
+    desc: 'ผู้ช่วยดูแลระบบ เข้าถึงและจัดการระบบได้ตามสิทธิ์ที่ได้รับมอบหมาย',
+    icon: <Shield className="w-4 h-4 text-orange-600" />,
+    colorClass: 'bg-orange-50 text-orange-700 border-orange-200',
+    isLocked: false,
+  },
+  {
     key: 'admin',
     label: 'ผู้ดูแลระบบ (Admin)',
     desc: 'ผู้ดูแลระบบที่มีสิทธิ์สูงสุด สิทธิ์การเข้าถึงทุกหน้าถูกล็อกถาวร',
@@ -119,8 +127,8 @@ export const RolesTab: React.FC = () => {
         .from('role_permissions')
         .upsert({ role, page_key: pageKey, can_view: newVal }, { onConflict: 'role,page_key' })
       if (error) throw error
-    } catch (err) {
-      console.error('Error updating permission:', err)
+    } catch (err: any) {
+      console.error('Error updating permission:', err?.message || err)
       fetchPermissions()
     }
   }

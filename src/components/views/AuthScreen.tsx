@@ -25,8 +25,8 @@ export const AuthScreen: React.FC = () => {
 
     const trimmedEmail = email.trim()
 
-    if (!isValidSmncEmail(trimmedEmail)) {
-      setError('ขออภัย! อนุญาตให้ใช้งานเฉพาะอีเมลโดเมน @smnc.ac.th เท่านั้น')
+    if (!isLogin && !isValidSmncEmail(trimmedEmail)) {
+      setError('ขออภัย! การสมัครสมาชิกด้วยตนเอง อนุญาตเฉพาะอีเมลโดเมน @smnc.ac.th เท่านั้น')
       setLoading(false)
       return
     }

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
+import { formatAuthorsForDisplay } from '@/utils/authorHelper'
 import { formatExcelDate } from '@/utils/format'
 
 export interface WisdomItem {
@@ -139,7 +140,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
   const [allItems, setAllItems] = useState<WisdomItem[]>([])
   const [downloadableForms, setDownloadableForms] = useState<any[]>([])
   const [docSearch, setDocSearch] = useState('')
-  const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'repository'>('all')
+  const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'utilization' | 'repository'>('all')
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null)
 
   const fetchDashboardData = async () => {
@@ -315,8 +316,8 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
       file_url: form.file_url,
       is_public: true,
       category: form.category,
-      categoryLabel: form.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : form.category === 'ip' ? 'แบบฟอร์ม IP' : 'เอกสารคลังปัญญา',
-      badgeColor: form.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : form.category === 'ip' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+      categoryLabel: form.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : form.category === 'ip' ? 'แบบฟอร์ม IP' : form.category === 'utilization' ? 'เอกสารการนำผลงานวิจัยไปใช้ประโยชน์' : 'เอกสารคลังปัญญา',
+      badgeColor: form.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : form.category === 'ip' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : form.category === 'utilization' ? 'bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
       subInfo: 'แบบฟอร์มทางการ',
     })),
     ...allItems.filter((i) => i.file_url).map((item) => ({
@@ -325,9 +326,9 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
       file_url: item.file_url!,
       is_public: item.is_public,
       category: item.category,
-      categoryLabel: item.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : item.category === 'intellectual_property' ? 'แบบฟอร์ม IP' : 'เอกสารคลังปัญญา',
-      badgeColor: item.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : item.category === 'intellectual_property' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
-      subInfo: item.authors || 'เอกสารคลังปัญญา',
+      categoryLabel: item.category === 'ethics' ? 'แบบฟอร์มจริยธรรม' : item.category === 'intellectual_property' ? 'แบบฟอร์ม IP' : item.category === 'utilization' ? 'เอกสารการนำผลงานวิจัยไปใช้ประโยชน์' : 'เอกสารคลังปัญญา',
+      badgeColor: item.category === 'ethics' ? 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' : item.category === 'intellectual_property' ? 'bg-[#E0F2FE] text-[#0284C7] border-[#BAE6FD]' : item.category === 'utilization' ? 'bg-[#FEF3C7] text-[#D97706] border-[#FDE68A]' : 'bg-[#E8F6F5] text-[#00796B] border-[#BCE5E2]',
+      subInfo: formatAuthorsForDisplay(item.authors) || 'เอกสารคลังปัญญา',
     }))
   ]
 
@@ -336,7 +337,8 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
     if (docFilterCategory === 'all') return matchSearch
     if (docFilterCategory === 'ethics') return matchSearch && doc.category === 'ethics'
     if (docFilterCategory === 'ip') return matchSearch && (doc.category === 'ip' || doc.category === 'intellectual_property')
-    return matchSearch && doc.category !== 'ethics' && doc.category !== 'ip' && doc.category !== 'intellectual_property'
+    if (docFilterCategory === 'utilization') return matchSearch && doc.category === 'utilization'
+    return matchSearch && doc.category !== 'ethics' && doc.category !== 'ip' && doc.category !== 'intellectual_property' && doc.category !== 'utilization'
   })
 
   // 6 KPI Cards
@@ -581,7 +583,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
                     <tr key={item.id} className="hover:bg-[#F8FAFC] transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="font-extrabold text-[#0F172A] truncate max-w-[280px]">{item.title}</div>
-                        <div className="text-[10px] text-[#64748B] font-semibold mt-0.5">{item.authors || 'ไม่ระบุผู้แต่ง'}</div>
+                        <div className="text-[10px] text-[#64748B] font-semibold mt-0.5">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุผู้แต่ง'}</div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <StatusBadge status={item.category} size="sm" />
@@ -608,7 +610,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="font-extrabold text-xs text-[#0F172A] leading-snug">{item.title}</div>
-                      <div className="text-[10px] text-[#64748B] font-semibold mt-0.5">{item.authors || 'ไม่ระบุผู้แต่ง'}</div>
+                      <div className="text-[10px] text-[#64748B] font-semibold mt-0.5">{formatAuthorsForDisplay(item.authors) || 'ไม่ระบุผู้แต่ง'}</div>
                     </div>
                     <StatusBadge status={item.category} size="sm" />
                   </div>
@@ -697,6 +699,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
             { id: 'all', label: 'ทั้งหมด' },
             { id: 'ethics', label: 'แบบฟอร์มจริยธรรม' },
             { id: 'ip', label: 'แบบฟอร์ม IP' },
+            { id: 'utilization', label: 'เอกสารการนำผลงานวิจัยไปใช้ประโยชน์' },
             { id: 'repository', label: 'เอกสารคลังปัญญา' },
           ].map((tab) => (
             <button

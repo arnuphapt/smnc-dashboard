@@ -7,6 +7,8 @@ import { MasterDataTable } from '@/components/MasterDataTable'
 import { WisdomItem } from '../Dashboard'
 import { getMediaUrl } from '@/services/supabase'
 
+import { formatAuthorsForDisplay } from '@/utils/authorHelper'
+
 interface ItemsTabProps {
   items: WisdomItem[]
   itemsLoading: boolean
@@ -61,7 +63,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
     {
       key: 'authors',
       header: 'ผู้จัดทำ',
-      render: (item) => <span className="text-slate-500 font-medium truncate block max-w-[150px]">{item.authors || '-'}</span>,
+      render: (item) => <span className="text-slate-500 font-medium truncate block max-w-[150px]">{formatAuthorsForDisplay(item.authors) || '-'}</span>,
     },
     {
       key: 'is_public',
@@ -103,7 +105,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
   // Determine dynamic title and default category behavior
   let pageTitle = 'คลังผลงานวิจัยทั้งหมดในระบบ'
   let pageBadge = 'เนื้อหา'
-  
+
   if (category === 'research') {
     pageTitle = 'จัดการผลงานวิจัย'
     pageBadge = 'ผลงานวิจัย'
@@ -117,7 +119,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
     pageTitle = 'จัดการรางวัลและความสำเร็จ'
     pageBadge = 'รางวัล'
   } else if (category === 'utilization') {
-    pageTitle = 'จัดการการนำไปใช้ประโยชน์'
+    pageTitle = 'การนำผลงานวิจัยและวิจัยไปใช้ประโยชน์'
     pageBadge = 'การนำไปใช้ประโยชน์'
   }
 
@@ -128,7 +130,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
       item.title.toLowerCase().includes(itemSearch.trim().toLowerCase()) ||
       (item.authors || '').toLowerCase().includes(itemSearch.trim().toLowerCase())
     const matchesPublicity = !selectedPublicity || (selectedPublicity === 'public' ? item.is_public : !item.is_public)
-    
+
     return matchesRouteCat && matchesSearch && matchesPublicity
   })
 
