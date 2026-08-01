@@ -9,8 +9,12 @@ const supabase = createClient()
 export interface Profile {
   id: string
   email: string
-  role: 'admin' | 'teacher' | 'expert'
+  full_name?: string
+  role: 'admin' | 'teacher' | 'expert' | string
   created_at: string
+  is_temp_account?: boolean
+  temp_expires_at?: string
+  temp_target_submission_id?: string
 }
 
 interface AuthContextType {

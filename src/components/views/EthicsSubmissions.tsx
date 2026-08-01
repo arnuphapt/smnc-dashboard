@@ -1112,8 +1112,9 @@ export const EthicsSubmissions: React.FC = () => {
                   <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">เลือกผู้ทรงคุณวุฒิ *</label>
                   {(() => {
                     const selectedProfile = expertProfiles.find((p) => p.id === assignReviewerId)
+                    const displayName = selectedProfile ? (selectedProfile.full_name || selectedProfile.email) : ''
                     const labelText = selectedProfile
-                      ? `${selectedProfile.email} (${formatUserRolesText(selectedProfile.role)}${(selectedProfile as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
+                      ? `${displayName} (${formatUserRolesText(selectedProfile.role)}${(selectedProfile as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
                       : assignReviewerId === 'unassigned' || !assignReviewerId
                       ? '— ยังไม่ได้มอบหมาย —'
                       : assignReviewerId
@@ -1130,11 +1131,14 @@ export const EthicsSubmissions: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
                           <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
-                          {expertProfiles.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.email} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
-                            </SelectItem>
-                          ))}
+                          {expertProfiles.map((p) => {
+                            const nameText = p.full_name ? `${p.full_name} (${p.email})` : p.email
+                            return (
+                              <SelectItem key={p.id} value={p.id}>
+                                {nameText} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
+                              </SelectItem>
+                            )
+                          })}
                         </SelectContent>
                       </Select>
                     )

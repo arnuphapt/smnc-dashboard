@@ -1,23 +1,25 @@
-'use client'
-
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2, BookOpen } from 'lucide-react'
 import { DataTableColumn } from '@/components/DataTable'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { Profile } from '@/context/AuthContext'
 import { getUserRoles, ROLE_OPTIONS } from '@/utils/roleHelper'
+import { parseAuthors } from '@/utils/authorHelper'
+import { WisdomItem } from '../Dashboard'
 
 interface UsersTabProps {
   profiles: Profile[]
   usersLoading: boolean
-  onUpdateRole: (userId: string, newRole: string) => void
+  items?: WisdomItem[]
+  onUpdateRole: (userId: string, newRole: string, fullName?: string) => void
   onAddUser: (email: string, password: string, role: string) => Promise<void>
 }
 
-export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUpdateRole, onAddUser }) => {
+export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, items = [], onUpdateRole, onAddUser }) => {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const [newRole, setNewRole] = useState<string>('')
+  const [newFullName, setNewFullName] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('')
 
@@ -61,20 +63,61 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
     }
   }
 
+  // Calculate user contributions across all items
+  const getUserContributions = (userProfile: Profile) => {
+    const userEmail = (userProfile.email || '').toLowerCase().trim()
+    const userName = (userProfile.full_name || '').toLowerCase().trim()
+
+    const counts: Record<string, number> = {}
+    let totalItems = 0
+
+    items.forEach((item) => {
+      const authors = parseAuthors(item.authors)
+      const matched = authors.find((a) => {
+        const nameLower = a.name.toLowerCase().trim()
+        return (userEmail && nameLower === userEmail) || (userName && nameLower === userName)
+      })
+
+      if (matched) {
+        totalItems++
+        const roles = matched.contribution ? matched.contribution.split(',').map((s) => s.trim()) : ['Co author']
+        roles.forEach((r) => {
+          counts[r] = (counts[r] || 0) + 1
+        })
+      }
+    })
+
+    return { counts, totalItems }
+  }
+
   const columns: DataTableColumn<Profile>[] = [
     {
       key: 'email',
-      header: 'อีเมลผู้ใช้งาน',
+      header: 'ชื่อ-นามสกุล / อีเมล',
       render: (p) => (
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-[#0F172A]">{p.email}</span>
-          {(p as any).is_temp_account && (
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
-              ⏳ ชั่วคราว (Temp)
-            </span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#0F172A]">{p.full_name || p.email}</span>
+            {p.is_temp_account && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                ⏳ ชั่วคราว (Temp)
+              </span>
+            )}
+          </div>
+          {p.full_name && (
+            <span className="text-[11px] text-slate-400 font-mono font-medium">{p.email}</span>
           )}
         </div>
       )
+    },
+    {
+      key: 'full_name',
+      header: 'ชื่อ-นามสกุล',
+      render: (p) => (
+        <span className="font-bold text-slate-800 text-xs">
+          {p.full_name || <span className="text-slate-400 font-normal italic">—</span>}
+        </span>
+      ),
     },
     {
       key: 'role',
@@ -101,14 +144,38 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
       },
     },
     {
+      key: 'contributions',
+      header: 'การมีส่วนร่วมในผลงาน (Authors)',
+      render: (p) => {
+        const { counts, totalItems } = getUserContributions(p)
+        if (totalItems === 0) {
+          return <span className="text-slate-400 text-xs font-normal italic">ยังไม่มีผลงาน</span>
+        }
+
+        return (
+          <div className="flex flex-wrap gap-1 items-center">
+            {Object.entries(counts).map(([roleName, count]) => (
+              <span
+                key={roleName}
+                className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#0EA5A0]/10 text-[#0EA5A0] border border-[#0EA5A0]/20 flex items-center gap-1"
+              >
+                <span>{roleName}</span>
+                <span className="bg-[#0EA5A0] text-white px-1.5 py-0.2 rounded-full text-[9px]">{count}</span>
+              </span>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
       key: 'created_at',
       header: 'วันที่ลงทะเบียน',
       render: (p) => (
         <div className="text-slate-500 font-medium text-xs">
           <div>{new Date(p.created_at).toLocaleDateString('th-TH')}</div>
-          {(p as any).temp_expires_at && (
+          {p.temp_expires_at && (
             <div className="text-[10px] text-amber-700 font-mono mt-0.5">
-              หมดอายุ: {new Date((p as any).temp_expires_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+              หมดอายุ: {new Date(p.temp_expires_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
             </div>
           )}
         </div>
@@ -120,7 +187,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
       align: 'right',
       render: (p) => (
         <div className="flex items-center justify-end gap-1.5">
-          {(p as any).is_temp_account && (
+          {p.is_temp_account && (
             <button
               onClick={() => handleViewOrResetTempUser(p)}
               disabled={resettingPassword}
@@ -134,11 +201,12 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
             onClick={() => {
               setSelectedProfile(p)
               setNewRole(p.role)
+              setNewFullName(p.full_name || '')
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-[#F0F7FF] text-[#0EA5A0] border-[#DAEEFF]"
           >
             <Edit2 className="w-3.5 h-3.5" />
-            แก้ไขสิทธิ์
+            แก้ไขสิทธิ์/ชื่อ
           </button>
         </div>
       ),
@@ -426,15 +494,28 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
         document.body
       )}
 
-      {/* Modal for editing role */}
+      {/* Modal for editing role and profile */}
       {selectedProfile && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 flex flex-col gap-4">
             <div>
-              <h3 className="text-sm font-black text-slate-800">จัดการสิทธิ์ผู้ใช้งาน</h3>
+              <h3 className="text-sm font-black text-slate-800">จัดการข้อมูลและสิทธิ์ผู้ใช้งาน</h3>
               <p className="text-[11px] text-slate-500 mt-1">
                 อีเมล: <span className="font-bold text-slate-700">{selectedProfile.email}</span>
               </p>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                ชื่อ-นามสกุล (Full Name)
+              </label>
+              <input
+                type="text"
+                placeholder="ระบุชื่อ-นามสกุล..."
+                value={newFullName}
+                onChange={(e) => setNewFullName(e.target.value)}
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+              />
             </div>
 
             <div className="space-y-2">
@@ -496,12 +577,12 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, onUp
               <button
                 type="button"
                 onClick={() => {
-                  onUpdateRole(selectedProfile.id, newRole)
+                  onUpdateRole(selectedProfile.id, newRole, newFullName)
                   setSelectedProfile(null)
                 }}
                 className="btn-primary text-xs !py-2 !px-4 h-auto cursor-pointer"
               >
-                บันทึกสิทธิ์
+                บันทึกข้อมูล
               </button>
             </div>
           </div>

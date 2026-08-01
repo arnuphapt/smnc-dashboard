@@ -19,6 +19,7 @@ interface ItemsTabProps {
   onOpenEditForm: (item: WisdomItem) => void
   onDeleteItem: (id: string) => void
   category?: string
+  profiles?: any[]
 }
 
 export const ItemsTab: React.FC<ItemsTabProps> = ({
@@ -31,6 +32,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
   onOpenEditForm,
   onDeleteItem,
   category,
+  profiles = [],
 }) => {
   const [selectedPublicity, setSelectedPublicity] = React.useState('')
 
@@ -63,7 +65,7 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
     {
       key: 'authors',
       header: 'ผู้จัดทำ',
-      render: (item) => <span className="text-slate-500 font-medium truncate block max-w-[150px]">{formatAuthorsForDisplay(item.authors) || '-'}</span>,
+      render: (item) => <span className="text-slate-500 font-medium truncate block max-w-[150px]">{formatAuthorsForDisplay(item.authors, profiles) || '-'}</span>,
     },
     {
       key: 'is_public',

@@ -33,11 +33,27 @@ export const parseAuthors = (rawStr?: string | null): AuthorItem[] => {
     .map((name) => ({ name, contribution: 'Co author' }))
 }
 
-export const formatAuthorsForDisplay = (rawStr?: string | null): string => {
+export const formatAuthorsForDisplay = (
+  rawStr?: string | null,
+  profiles?: Array<{ email: string; full_name?: string }>
+): string => {
   if (!rawStr) return ''
   const list = parseAuthors(rawStr)
   if (list.length === 0) return rawStr
+
+  const profileMap = new Map<string, string>()
+  if (profiles && Array.isArray(profiles)) {
+    profiles.forEach((p) => {
+      if (p.email && p.full_name) {
+        profileMap.set(p.email.toLowerCase().trim(), p.full_name.trim())
+      }
+    })
+  }
+
   return list
-    .map((a) => (a.contribution ? `${a.name} (${a.contribution})` : a.name))
+    .map((a) => {
+      const displayName = profileMap.get(a.name.toLowerCase().trim()) || a.name
+      return a.contribution ? `${displayName} (${a.contribution})` : displayName
+    })
     .join(', ')
 }

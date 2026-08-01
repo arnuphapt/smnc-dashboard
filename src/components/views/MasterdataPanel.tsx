@@ -546,16 +546,20 @@ export const MasterdataPanel: React.FC = () => {
     })
   }
 
-  const handleUpdateRole = async (userId: string, newRole: string) => {
+  const handleUpdateRole = async (userId: string, newRole: string, fullName?: string) => {
     try {
+      const updatePayload: any = { role: newRole }
+      if (fullName !== undefined) {
+        updatePayload.full_name = fullName
+      }
       const { error } = await supabase
         .from('profiles')
-        .update({ role: newRole })
+        .update(updatePayload)
         .eq('id', userId)
       if (error) throw error
       fetchProfiles()
     } catch (err: any) {
-      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถอัปเดตสิทธิ์ได้: ${err.message}`, 'danger')
+      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้: ${err.message}`, 'danger')
     }
   }
 
@@ -1010,6 +1014,7 @@ export const MasterdataPanel: React.FC = () => {
                 onOpenEditForm={handleOpenEditForm}
                 onDeleteItem={handleDeleteItem}
                 category={itemCategory}
+                profiles={profiles}
               />
             )
           case 'masters':
@@ -1027,7 +1032,7 @@ export const MasterdataPanel: React.FC = () => {
             )
           case 'users':
             return (
-              <UsersTab profiles={profiles} usersLoading={usersLoading} onUpdateRole={handleUpdateRole} onAddUser={handleAddUser} />
+              <UsersTab profiles={profiles} usersLoading={usersLoading} items={items} onUpdateRole={handleUpdateRole} onAddUser={handleAddUser} />
             )
           case 'roles':
             return <RolesTab />

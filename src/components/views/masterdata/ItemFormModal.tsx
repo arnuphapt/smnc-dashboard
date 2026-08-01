@@ -234,9 +234,10 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white text-xs border border-slate-200 rounded-xl">
-                          <SelectItem value="First author">First author</SelectItem>
-                          <SelectItem value="Corresponding author">Corresponding author</SelectItem>
-                          <SelectItem value="Co author">Co author</SelectItem>
+                          <SelectItem value="First author">First author (ผู้แต่งหลัก)</SelectItem>
+                          <SelectItem value="Corresponding author">Corresponding author (ผู้รับผิดชอบบทความ)</SelectItem>
+                          <SelectItem value="Co author">Co author (ผู้ร่วมแต่ง)</SelectItem>
+                          <SelectItem value="First author, Corresponding author">First author & Corresponding author</SelectItem>
                         </SelectContent>
                       </Select>
                       <button type="button" onClick={() => removeAuthor(index)} className="hover:text-red-600 cursor-pointer ml-auto p-1">
@@ -250,14 +251,19 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
               <Select
                 value=""
                 onValueChange={(v) => v && addAuthor(v)}
-                items={profiles.map((p) => ({ value: p.email, label: p.email }))}
+                items={profiles.map((p) => ({
+                  value: p.full_name || p.email,
+                  label: p.full_name ? `${p.full_name} (${p.email})` : p.email
+                }))}
               >
                 <SelectTrigger className="w-full light-input">
                   <SelectValue placeholder="เลือกจากผู้ใช้งานในระบบ..." />
                 </SelectTrigger>
                 <SelectContent>
                   {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.email}>{p.email}</SelectItem>
+                    <SelectItem key={p.id} value={p.full_name || p.email}>
+                      {p.full_name ? `${p.full_name} (${p.email})` : p.email}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -347,23 +353,6 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
 
               {formCategory === 'research' && (
                 <>
-                  <div>
-                    <label className="block text-slate-500 font-bold mb-1">การมีส่วนร่วม</label>
-                    <Select
-                      value={metaContribution}
-                      onValueChange={(v) => setMetaContribution(v ?? '')}
-                      items={CONTRIBUTION_OPTIONS}
-                    >
-                      <SelectTrigger className="w-full light-input">
-                        <SelectValue placeholder="เลือกการมีส่วนร่วม..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONTRIBUTION_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div>
                     <label className="block text-slate-500 font-bold mb-1">ระดับฐาน</label>
                     <Select
