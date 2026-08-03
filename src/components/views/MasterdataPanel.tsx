@@ -7,7 +7,7 @@ import { createClient as createAnonClient } from '@supabase/supabase-js'
 
 const supabase = createClient()
 import { useMasters } from '@/context/MasterContext'
-import { getTableForCategory } from '@/utils/masterTables'
+import { getTableForCategory, getValueFieldForCategory } from '@/utils/masterTables'
 import { Calendar, Award, Clipboard } from 'lucide-react'
 import { WisdomItem } from './Dashboard'
 import { Profile } from '@/context/AuthContext'
@@ -517,9 +517,10 @@ export const MasterdataPanel: React.FC = () => {
     if (!lookupValue) return
     try {
       const targetTable = getTableForCategory(lookupCategory)
+      const valueField = getValueFieldForCategory(lookupCategory)
       const nextSortOrder = options.filter((o) => o.category === lookupCategory).length + 1
       const payload: any = {
-        name: lookupValue,
+        [valueField]: lookupValue,
         sort_order: nextSortOrder,
         is_active: true
       }
@@ -1030,6 +1031,7 @@ export const MasterdataPanel: React.FC = () => {
                 onAddLookup={handleAddLookup}
                 onDeleteLookup={handleDeleteLookup}
                 defaultCategory={lookupPathCategory}
+                onRefresh={refreshOptions}
               />
             )
           case 'users':

@@ -102,20 +102,20 @@ export const serializeReviewerNotes = (
   return `${structuredTag}=== ผลการประเมินรายเกณฑ์ ===\n${readableCriteria}\n\n=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\n${comments}`
 }
 
-// Generate printable/exportable PDF layout window
-export const handleExportEvaluation = (sub: any, _reviewerName: string, submitterEmail: string) => {
+// Generate printable/exportable PDF layout window — Thai IRB official form style (Anonymous Expert Evaluation)
+export const handleExportEvaluation = (sub: any, submitterName: string) => {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
 
   const parsed = parseReviewerNotes(sub.reviewer_notes || '')
   let cleanNotes = parsed.comments
-  let checklistHtml = ''
 
   const translateScore = (s: string) => {
-    if (s === 'pass') return '<span style="color: #16a34a; font-weight: bold;">✔ ผ่าน</span>'
-    if (s === 'fail') return '<span style="color: #d97706; font-weight: bold;">⚠ ต้องแก้ไข</span>'
-    return '<span style="color: #64748b; font-style: italic;">N/A ไม่เกี่ยวข้อง</span>'
+    if (s === 'pass') return '<span style="color:#16a34a;font-weight:700;">✓ ผ่าน</span>'
+    if (s === 'fail') return '<span style="color:#b45309;font-weight:700;">✗ ต้องแก้ไข</span>'
+    return '<span style="color:#64748b;font-weight:700;">- N/A (ไม่เกี่ยวข้อง)</span>'
   }
+
 
   const riskLabel = RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย'
   const intervalLabel = REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)'
@@ -126,99 +126,155 @@ export const handleExportEvaluation = (sub: any, _reviewerName: string, submitte
     { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', val: parsed.scores.privacy },
     { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', val: parsed.scores.consent },
     { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', val: parsed.scores.risk },
-    { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit }
+    { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit },
   ]
 
-  checklistHtml = `
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; margin-top: 15px; font-size: 11px;">
-      <p style="margin: 0 0 6px 0; font-weight: 700; color: #0f172a;"><strong>ระดับความเสี่ยงโครงการ:</strong> ${riskLabel}</p>
-      <p style="margin: 0; font-weight: 700; color: #0f172a;"><strong>รอบการรายงานความก้าวหน้า:</strong> ${intervalLabel}</p>
-    </div>
-    <h3 style="font-size: 14px; color: #0B1D3A; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">ผลการประเมินรายเกณฑ์จริยธรรม</h3>
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11px;">
-      <thead>
-        <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1; text-align: left;">
-          <th style="padding: 8px 10px; font-weight: 700; color: #475569;">เกณฑ์การพิจารณาจริยธรรม</th>
-          <th style="padding: 8px 10px; font-weight: 700; color: #475569; width: 120px; text-align: center;">ผลการประเมิน</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${criteria.map(c => `
-          <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 8px 10px; color: #334155;">${c.label}</td>
-            <td style="padding: 8px 10px; text-align: center;">${translateScore(c.val)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `
   cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/, '')
   cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/, '')
   cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
   cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
+  cleanNotes = cleanNotes.replace(/\[ผู้ทรงคุณวุฒิท่านที่ 1\]/g, '').replace(/\[ผู้ทรงคุณวุฒิท่านที่ 2\]/g, '\n').replace(/---/g, '\n').trim()
 
-  let expert1Notes = cleanNotes.trim()
-  let expert2Notes = ''
-
-  if (cleanNotes.includes('[ผู้ทรงคุณวุฒิท่านที่ 2]')) {
-    const parts = cleanNotes.split('[ผู้ทรงคุณวุฒิท่านที่ 2]')
-    expert1Notes = parts[0].replace(/\[ผู้ทรงคุณวุฒิท่านที่ 1\]/g, '').trim()
-    expert2Notes = parts[1].trim()
-  } else if (cleanNotes.includes('---')) {
-    const parts = cleanNotes.split('---')
-    expert1Notes = parts[0].trim()
-    expert2Notes = parts[1].trim()
-  }
-
-  const statusColor = sub.status === 'อนุมัติ' ? '#16a34a' : sub.status === 'รอแก้ไข' ? '#b45309' : '#475569'
-  const statusLabelText = sub.status === 'อนุมัติ'
-    ? 'เห็นชอบ'
+  const statusLabel = sub.status === 'อนุมัติ'
+    ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
     : sub.status === 'รอแก้ไข'
-    ? 'เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล'
+    ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
     : sub.status === 'ไม่อนุมัติ'
-    ? 'ไม่เห็นชอบ'
-    : sub.status
-  const printDate = new Date().toLocaleDateString('th-TH')
-  const printDateTime = new Date().toLocaleString('th-TH')
-  const e1Notes = expert1Notes || 'ไม่มีข้อเสนอแนะเพิ่มเติม'
-  const e2Notes = expert2Notes || 'ไม่มีข้อเสนอแนะเพิ่มเติม'
+    ? '☑ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
+    : '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
 
-  const docHtml = '<!DOCTYPE html><html><head><title>รายงานผลการพิจารณาจริยธรรมการวิจัย - ' + sub.project_title + '</title>' +
-    '<style>' +
-    '@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;800&display=swap");' +
-    'body { font-family: "Sarabun", sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }' +
-    '.header { text-align: center; border-bottom: 2px solid #0EA5A0; padding-bottom: 15px; margin-bottom: 25px; }' +
-    '.logo { font-size: 22px; font-weight: 800; color: #0B1D3A; margin-bottom: 5px; }' +
-    '.subtitle { font-size: 13px; color: #64748B; }' +
-    '.title { font-size: 16px; font-weight: 700; margin-top: 15px; color: #0B1D3A; }' +
-    '.meta-grid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 15px; margin-bottom: 25px; font-size: 12px; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }' +
-    '.meta-label { font-weight: 700; color: #475569; }' +
-    '.notes-container { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; font-size: 13px; white-space: pre-wrap; color: #334155; }' +
-    '.footer { margin-top: 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }' +
-    '@media print { body { padding: 0; } .no-print { display: none; } }' +
-    '</style></head><body>' +
-    '<div class="header"><div class="logo">คลังปัญญา SMNC</div>' +
-    '<div class="subtitle">สถาบันวิจัยและนวัตกรรมทางการพยาบาล วิทยาลัยพยาบาลศรีมหาสารคาม</div>' +
-    '<div class="title">รายงานผลการประเมินและข้อเสนอแนะจริยธรรมการวิจัย</div></div>' +
-    '<div class="meta-grid">' +
-    '<div class="meta-label">ชื่อโครงการวิจัย:</div><div style="font-weight: 700;">' + sub.project_title + '</div>' +
-    '<div class="meta-label">ผู้ยื่นคำขอ:</div><div>' + submitterEmail + '</div>' +
-    '<div class="meta-label">ผู้ทรงคุณวุฒิ:</div><div>ผู้ทรงคุณวุฒิท่านที่ 1, ผู้ทรงคุณวุฒิท่านที่ 2</div>' +
-    '<div class="meta-label">สถานะผลการประเมิน:</div><div style="font-weight: 700; color: ' + statusColor + ';">' + statusLabelText + '</div>' +
-    '<div class="meta-label">วันที่พิมพ์เอกสาร:</div><div>' + printDate + '</div>' +
-    '</div>' + checklistHtml +
-    '<h3 style="font-size: 14px; color: #0B1D3A; margin-top: 25px; margin-bottom: 12px; border-bottom: 2px solid #0EA5A0; padding-bottom: 6px;">ความเห็นและข้อเสนอแนะเพิ่มเติมจากผู้ทรงคุณวุฒิ</h3>' +
-    '<div style="margin-bottom: 16px;"><div style="font-size: 12px; font-weight: 700; color: #0EA5A0; margin-bottom: 6px;">• ข้อเสนอแนะจากผู้ทรงคุณวุฒิท่านที่ 1:</div>' +
-    '<div class="notes-container">' + e1Notes + '</div></div>' +
-    '<div style="margin-bottom: 16px;"><div style="font-size: 12px; font-weight: 700; color: #7C3AED; margin-bottom: 6px;">• ข้อเสนอแนะจากผู้ทรงคุณวุฒิท่านที่ 2:</div>' +
-    '<div class="notes-container">' + e2Notes + '</div></div>' +
-    '<div class="footer">พิมพ์จากระบบคลังปัญญา SMNC • ' + printDateTime + '</div></body></html>'
+  const today = new Date()
+  const thaiDate = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+  const submittedDate = new Date(sub.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  // Calculate expiry for reporting: interval months from today
+  const intervalMonths = parseInt(parsed.progressReportInterval || '12')
+  const expiryDate = new Date(today)
+  expiryDate.setMonth(expiryDate.getMonth() + intervalMonths)
+  const thaiExpiryDate = expiryDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  const criTableRows = criteria.map((c) => `
+    <tr>
+      <td style="border:1px solid #000;padding:6px 10px;font-size:13px;">${c.label}</td>
+      <td style="border:1px solid #000;padding:6px 10px;text-align:center;font-size:13px;">${translateScore(c.val)}</td>
+    </tr>`).join('')
+
+  const docHtml = `<!DOCTYPE html><html lang="th"><head>
+<meta charset="UTF-8"/>
+<title>แบบประเมินโครงร่างวิจัย — ${sub.project_title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;800&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 14px; color: #000; background: #fff; padding: 30px 40px; line-height: 1.7; }
+.page { max-width: 740px; margin: 0 auto; }
+.doc-header { text-align: center; margin-bottom: 18px; }
+.doc-header .org-name { font-size: 18px; font-weight: 800; }
+.doc-header .org-sub { font-size: 14px; }
+.doc-header .form-title { font-size: 16px; font-weight: 700; margin-top: 8px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; }
+.ref-row { display: flex; justify-content: space-between; font-size: 13px; margin: 10px 0 6px 0; }
+.info-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.info-table td { padding: 5px 8px; font-size: 13px; vertical-align: top; }
+.info-table .lbl { width: 200px; font-weight: 700; }
+.underline-fill { border-bottom: 1px solid #555; display: inline-block; min-width: 260px; padding: 0 4px; }
+.section-title { font-weight: 700; font-size: 14px; margin: 16px 0 6px 0; border-bottom: 1px solid #000; padding-bottom: 3px; }
+.criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.criteria-table th { border: 1px solid #000; padding: 6px 10px; font-size: 13px; background: #f0f0f0; text-align: center; }
+.criteria-table td { border: 1px solid #000; padding: 6px 10px; font-size: 13px; }
+.risk-box { border: 1px solid #000; padding: 8px 12px; margin: 10px 0; font-size: 13px; }
+.checkbox-row { font-size: 13px; margin: 6px 0; }
+.notes-box { border: 1px solid #555; min-height: 80px; padding: 8px 12px; font-size: 13px; white-space: pre-wrap; margin-top: 4px; }
+.sign-section { margin-top: 40px; display: flex; justify-content: flex-end; }
+.sign-block { width: 280px; text-align: center; }
+.sign-line { border-bottom: 1px solid #000; margin: 60px auto 6px; width: 85%; }
+.sign-label { font-size: 13px; font-weight: 500; }
+.footer-note { font-size: 11px; color: #555; margin-top: 25px; border-top: 1px dashed #999; padding-top: 8px; }
+@media print { body { padding: 10px 20px; } .no-print { display: none; } }
+</style>
+</head><body>
+<div class="page">
+
+  <!-- Print Button -->
+  <div class="no-print" style="text-align:right;margin-bottom:12px;">
+    <button onclick="window.print()" style="padding:8px 20px;font-family:inherit;font-size:13px;font-weight:700;background:#0B1D3A;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨 พิมพ์ / บันทึก PDF</button>
+  </div>
+
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="org-name">วิทยาลัยพยาบาลศรีมหาสารคาม</div>
+    <div class="org-sub">สถาบันพระบรมราชชนก กระทรวงสาธารณสุข</div>
+    <div class="form-title">แบบประเมินโครงร่างวิจัย<br/>คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (IRB)</div>
+  </div>
+
+  <!-- Reference / Date -->
+  <div class="ref-row">
+    <span>เลขที่หนังสือ: <span class="underline-fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+    <span>วันที่ประเมิน: <strong>${thaiDate}</strong></span>
+  </div>
+
+  <!-- Project Info -->
+  <div class="section-title">ข้อมูลโครงการวิจัย</div>
+  <table class="info-table">
+    <tr><td class="lbl">ชื่อโครงการวิจัย:</td><td><strong>${sub.project_title}</strong></td></tr>
+    <tr><td class="lbl">ผู้วิจัย / ผู้ยื่นคำขอ:</td><td>${submitterName}</td></tr>
+    <tr><td class="lbl">วันที่ยื่นคำขอ:</td><td>${submittedDate}</td></tr>
+  </table>
+
+  <!-- Risk Level -->
+  <div class="section-title">ระดับความเสี่ยงของโครงการ</div>
+  <div class="risk-box">
+    <div>☑ ${riskLabel}</div>
+  </div>
+
+  <!-- Reporting Cycle -->
+  <div class="section-title">กำหนดรายงานความก้าวหน้า</div>
+  <div class="risk-box">
+    รายงานความก้าวหน้า: <strong>${intervalLabel}</strong>
+    &nbsp;&nbsp;|&nbsp;&nbsp; กำหนดส่งรายงานฉบับต่อไป: <strong>${thaiExpiryDate}</strong>
+  </div>
+
+  <!-- Criteria Checklist -->
+  <div class="section-title">เกณฑ์การพิจารณาจริยธรรมการวิจัย</div>
+  <table class="criteria-table">
+    <thead>
+      <tr>
+        <th style="width:75%;text-align:left;">เกณฑ์การพิจารณา</th>
+        <th style="width:25%;">ผลการพิจารณา</th>
+      </tr>
+    </thead>
+    <tbody>${criTableRows}</tbody>
+  </table>
+
+  <!-- Feedback / Comments -->
+  <div class="section-title">ข้อเสนอแนะเพิ่มเติมจากคณะกรรมการประเมิน</div>
+  <div class="notes-box">${(cleanNotes || 'ไม่มีข้อเสนอแนะเพิ่มเติม').replace(/\n/g, '<br/>')}</div>
+
+  <!-- Conclusion -->
+  <div class="section-title">ผลการพิจารณาโดยรวม</div>
+  <div class="checkbox-row" style="font-size:14px;padding:8px 0;">${statusLabel}</div>
+
+  <!-- Signature (IRB Board Chairman only) -->
+  <div class="sign-section">
+    <div class="sign-block">
+      <div class="sign-line"></div>
+      <div class="sign-label">ประธานคณะกรรมการ IRB</div>
+      <div class="sign-label">วันที่ .................</div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    พิมพ์จากระบบคลังปัญญา SMNC — วิทยาลัยพยาบาลศรีมหาสารคาม | วันที่พิมพ์: ${thaiDate}
+  </div>
+</div>
+<script>
+window.onload = function() { setTimeout(function() { window.print(); }, 800); }
+</script>
+</body></html>`
 
   printWindow.document.write(docHtml)
   printWindow.document.close()
   printWindow.focus()
-  setTimeout(() => printWindow.print(), 500)
 }
+
 
 const CATEGORY_OPTIONS: { value: 'ethics' | 'ip' | 'utilization'; label: string; badgeClass: string }[] = [
   { value: 'ethics', label: 'จริยธรรมการวิจัย (Ethics)', badgeClass: 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' },

@@ -93,7 +93,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
   const columns: DataTableColumn<Profile>[] = [
     {
       key: 'email',
-      header: 'ชื่อ-นามสกุล / อีเมล',
+      header: 'ผู้ใช้งาน / อีเมล',
       render: (p) => (
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
@@ -105,19 +105,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
             )}
           </div>
           {p.full_name && (
-            <span className="text-[11px] text-slate-400 font-mono font-medium">{p.email}</span>
+            <span className="text-[11px] text-[#0EA5A0] font-mono font-medium">{p.email}</span>
           )}
         </div>
       )
-    },
-    {
-      key: 'full_name',
-      header: 'ชื่อ-นามสกุล',
-      render: (p) => (
-        <span className="font-bold text-slate-800 text-xs">
-          {p.full_name || <span className="text-slate-400 font-normal italic">—</span>}
-        </span>
-      ),
     },
     {
       key: 'role',
@@ -143,30 +134,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
         )
       },
     },
-    {
-      key: 'contributions',
-      header: 'การมีส่วนร่วมในผลงาน (Authors)',
-      render: (p) => {
-        const { counts, totalItems } = getUserContributions(p)
-        if (totalItems === 0) {
-          return <span className="text-slate-400 text-xs font-normal italic">ยังไม่มีผลงาน</span>
-        }
 
-        return (
-          <div className="flex flex-wrap gap-1 items-center">
-            {Object.entries(counts).map(([roleName, count]) => (
-              <span
-                key={roleName}
-                className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#0EA5A0]/10 text-[#0EA5A0] border border-[#0EA5A0]/20 flex items-center gap-1"
-              >
-                <span>{roleName}</span>
-                <span className="bg-[#0EA5A0] text-white px-1.5 py-0.2 rounded-full text-[9px]">{count}</span>
-              </span>
-            ))}
-          </div>
-        )
-      },
-    },
     {
       key: 'created_at',
       header: 'วันที่ลงทะเบียน',
@@ -403,6 +371,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
                       <option value="48">48 ชั่วโมง (2 วัน)</option>
                       <option value="72">72 ชั่วโมง (3 วัน - ค่าเริ่มต้น)</option>
                       <option value="168">168 ชั่วโมง (7 วัน)</option>
+                      <option value="720">720 ชั่วโมง (30 วัน)</option>
                     </select>
                   </div>
                 )}

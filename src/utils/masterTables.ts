@@ -14,6 +14,22 @@ export const CATEGORY_TO_TABLE: Record<string, string> = {
   ethics_criteria: 'master_ethics_criteria',
 }
 
+/**
+ * The DB column that stores the human-readable value for each category.
+ * Most tables use `name`, but a few differ:
+ *   - master_ethics_criteria → `label`
+ *   - master_years           → `year_be` (integer — edit not supported here)
+ */
+export const CATEGORY_VALUE_FIELD: Record<string, string> = {
+  ethics_criteria: 'label',
+  year: 'year_be',
+}
+
 export function getTableForCategory(category: string): string {
   return CATEGORY_TO_TABLE[category] || 'lookup_options'
+}
+
+/** Returns the column name that holds the display value for a given category. */
+export function getValueFieldForCategory(category: string): string {
+  return CATEGORY_VALUE_FIELD[category] || 'name'
 }

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { supabase } from '@/services/supabase'
-import { getTableForCategory } from '@/utils/masterTables'
+import { getTableForCategory, getValueFieldForCategory } from '@/utils/masterTables'
 
 const LOOKUP_CATEGORY_OPTIONS = [
   { value: 'research_type', label: 'ประเภทผู้สร้างสรรค์' },
@@ -36,6 +36,7 @@ interface MastersTabProps {
   onAddLookup: (e: React.FormEvent) => void
   onDeleteLookup: (id: string) => void
   defaultCategory?: string
+  onRefresh?: () => void
 }
 
 export const MastersTab: React.FC<MastersTabProps> = ({
@@ -47,6 +48,7 @@ export const MastersTab: React.FC<MastersTabProps> = ({
   onAddLookup,
   onDeleteLookup,
   defaultCategory = '',
+  onRefresh,
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(defaultCategory)
@@ -232,16 +234,19 @@ export const MastersTab: React.FC<MastersTabProps> = ({
               if (!editingLookup || !editValue) return
               try {
                 const targetTable = getTableForCategory(editCategory)
+                const valueField = getValueFieldForCategory(editCategory)
                 const { error } = await supabase
                   .from(targetTable)
-                  .update({
-                    name: editValue
-                  })
+                  .update({ [valueField]: editValue })
                   .eq('id', editingLookup.id)
                 if (error) throw error
                 setEditingLookup(null)
+                onRefresh?.()
               } catch (err: any) {
-                console.error('Error updating master:', err)
+                // Supabase returns a PostgrestError (not a native Error), so we
+                // extract the message manually before logging.
+                const msg = err?.message || err?.details || JSON.stringify(err)
+                console.error('Error updating master:', msg, err)
               }
             }}
             className="space-y-4 text-xs"

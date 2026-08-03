@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
   EVALUATION_CRITERIA,
   RISK_LEVEL_OPTIONS,
@@ -76,7 +77,16 @@ const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: 
 const PENDING_STATUSES = ['ยื่นแล้ว', 'กำลังตรวจ', 'รอแก้ไข']
 const APPROVED_STATUSES = ['อนุมัติ', 'ไม่อนุมัติ']
 
+const PdfIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <text x="5" y="16.5" fontSize="6.5" fontWeight="900" fill="currentColor" stroke="none" fontFamily="sans-serif">PDF</text>
+  </svg>
+)
+
 export const EthicsSubmissions: React.FC = () => {
+
   const { user, profile } = useAuth()
   const { getOptionsByCategory } = useMasters()
 
@@ -319,20 +329,23 @@ export const EthicsSubmissions: React.FC = () => {
   }
 
   const handleExportClick = async (sub: any) => {
-    let reviewerEmail = 'ผู้ทรงคุณวุฒิ'
-    if (sub.assigned_reviewer_id) {
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', sub.assigned_reviewer_id)
-          .single()
-        if (data) reviewerEmail = data.email
-      } catch (err) { console.error(err) }
-    }
-    const submitterEmail = sub.profiles?.email || user?.email || ''
-    handleExportEvaluation(sub, reviewerEmail, submitterEmail)
+    // Fetch fresh data from DB to always show latest evaluation
+    let freshSub = sub
+    let submitterName = sub.profiles?.full_name || sub.profiles?.email || user?.email || ''
+    try {
+      const { data: freshData } = await supabase
+        .from('ethics_submissions')
+        .select('*, profiles:submitter_id(email, full_name)')
+        .eq('id', sub.id)
+        .single()
+      if (freshData) {
+        freshSub = freshData
+        submitterName = (freshData.profiles as any)?.full_name || (freshData.profiles as any)?.email || submitterName
+      }
+    } catch (err) { console.error(err) }
+    handleExportEvaluation(freshSub, submitterName)
   }
+
 
   const handleOpenRevisionModal = (sub: any) => {
     setSelectedSubForRevision(sub)
@@ -467,6 +480,8 @@ export const EthicsSubmissions: React.FC = () => {
     }
   }, [highlightId, hasAutoOpened, reviewSubmissions])
 
+  const canAssign = hasRole(profile?.role, 'admin') || hasRole(profile?.role, 'assistant_admin')
+
   const columns: DataTableColumn<EthicsSubmission>[] = [
     {
       key: 'project_title',
@@ -486,10 +501,10 @@ export const EthicsSubmissions: React.FC = () => {
         return <span className="whitespace-nowrap">{isOwner ? 'ฉัน' : (sub.profiles?.email || 'ไม่ระบุผู้ยื่น')}</span>
       },
     } as DataTableColumn<EthicsSubmission>] : []),
-    {
+    ...(canAssign ? [{
       key: 'assigned_reviewer',
       header: 'ผู้ทรงคุณวุฒิที่มอบหมาย',
-      render: (sub) => {
+      render: (sub: EthicsSubmission) => {
         const assignedUser = expertProfiles.find((p) => p.id === sub.assigned_reviewer_id)
         const assignedUser2 = expertProfiles.find((p) => p.id === sub.assigned_reviewer_id_2)
         if (!assignedUser && !assignedUser2) {
@@ -497,11 +512,12 @@ export const EthicsSubmissions: React.FC = () => {
         }
         return (
           <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">
-            {[assignedUser?.email, assignedUser2?.email].filter(Boolean).join(', ')}
+            {[assignedUser?.full_name || assignedUser?.email, assignedUser2?.full_name || assignedUser2?.email].filter(Boolean).join(', ')}
           </span>
         )
       },
-    },
+    } as DataTableColumn<EthicsSubmission>] : []),
+
     {
       key: 'status',
       header: 'สถานะ',
@@ -539,77 +555,116 @@ export const EthicsSubmissions: React.FC = () => {
         const isOwner = sub.submitter_id === user?.id
         const canAssign = hasRole(profile?.role, 'admin') || hasRole(profile?.role, 'assistant_admin')
         const subAttach = attachments.filter((a) => a.submission_id === sub.id)
+
+        const actionButtons: {
+          key: string
+          label: string
+          icon: React.ReactNode
+          onClick: () => void
+          fullClass: string
+          iconClass: string
+          isPdfIcon?: boolean
+        }[] = []
+
+        if (canAssign) {
+          actionButtons.push({
+            key: 'assign',
+            label: 'มอบหมายผู้ทรงคุณวุฒิ',
+            icon: <UserCheck className="w-4 h-4" />,
+            onClick: () => {
+              setSelectedSubForAssign(sub)
+              setAssignReviewerId(sub.assigned_reviewer_id || '')
+              setAssignReviewerId2(sub.assigned_reviewer_id_2 || '')
+              setAssignModalOpen(true)
+            },
+            fullClass: 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-600 hover:text-white transition cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        subAttach.forEach((at) => {
+          actionButtons.push({
+            key: `attach-${at.id}`,
+            label: at.file_name || 'ดาวน์โหลดเอกสาร PDF',
+            icon: <PdfIcon className="w-4 h-4 text-red-600 shrink-0" />,
+            onClick: () => handleDownloadFile(at.file_url),
+            fullClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 bg-red-50 border border-red-200 hover:bg-red-600 hover:text-white transition-colors cursor-pointer shadow-xs shrink-0',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 bg-red-50 border border-red-200 hover:bg-red-600 hover:text-white transition-colors cursor-pointer shadow-xs shrink-0',
+            isPdfIcon: true,
+          })
+        })
+
+        if (isReviewTabVisible) {
+          actionButtons.push({
+            key: 'review',
+            label: 'พิจารณาผล',
+            icon: <ClipboardCheck className="w-4 h-4" />,
+            onClick: () => openReviewModalFor(sub),
+            fullClass: 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-[#00796B] text-white hover:bg-[#005F56] transition cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#00796B] text-white hover:bg-[#005F56] transition cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        if (sub.reviewer_notes) {
+          actionButtons.push({
+            key: 'export',
+            label: 'รายงานผล',
+            icon: <ExternalLink className="w-4 h-4" />,
+            onClick: () => handleExportClick(sub),
+            fullClass: 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        if (isOwner) {
+          actionButtons.push({
+            key: 'delete',
+            label: 'ลบคำขอ',
+            icon: <Trash2 className="w-4 h-4" />,
+            onClick: () => handleDeleteSubmission(sub.id),
+            fullClass: 'inline-flex items-center gap-1.5 text-xs font-extrabold !py-1.5 !px-3 rounded-full bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] hover:bg-[#DC2626] hover:text-white transition-all cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] hover:bg-[#DC2626] hover:text-white transition-all cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        const useIconOnly = actionButtons.length > 3
+
         return (
-          <div className="flex flex-wrap gap-1.5 items-center justify-center">
-            {canAssign && (
-              <button
-                onClick={() => {
-                  setSelectedSubForAssign(sub)
-                  setAssignReviewerId(sub.assigned_reviewer_id || '')
-                  setAssignReviewerId2(sub.assigned_reviewer_id_2 || '')
-                  setAssignModalOpen(true)
-                }}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-extrabold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap"
-                title="มอบหมายผู้ทรงคุณวุฒิ"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                มอบหมายผู้ทรงคุณวุฒิ
-              </button>
-            )}
-            {subAttach.map((at) => (
-              <button
-                key={at.id}
-                onClick={() => handleDownloadFile(at.file_url)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors cursor-pointer shadow-xs shrink-0"
-                title={at.file_name}
-              >
-                <FileText className="w-3.5 h-3.5" />
-              </button>
-            ))}
-
-            {isReviewTabVisible && (
-              <Button
-                onClick={() => openReviewModalFor(sub)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 h-auto rounded-full text-xs font-extrabold bg-[#00796B] text-white hover:bg-[#005F56] transition cursor-pointer"
-              >
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                พิจารณาผล
-              </Button>
-            )}
-
-            {sub.reviewer_notes && (
-              <button
-                onClick={() => handleExportClick(sub)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                รายงานผล
-              </button>
-            )}
-
-            {isOwner && sub.status === 'รอแก้ไข' && (
-              <button
-                onClick={() => handleOpenRevisionModal(sub)}
-                className="btn-primary text-xs flex items-center gap-1.5 !py-1.5 !px-3"
-              >
-                <UploadCloud className="w-3.5 h-3.5 stroke-[2.5]" />
-                ส่งเล่มปรับปรุง
-              </button>
-            )}
-
-            {isOwner && (
-              <button
-                onClick={() => handleDeleteSubmission(sub.id)}
-                className="inline-flex items-center gap-1.5 text-xs font-extrabold !py-1.5 !px-3 rounded-full bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA] hover:bg-[#DC2626] hover:text-white transition-all cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                ลบคำขอ
-              </button>
-            )}
+          <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+            {actionButtons.map((btn) => {
+              if (useIconOnly || btn.isPdfIcon) {
+                return (
+                  <Tooltip key={btn.key}>
+                    <TooltipTrigger
+                      onClick={btn.onClick}
+                      className={btn.iconClass}
+                    >
+                      {btn.icon}
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {btn.label}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              }
+              return (
+                <button
+                  key={btn.key}
+                  onClick={btn.onClick}
+                  className={btn.fullClass}
+                  title={btn.label}
+                >
+                  {btn.icon}
+                  <span>{btn.label}</span>
+                </button>
+              )
+            })}
           </div>
         )
+
       },
     },
+
   ]
 
   return (
@@ -862,15 +917,17 @@ export const EthicsSubmissions: React.FC = () => {
                     <label className="block text-xs font-black text-[#0F172A]">ขั้นตอนที่ 1: ประเมินผลตามรายเกณฑ์ (6 เกณฑ์)</label>
                     <div className="space-y-3 bg-[#FFF8E7] border border-[#F3E5C8] p-3.5 rounded-2xl">
                       {(() => {
+                        const STANDARD_KEYS = ['obj', 'method', 'privacy', 'consent', 'risk', 'benefit']
                         const criteriaOptions = getOptionsByCategory('ethics_criteria')
                         const activeCriteria = criteriaOptions.length > 0
                           ? criteriaOptions.map((opt, idx) => ({
-                              key: `opt_${opt.id}`,
+                              key: STANDARD_KEYS[idx] || `opt_${opt.id}`,
                               label: opt.value.startsWith(`${idx + 1}.`) ? opt.value : `${idx + 1}. ${opt.value}`
                             }))
                           : EVALUATION_CRITERIA
 
                         return activeCriteria.map((criterion) => (
+
                           <div key={criterion.key} className="space-y-1">
                             <div className="text-[10px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
                             <div className="grid grid-cols-3 gap-1.5 bg-white p-1.5 rounded-xl border border-[#E2E8F0]">
