@@ -17,6 +17,9 @@ export default function RootLayout({
   return (
     <html lang="th">
       <head>
+        <link rel="icon" href="/smnc_logo.png" type="image/png" />
+        <link rel="shortcut icon" href="/smnc_logo.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/smnc_logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -24,6 +27,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
+
       <body className="min-h-screen bg-[#EFF8F7] text-[#1E8C86] antialiased selection:bg-[#FFD23F] selection:text-[#1E8C86]">
         <QueryProvider>
           <AuthProvider>

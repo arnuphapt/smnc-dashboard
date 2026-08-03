@@ -121,11 +121,13 @@ export const Sidebar: React.FC = () => {
       {/* Desktop Sidebar (hidden on mobile) */}
       <aside className="hidden md:flex md:flex-col w-64 shrink-0 bg-white border-r border-[#E2E8F0] min-h-screen justify-between p-4 shadow-sm">
         <div className="space-y-4">
-          {/* Brand Logo Header (Matching Image 2) */}
+          {/* Brand Logo Header */}
           <Link href="/" className="flex items-center gap-3 h-14 px-2 cursor-pointer select-none group">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-[#005F5A] to-[#00796B] text-white shrink-0 group-hover:scale-105 transition-transform">
-              <Shield className="w-5.5 h-5.5 text-white stroke-[2.2] fill-none" />
-            </div>
+            <img
+              src="/smnc_logo.png"
+              alt="SMNC Logo"
+              className="w-10 h-10 rounded-2xl object-cover shadow-md shrink-0 border border-teal-100 group-hover:scale-105 transition-transform"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-base font-black text-[#0F172A] leading-none tracking-tight">คลังปัญญา SMNC</span>
@@ -135,6 +137,7 @@ export const Sidebar: React.FC = () => {
               </span>
             </div>
           </Link>
+
 
           {/* Navigation Items */}
           <nav className="space-y-1.5 pt-2">
