@@ -585,7 +585,7 @@ export const Repositories: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">คณะผู้จัดทำ / เจ้าของผลงาน</div>
-                    <div className="text-xs font-bold text-slate-800 mt-0.5">{selectedItem.authors || 'ไม่ระบุ'}</div>
+                    <div className="text-xs font-bold text-slate-800 mt-0.5">{formatAuthorsForDisplay(selectedItem.authors, profiles) || 'ไม่ระบุ'}</div>
                   </div>
                 </div>
 
@@ -621,7 +621,7 @@ export const Repositories: React.FC = () => {
 
                 {/* Dynamic Metadata Attributes Cards */}
                 {Object.entries(selectedItem.metadata || {}).map(([key, val]) => {
-                  if (key === 'department' || !val) return null
+                  if (key === 'department' || key === 'contribution' || !val) return null
                   const labelMap: Record<string, string> = {
                     research_type: 'ประเภทงานวิจัย',
                     ip_type: 'ประเภททรัพย์สินทางปัญญา',

@@ -129,11 +129,15 @@ export const handleExportEvaluation = (sub: any, submitterName: string) => {
     { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit },
   ]
 
-  cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/, '')
-  cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/, '')
-  cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
-  cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
-  cleanNotes = cleanNotes.replace(/\[ผู้ทรงคุณวุฒิท่านที่ 1\]/g, '').replace(/\[ผู้ทรงคุณวุฒิท่านที่ 2\]/g, '\n').replace(/---/g, '\n').trim()
+  cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/g, '')
+  cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/g, '')
+  cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/g, '')
+  cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/g, '')
+  cleanNotes = cleanNotes
+    .replace(/\[.*?\]/g, '')
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+    .replace(/---/g, '\n')
+    .trim()
 
   const statusLabel = sub.status === 'อนุมัติ'
     ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
@@ -164,45 +168,49 @@ export const handleExportEvaluation = (sub: any, submitterName: string) => {
 <title>แบบประเมินโครงร่างวิจัย — ${sub.project_title}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;800&display=swap');
+@page { size: A4 portrait; margin: 15mm 15mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 14px; color: #000; background: #fff; padding: 30px 40px; line-height: 1.7; }
-.page { max-width: 740px; margin: 0 auto; }
-.doc-header { text-align: center; margin-bottom: 18px; }
+body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 13px; color: #000; background: #fff; padding: 10px 20px; line-height: 1.5; }
+.page { max-width: 730px; margin: 0 auto; }
+.doc-header { text-align: center; margin-top: 12px; margin-bottom: 16px; }
 .doc-header .org-name { font-size: 18px; font-weight: 800; }
-.doc-header .org-sub { font-size: 14px; }
-.doc-header .form-title { font-size: 16px; font-weight: 700; margin-top: 8px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; }
-.ref-row { display: flex; justify-content: space-between; font-size: 13px; margin: 10px 0 6px 0; }
-.info-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-.info-table td { padding: 5px 8px; font-size: 13px; vertical-align: top; }
-.info-table .lbl { width: 200px; font-weight: 700; }
-.underline-fill { border-bottom: 1px solid #555; display: inline-block; min-width: 260px; padding: 0 4px; }
-.section-title { font-weight: 700; font-size: 14px; margin: 16px 0 6px 0; border-bottom: 1px solid #000; padding-bottom: 3px; }
-.criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-.criteria-table th { border: 1px solid #000; padding: 6px 10px; font-size: 13px; background: #f0f0f0; text-align: center; }
-.criteria-table td { border: 1px solid #000; padding: 6px 10px; font-size: 13px; }
-.risk-box { border: 1px solid #000; padding: 8px 12px; margin: 10px 0; font-size: 13px; }
-.checkbox-row { font-size: 13px; margin: 6px 0; }
-.notes-box { border: 1px solid #555; min-height: 80px; padding: 8px 12px; font-size: 13px; white-space: pre-wrap; margin-top: 4px; }
-.sign-section { margin-top: 40px; display: flex; justify-content: flex-end; }
-.sign-block { width: 280px; text-align: center; }
-.sign-line { border-bottom: 1px solid #000; margin: 60px auto 6px; width: 85%; }
-.sign-label { font-size: 13px; font-weight: 500; }
-.footer-note { font-size: 11px; color: #555; margin-top: 25px; border-top: 1px dashed #999; padding-top: 8px; }
-@media print { body { padding: 10px 20px; } .no-print { display: none; } }
+.doc-header .org-sub { font-size: 13.5px; }
+.doc-header .form-title { font-size: 15px; font-weight: 700; margin-top: 6px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; }
+.ref-row { display: flex; justify-content: space-between; font-size: 13px; margin: 12px 0 8px 0; }
+.info-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px 0; }
+.info-table td { padding: 6px 8px; font-size: 12.5px; vertical-align: top; border: 1px solid #cbd5e1; }
+.info-table .lbl { width: 135px; font-weight: 700; background: #f8fafc; color: #0f172a; }
+.underline-fill { border-bottom: 1px solid #555; display: inline-block; min-width: 200px; padding: 0 4px; }
+.section-title { font-weight: 700; font-size: 13.5px; margin: 16px 0 6px 0; border-bottom: 1.5px solid #000; padding-bottom: 3px; }
+.criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.criteria-table th { border: 1px solid #000; padding: 6px 10px; font-size: 12.5px; background: #f0f0f0; text-align: center; }
+.criteria-table td { border: 1px solid #000; padding: 6px 10px; font-size: 12.5px; }
+.notes-box { border: 1px solid #555; min-height: 65px; padding: 8px 12px; font-size: 12.5px; white-space: pre-wrap; margin-top: 4px; }
+.bottom-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 22px; gap: 20px; page-break-inside: avoid; }
+.conclusion-block { flex: 1; }
+.checkbox-row { font-size: 12.5px; line-height: 1.8; margin-top: 5px; }
+.sign-block { width: 240px; text-align: center; shrink: 0; }
+.sign-line { border-bottom: 1px solid #000; margin: 45px auto 6px; width: 90%; }
+.sign-label { font-size: 12.5px; font-weight: 500; }
+.footer-note { font-size: 10.5px; color: #64748b; margin-top: 22px; border-top: 1px dashed #cbd5e1; padding-top: 6px; text-align: center; }
+@media print {
+  body { padding: 0; }
+  .no-print { display: none !important; }
+}
 </style>
 </head><body>
 <div class="page">
 
   <!-- Print Button -->
-  <div class="no-print" style="text-align:right;margin-bottom:12px;">
-    <button onclick="window.print()" style="padding:8px 20px;font-family:inherit;font-size:13px;font-weight:700;background:#0B1D3A;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨 พิมพ์ / บันทึก PDF</button>
+  <div class="no-print" style="text-align:right;margin-bottom:8px;">
+    <button onclick="window.print()" style="padding:6px 16px;font-family:inherit;font-size:12px;font-weight:700;background:#0B1D3A;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨 พิมพ์ / บันทึก PDF (1 หน้า)</button>
   </div>
 
   <!-- Header -->
   <div class="doc-header">
     <div class="org-name">วิทยาลัยพยาบาลศรีมหาสารคาม</div>
     <div class="org-sub">สถาบันพระบรมราชชนก กระทรวงสาธารณสุข</div>
-    <div class="form-title">แบบประเมินโครงร่างวิจัย<br/>คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (IRB)</div>
+    <div class="form-title">แบบประเมินโครงร่างวิจัย · คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (IRB)</div>
   </div>
 
   <!-- Reference / Date -->
@@ -211,34 +219,34 @@ body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 14px; color: 
     <span>วันที่ประเมิน: <strong>${thaiDate}</strong></span>
   </div>
 
-  <!-- Project Info -->
-  <div class="section-title">ข้อมูลโครงการวิจัย</div>
+  <!-- Project Info Combined Grid -->
+  <div class="section-title">ข้อมูลโครงการและขอบเขตการพิจารณา</div>
   <table class="info-table">
-    <tr><td class="lbl">ชื่อโครงการวิจัย:</td><td><strong>${sub.project_title}</strong></td></tr>
-    <tr><td class="lbl">ผู้วิจัย / ผู้ยื่นคำขอ:</td><td>${submitterName}</td></tr>
-    <tr><td class="lbl">วันที่ยื่นคำขอ:</td><td>${submittedDate}</td></tr>
+    <tr>
+      <td class="lbl">ชื่อโครงการวิจัย:</td>
+      <td colspan="3"><strong>${sub.project_title}</strong></td>
+    </tr>
+    <tr>
+      <td class="lbl">ผู้วิจัย / ผู้ยื่นคำขอ:</td>
+      <td>${submitterName}</td>
+      <td class="lbl">วันที่ยื่นคำขอ:</td>
+      <td>${submittedDate}</td>
+    </tr>
+    <tr>
+      <td class="lbl">ระดับความเสี่ยง:</td>
+      <td>☑ ${riskLabel}</td>
+      <td class="lbl">รอบรายงานความก้าวหน้า:</td>
+      <td>${intervalLabel} (กำหนดส่ง: ${thaiExpiryDate})</td>
+    </tr>
   </table>
-
-  <!-- Risk Level -->
-  <div class="section-title">ระดับความเสี่ยงของโครงการ</div>
-  <div class="risk-box">
-    <div>☑ ${riskLabel}</div>
-  </div>
-
-  <!-- Reporting Cycle -->
-  <div class="section-title">กำหนดรายงานความก้าวหน้า</div>
-  <div class="risk-box">
-    รายงานความก้าวหน้า: <strong>${intervalLabel}</strong>
-    &nbsp;&nbsp;|&nbsp;&nbsp; กำหนดส่งรายงานฉบับต่อไป: <strong>${thaiExpiryDate}</strong>
-  </div>
 
   <!-- Criteria Checklist -->
   <div class="section-title">เกณฑ์การพิจารณาจริยธรรมการวิจัย</div>
   <table class="criteria-table">
     <thead>
       <tr>
-        <th style="width:75%;text-align:left;">เกณฑ์การพิจารณา</th>
-        <th style="width:25%;">ผลการพิจารณา</th>
+        <th style="width:78%;text-align:left;">เกณฑ์การพิจารณา</th>
+        <th style="width:22%;">ผลการพิจารณา</th>
       </tr>
     </thead>
     <tbody>${criTableRows}</tbody>
@@ -248,16 +256,16 @@ body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 14px; color: 
   <div class="section-title">ข้อเสนอแนะเพิ่มเติมจากคณะกรรมการประเมิน</div>
   <div class="notes-box">${(cleanNotes || 'ไม่มีข้อเสนอแนะเพิ่มเติม').replace(/\n/g, '<br/>')}</div>
 
-  <!-- Conclusion -->
-  <div class="section-title">ผลการพิจารณาโดยรวม</div>
-  <div class="checkbox-row" style="font-size:14px;padding:8px 0;">${statusLabel}</div>
-
-  <!-- Signature (IRB Board Chairman only) -->
-  <div class="sign-section">
+  <!-- Bottom Section: Conclusion (Left) & Signature (Right) -->
+  <div class="bottom-section">
+    <div class="conclusion-block">
+      <div class="section-title" style="margin-top:0;">ผลการพิจารณาโดยรวม</div>
+      <div class="checkbox-row">${statusLabel}</div>
+    </div>
     <div class="sign-block">
       <div class="sign-line"></div>
-      <div class="sign-label">ประธานคณะกรรมการ IRB</div>
-      <div class="sign-label">วันที่ .................</div>
+      <div class="sign-label"><strong>ประธานคณะกรรมการ IRB</strong></div>
+      <div class="sign-label">วันที่ ...... / ...... / ......</div>
     </div>
   </div>
 
@@ -266,7 +274,7 @@ body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 14px; color: 
   </div>
 </div>
 <script>
-window.onload = function() { setTimeout(function() { window.print(); }, 800); }
+window.onload = function() { setTimeout(function() { window.print(); }, 600); }
 </script>
 </body></html>`
 

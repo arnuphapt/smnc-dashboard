@@ -440,19 +440,11 @@ export const EthicsSubmissions: React.FC = () => {
     setProgressReportInterval(parsed.progressReportInterval)
 
     let cleanComments = parsed.comments
-    const tagMatch = cleanComments.match(/^\[(.*?)\]\s*\n?/)
-    if (tagMatch) {
-      setReviewerRoleLabel(tagMatch[1])
-      cleanComments = cleanComments.replace(/^\[(.*?)\]\s*\n?/, '')
-    } else {
-      const currentIsExpert = hasRole(profile?.role, 'expert')
-      setReviewerRoleLabel(
-        currentIsExpert && profile?.email
-          ? profile.email
-          : (expertProfiles[0]?.email || 'ผู้ทรงคุณวุฒิท่านที่ 1')
-      )
-    }
-
+    cleanComments = cleanComments
+      .replace(/\[.*?\]/g, '')
+      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+      .trim()
+    setReviewerRoleLabel('คณะกรรมการประเมิน')
     setReviewNotes(cleanComments)
     setReviewModalOpen(true)
   }
@@ -802,7 +794,7 @@ export const EthicsSubmissions: React.FC = () => {
 
           <div className="px-6 py-5 overflow-y-auto max-h-[70vh]">
             <p className="text-xs font-semibold italic text-[#334155] whitespace-pre-wrap leading-relaxed">
-              {selectedSubForNotes?.reviewer_notes ? selectedSubForNotes.reviewer_notes.replace(/\[.*?\]/g, '').trim() : '—'}
+              {selectedSubForNotes?.reviewer_notes ? selectedSubForNotes.reviewer_notes.replace(/\[.*?\]/g, '').replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim() : '—'}
             </p>
           </div>
         </DialogContent>
@@ -1130,7 +1122,7 @@ export const EthicsSubmissions: React.FC = () => {
                   <Button
                     type="button"
                     onClick={() => {
-                      const taggedNotes = `[${reviewerRoleLabel}]\n${reviewNotes}`
+                      const taggedNotes = reviewNotes
                       const serialized = serializeReviewerNotes(scores, taggedNotes, riskLevel, progressReportInterval)
                       handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
                       setReviewModalOpen(false)

@@ -136,7 +136,7 @@ export const downloadWordDocument = (filename: string, title: string, bodyHtml: 
  */
 export const exportItemToWord = (item: WisdomItem, categoryLabel: string) => {
   const metadataRows = Object.entries(item.metadata || {})
-    .filter(([key, val]) => val && key !== 'department')
+    .filter(([key, val]) => val && key !== 'department' && key !== 'contribution')
     .map(([key, val]) => {
       const labelMap: Record<string, string> = {
         research_type: 'ประเภทงานวิจัย',
