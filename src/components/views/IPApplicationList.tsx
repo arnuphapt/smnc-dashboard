@@ -84,9 +84,26 @@ const TimelineSteps: React.FC<{ status: string }> = ({ status }) => {
   )
 }
 
+import { useIPApplications } from '@/hooks/queries/useIP'
+import { useQueryClient } from '@tanstack/react-query'
+
 export const IPApplicationList: React.FC = () => {
   const { user } = useAuth()
-  const [applications, setApplications] = useState<IPApp[]>([])
+  const queryClient = useQueryClient()
+  const { data: rawApplications = [] } = useIPApplications(user?.id)
+
+  const applications: IPApp[] = rawApplications.map((app) => ({
+    id: app.id,
+    title: app.title_th,
+    ip_type: app.ip_type,
+    request_number: app.req_number,
+    status: app.status,
+    current_step: app.step,
+    admin_notes: app.admin_notes,
+    transferred_to_catalog: false,
+    created_at: app.created_at,
+  }))
+
   const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'submitted' | 'reviewing' | 'revision' | 'approved'>('all')
 
   const [progressModalOpen, setProgressModalOpen] = useState(false)
@@ -102,15 +119,6 @@ export const IPApplicationList: React.FC = () => {
   const triggerAlert = (title: string, description: string, variant: 'primary' | 'danger' | 'warning' = 'primary') => {
     setAlertConfig({ title, description, variant })
     setAlertDialogOpen(true)
-  }
-
-  const fetchApplications = async () => {
-    if (!user) return
-    try {
-      const { data, error } = await supabase.from('ip_applications').select('*').eq('applicant_id', user.id).order('created_at', { ascending: false })
-      if (error) throw error
-      setApplications(data || [])
-    } catch (err) { console.error(err) }
   }
 
   const handleDeleteApplication = (appId: string) => {
@@ -130,7 +138,7 @@ export const IPApplicationList: React.FC = () => {
 
       setDeleteConfirmOpen(false)
       setAppIdToDelete(null)
-      fetchApplications()
+      queryClient.invalidateQueries({ queryKey: ['ip_applications'] })
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถลบคำขอได้: ${err.message}`, 'danger')
     } finally {
@@ -138,13 +146,18 @@ export const IPApplicationList: React.FC = () => {
     }
   }
 
-  useEffect(() => { fetchApplications() }, [user])
-
   useEffect(() => {
     if (!user) return
-    const s = supabase.channel('ip-list-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ip_applications' }, () => fetchApplications()).subscribe()
-    return () => { supabase.removeChannel(s) }
-  }, [user])
+    const s = supabase
+      .channel('ip-list-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_applications' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ip_applications'] })
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(s)
+    }
+  }, [user, queryClient])
 
   const waitingCount = applications.filter(a => a.status === 'ยื่นคำขอ').length
   const reviewingCount = applications.filter(a => a.status === 'กำลังตรวจสอบ').length

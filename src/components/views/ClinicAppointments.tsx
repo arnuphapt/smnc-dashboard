@@ -35,15 +35,17 @@ interface Appointment {
   topic: string
   notes?: string
   requested_at: string
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  status: string
   admin_notes?: string
   created_at: string
   profiles?: { email?: string; role?: string }
 }
 
+import { useAppointments, useUpdateAppointmentStatus } from '@/hooks/queries/useClinic'
+import { useQueryClient } from '@tanstack/react-query'
+
 export const ClinicAppointments: React.FC = () => {
   const { user, profile } = useAuth()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all')
@@ -63,6 +65,9 @@ export const ClinicAppointments: React.FC = () => {
   const [alertText, setAlertText] = useState({ title: '', desc: '' })
 
   const isStaff = hasRole(profile?.role, 'admin') || hasRole(profile?.role, 'expert')
+  const queryClient = useQueryClient()
+  const { data: appointments = [] } = useAppointments(isStaff ? undefined : user?.id)
+  const updateStatusMutation = useUpdateAppointmentStatus()
 
   const fetchProfiles = async () => {
     try {
@@ -73,39 +78,21 @@ export const ClinicAppointments: React.FC = () => {
     }
   }
 
-  const fetchAppointments = async () => {
-    if (!user) return
-    try {
-      let query = supabase.from('appointments').select('*, profiles:requester_id(email, role)').order('requested_at', { ascending: false })
-      if (!isStaff) {
-        query = query.eq('requester_id', user.id)
-      }
-      const { data, error } = await query
-      if (error) throw error
-      setAppointments((data as Appointment[]) || [])
-    } catch (err) {
-      console.error('Error fetching appointments:', err)
-    }
-  }
-
   useEffect(() => {
     fetchProfiles()
-    fetchAppointments()
-  }, [user, profile])
 
-  useEffect(() => {
     if (!user) return
     const channel = supabase
       .channel('clinic-appointments-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
-        fetchAppointments()
+        queryClient.invalidateQueries({ queryKey: ['appointments'] })
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, profile])
+  }, [user, profile, queryClient])
 
   const handleUpdateStatus = async () => {
     if (!editingApp) return
@@ -121,7 +108,7 @@ export const ClinicAppointments: React.FC = () => {
 
       if (error) throw error
       setEditingApp(null)
-      fetchAppointments()
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
     } catch (err: any) {
       setAlertText({ title: 'เกิดข้อผิดพลาด', desc: err.message })
       setAlertOpen(true)
@@ -142,7 +129,7 @@ export const ClinicAppointments: React.FC = () => {
       if (error) throw error
       setCancelConfirmOpen(false)
       setAppToCancel(null)
-      fetchAppointments()
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
     } catch (err: any) {
       setAlertText({ title: 'เกิดข้อผิดพลาด', desc: err.message })
       setAlertOpen(true)

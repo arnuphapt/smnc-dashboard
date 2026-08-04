@@ -18,7 +18,7 @@ export const parseAuthors = (rawStr?: string | null): AuthorItem[] => {
             name: item.name || '',
             contribution: item.contribution || 'Co author',
           }
-        }).filter((a) => Boolean(a.name))
+        }).filter((a) => Boolean(a.name && a.name.trim()))
       }
     } catch {
       // Fallback if JSON parse fails

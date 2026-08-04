@@ -202,7 +202,7 @@ const TONE_STYLE: Record<Tone, { bg: string; color: string; border: string }> = 
 }
 
 // Intelligent keyword resolution engine for any string value
-const resolveStatusConfig = (statusKey: string): { tone: Tone; label: string; iconKey?: string } => {
+export const resolveStatusConfig = (statusKey: string): { tone: Tone; label: string; iconKey?: string } => {
   const trimmed = (statusKey || '').trim()
   if (EXACT_STATUS_MAP[trimmed]) {
     return { tone: EXACT_STATUS_MAP[trimmed].tone, label: EXACT_STATUS_MAP[trimmed].label }
@@ -220,9 +220,10 @@ const resolveStatusConfig = (statusKey: string): { tone: Tone; label: string; ic
   if (trimmed.includes('ผลิตภัณฑ์')) return { tone: 'indigo', label: trimmed, iconKey: 'package' }
   if (trimmed.includes('สิ่งประดิษฐ์')) return { tone: 'cyan', label: trimmed, iconKey: 'cpu' }
 
-  if (trimmed.includes('ดำเนินการแล้ว') || trimmed.includes('เสร็จสิ้น') || trimmed.includes('สำเร็จ')) return { tone: 'success', label: trimmed, iconKey: 'check-circle' }
-  if (trimmed.includes('กำลังดำเนินการ') || trimmed.includes('อยู่ระหว่าง')) return { tone: 'reviewing', label: trimmed, iconKey: 'loader' }
-  if (trimmed.includes('ไม่ได้ดำเนินการ') || trimmed.includes('ยังไม่')) return { tone: 'danger', label: trimmed, iconKey: 'minus-circle' }
+  if (trimmed.includes('อนุมัติ') || trimmed.includes('ดำเนินการแล้ว') || trimmed.includes('เสร็จสิ้น') || trimmed.includes('สำเร็จ')) return { tone: 'success', label: trimmed, iconKey: 'check-circle' }
+  if (trimmed.includes('กำลังดำเนินการ') || trimmed.includes('อยู่ระหว่าง') || trimmed.includes('ตรวจ')) return { tone: 'reviewing', label: trimmed, iconKey: 'loader' }
+  if (trimmed.includes('แก้ไข')) return { tone: 'action_required', label: trimmed, iconKey: 'alert-triangle' }
+  if (trimmed.includes('ยกเลิก') || trimmed.includes('ไม่อนุมัติ') || trimmed.includes('ไม่ได้ดำเนินการ') || trimmed.includes('ยังไม่')) return { tone: 'danger', label: trimmed, iconKey: 'minus-circle' }
 
   if (trimmed.includes('ปฐมภูมิ')) return { tone: 'teal', label: trimmed, iconKey: 'sparkles' }
   if (trimmed.includes('ทุติยภูมิ') || trimmed.includes('ตติยภูมิ')) return { tone: 'purple', label: trimmed, iconKey: 'layers' }
@@ -338,7 +339,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         borderColor: style.border
       }}
     >
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
+      {renderIcon(status, resolved.tone, iconSizeClass, resolved.iconKey)}
       <span>{customLabel || resolved.label}</span>
     </Badge>
   )

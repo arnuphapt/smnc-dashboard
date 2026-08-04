@@ -1,24 +1,20 @@
-import { describe, it, expect } from 'vitest'
-import { isValidSmncEmail } from './validation'
+import { isValidSmncEmail, SMNC_EMAIL_DOMAIN } from './validation'
 
-describe('isValidSmncEmail', () => {
-  it('accepts emails on the smnc.ac.th domain', () => {
-    expect(isValidSmncEmail('teacher@smnc.ac.th')).toBe(true)
+describe('validation utils', () => {
+  it('defines correct domain constant', () => {
+    expect(SMNC_EMAIL_DOMAIN).toBe('@smnc.ac.th')
   })
 
-  it('is case-insensitive', () => {
-    expect(isValidSmncEmail('Teacher@SMNC.AC.TH')).toBe(true)
+  it('validates emails ending with @smnc.ac.th case-insensitively', () => {
+    expect(isValidSmncEmail('user@smnc.ac.th')).toBe(true)
+    expect(isValidSmncEmail('ADMIN@SMNC.AC.TH')).toBe(true)
+    expect(isValidSmncEmail('  test@smnc.ac.th  ')).toBe(true)
   })
 
-  it('trims surrounding whitespace before checking', () => {
-    expect(isValidSmncEmail('  teacher@smnc.ac.th  ')).toBe(true)
-  })
-
-  it('rejects other domains', () => {
-    expect(isValidSmncEmail('someone@gmail.com')).toBe(false)
-  })
-
-  it('rejects lookalike domains that merely contain the suffix', () => {
-    expect(isValidSmncEmail('teacher@notsmnc.ac.th.evil.com')).toBe(false)
+  it('rejects invalid email domains', () => {
+    expect(isValidSmncEmail('user@gmail.com')).toBe(false)
+    expect(isValidSmncEmail('user@smnc.ac.th.com')).toBe(false)
+    expect(isValidSmncEmail('smnc.ac.th')).toBe(false)
+    expect(isValidSmncEmail('')).toBe(false)
   })
 })

@@ -6,14 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev            # start Next.js dev server
-npm run build           # next build (this is the typecheck step — there is no separate `lint`/`typecheck` script)
-npm run start           # start production server
-npm test                # vitest run
-npm run test:watch      # vitest watch mode
-npm run test:coverage   # vitest run --coverage
+npm run build          # next build (includes TypeScript typecheck)
+npm run start          # start production server
+npm test               # run unit tests with Jest
+npm run test:coverage  # run unit tests with Jest coverage report
+npx tsc --noEmit       # run TypeScript typecheck directly
 ```
-
-Run a single test file: `npx vitest run src/utils/format.test.ts`. No `vitest.config.*` exists in the repo — Vitest picks up config implicitly; `src/test/setup.ts` (imports `@testing-library/jest-dom/vitest`) is the test setup file.
 
 `node generate_seed.js` reads `Database กลุ่มวิจัย หลังบ้าน.xlsx` (gitignored, real institutional data) and writes `seed.sql` (also gitignored) — bulk INSERTs into `wisdom_items` for the 5 wisdom-repository sheets. Both the xlsx and generated sql are excluded from git (`*.xlsx`, `*.sql` in `.gitignore`).
 
@@ -70,4 +68,3 @@ Two buckets: `wisdom-public` (public files/images for `wisdom_items`) and `wisdo
 - `src/components/ui/` — shadcn-style primitives (button, dialog, select, table, etc.) — extend these rather than reaching for a new UI library.
 - `src/components/forms/FormField.tsx`, `src/schemas/*.ts` — newer form code uses `react-hook-form` + `@hookform/resolvers` + `zod` schemas; older tabs in `views/masterdata/` still do manual form-state handling. Match whichever pattern the file you're editing already uses rather than mixing both in one component.
 - `DataTable.tsx` / `MasterDataTable.tsx` in `src/components/` are the generic table components most list views build on.
-- `*.test.ts.bak` files under `views/` are disabled leftover tests from the Vite migration — not currently run by Vitest.

@@ -28,29 +28,13 @@ interface DownloadableForm {
   category: string
 }
 
+import { useIPForms, useIPApplications } from '@/hooks/queries/useIP'
+
 export const IPApplicationSubmit: React.FC = () => {
   const { user } = useAuth()
-  const [forms, setForms] = useState<DownloadableForm[]>([])
-  const [applicationCount, setApplicationCount] = useState(0)
-
-  const fetchForms = async () => {
-    try {
-      const { data, error } = await supabase.from('downloadable_forms').select('*').eq('category', 'ip').order('sort_order', { ascending: true })
-      if (error) throw error
-      setForms(data || [])
-    } catch (err) { console.error(err) }
-  }
-
-  const fetchApplicationCount = async () => {
-    if (!user) return
-    try {
-      const { count, error } = await supabase.from('ip_applications').select('*', { count: 'exact', head: true }).eq('applicant_id', user.id)
-      if (error) throw error
-      setApplicationCount(count || 0)
-    } catch (err) { console.error(err) }
-  }
-
-  useEffect(() => { fetchForms(); fetchApplicationCount() }, [user])
+  const { data: forms = [] } = useIPForms()
+  const { data: myApps = [] } = useIPApplications(user?.id)
+  const applicationCount = myApps.length
 
   const ipCategoryCards = [
     { title: 'สิทธิบัตร (Patents)', desc: 'การประดิษฐ์/กรรมวิธีใหม่ที่มีขั้นการประดิษฐ์สูงขึ้น', icon: Cpu, color: '#2BA8A2' },

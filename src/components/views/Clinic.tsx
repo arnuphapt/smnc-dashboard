@@ -3,6 +3,11 @@
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { appointmentSchema, AppointmentFormValues } from '@/schemas/clinicSchema'
+import { useQueryClient } from '@tanstack/react-query'
+import { useClinicInfo, useClinicEvents, useAppointments, useCreateAppointment, useToggleEventRegistration } from '@/hooks/queries/useClinic'
 
 const supabase = createClient()
 import {
@@ -55,97 +60,94 @@ const monthNamesThai = ['มกราคม','กุมภาพันธ์','�
 
 export const Clinic: React.FC = () => {
   const { user } = useAuth()
-  const [clinicDesc, setClinicDesc] = useState<string>('')
+  const queryClient = useQueryClient()
 
-  const [topic, setTopic] = useState('')
-  const [notes, setNotes] = useState('')
-  const [time, setTime] = useState('09:00')
+  const { data: clinicDesc = 'ยินดีต้อนรับสู่ คลินิกวิจัย (SMNC Research Clinic) แหล่งรวมข้อมูลและบริการคำปรึกษางานวิจัย' } = useClinicInfo()
+  const { data: rawEvents = [] } = useClinicEvents(user?.id)
+  const { data: rawAppointments = [] } = useAppointments()
+
+  const events: ClinicEvent[] = rawEvents.map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    description: ev.description,
+    event_date: ev.event_date,
+    location: ev.location,
+    capacity: ev.capacity,
+    registered_count: ev.registered_count,
+    is_registered: ev.user_registered,
+  }))
+
+  const appointments: Appointment[] = rawAppointments.map((app) => ({
+    id: app.id,
+    topic: app.topic,
+    notes: app.notes,
+    requested_at: app.requested_at,
+    status: app.status as any,
+    admin_notes: app.admin_notes,
+    created_at: app.created_at,
+  }))
+
+  const createAppointmentMutation = useCreateAppointment()
+  const toggleRegistrationMutation = useToggleEventRegistration()
+
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    reset: resetApptForm,
+    setValue,
+    watch,
+    formState: { errors: apptErrors },
+  } = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentSchema),
+    defaultValues: {
+      topic: '',
+      notes: '',
+      time: '09:00',
+    },
+  })
+
+  const formTime = watch('time')
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [events, setEvents] = useState<ClinicEvent[]>([])
 
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  // Clicking a calendar date opens this modal — it replaces the old always-visible
-  // "book a consultation" section, showing that day's workshops (if any) plus a
-  // booking form scoped to the clicked date instead of a free-text date field.
   const [dayModalOpen, setDayModalOpen] = useState(false)
   const [selectedDateKey, setSelectedDateKey] = useState<string>('')
   const [selectedDateStr, setSelectedDateStr] = useState<string>('')
   const [selectedDayEvents, setSelectedDayEvents] = useState<ClinicEvent[]>([])
   const [selectedIsPast, setSelectedIsPast] = useState(false)
 
-  const fetchClinicInfo = async () => {
-    try {
-      const { data } = await supabase.from('clinic_info').select('value').eq('key', 'description').maybeSingle()
-      setClinicDesc(data?.value || 'ยินดีต้อนรับสู่ คลินิกวิจัย (SMNC Research Clinic) แหล่งรวมข้อมูลและบริการคำปรึกษางานวิจัย')
-    } catch (err) { console.error(err) }
-  }
-
-  const fetchAppointments = async () => {
-    if (!user) return
-    try {
-      const { data, error } = await supabase.from('appointments').select('*').order('requested_at', { ascending: false })
-      if (error) throw error
-      if (data) setAppointments(data as Appointment[])
-    } catch (err) { console.error(err) }
-  }
-
-  const fetchEvents = async () => {
-    try {
-      const { data: eventsData, error: eventsError } = await supabase.from('clinic_events').select('*').order('event_date', { ascending: true })
-      if (eventsError) throw eventsError
-      if (!eventsData) return
-      const formattedEvents: ClinicEvent[] = []
-      for (const ev of eventsData) {
-        const { count } = await supabase.from('event_registrations').select('*', { count: 'exact', head: true }).eq('event_id', ev.id)
-        let userRegistered = false
-        if (user) {
-          const { data: userReg } = await supabase.from('event_registrations').select('id').eq('event_id', ev.id).eq('user_id', user.id).maybeSingle()
-          if (userReg) userRegistered = true
-        }
-        formattedEvents.push({ id: ev.id, title: ev.title, description: ev.description, event_date: ev.event_date, location: ev.location, capacity: ev.capacity, registered_count: count || 0, is_registered: userRegistered })
-      }
-      setEvents(formattedEvents)
-    } catch (err) { console.error(err) }
-  }
-
-  useEffect(() => { fetchClinicInfo(); fetchEvents(); fetchAppointments() }, [user])
-
-  useEffect(() => {
-    if (!user) return
-    const a = supabase.channel('appt-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => fetchAppointments()).subscribe()
-    const e = supabase.channel('evnt-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'clinic_events' }, () => fetchEvents()).subscribe()
-    const r = supabase.channel('reg-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'event_registrations' }, () => fetchEvents()).subscribe()
-    return () => { supabase.removeChannel(a); supabase.removeChannel(e); supabase.removeChannel(r) }
-  }, [user])
-
-  const handleBooking = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleBooking = async (values: AppointmentFormValues) => {
     if (!user || !selectedDateKey) return
-    setFormError(''); setFormSuccess(''); setIsSubmitting(true)
-    if (!topic.trim()) { setFormError('กรุณากรอกหัวข้อปรึกษา'); setIsSubmitting(false); return }
+    setFormError('')
+    setFormSuccess('')
+
     try {
-      const { error } = await supabase.from('appointments').insert({ requester_id: user.id, topic: topic.trim(), notes: notes.trim(), requested_at: new Date(`${selectedDateKey}T${time}`).toISOString(), status: 'pending' })
-      if (error) throw error
+      await createAppointmentMutation.mutateAsync({
+        requester_id: user.id,
+        topic: values.topic,
+        notes: values.notes,
+        requested_at: new Date(`${selectedDateKey}T${values.time}`).toISOString(),
+      })
       setFormSuccess('ส่งคำขอจองนัดหมายแล้ว! กรุณารอแอดมินยืนยันผลผ่านหัวข้อประวัติการจอง')
-      setTopic(''); setNotes(''); setTime('09:00')
-    } catch (err: any) { setFormError(err.message || 'เกิดข้อผิดพลาด') } finally { setIsSubmitting(false) }
+      resetApptForm()
+    } catch (err: any) {
+      setFormError(err.message || 'เกิดข้อผิดพลาด')
+    }
   }
 
   const handleEventRegistration = async (eventId: string, isRegistered: boolean) => {
     if (!user) return
     try {
-      if (isRegistered) {
-        await supabase.from('event_registrations').delete().eq('event_id', eventId).eq('user_id', user.id)
-      } else {
-        await supabase.from('event_registrations').insert({ event_id: eventId, user_id: user.id })
-      }
-      fetchEvents()
-    } catch (err) { console.error(err) }
+      await toggleRegistrationMutation.mutateAsync({
+        eventId,
+        userId: user.id,
+        isRegistered,
+      })
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const { firstDay, daysInMonth } = (() => {
@@ -173,7 +175,9 @@ export const Clinic: React.FC = () => {
     setSelectedDateStr(`${day} ${monthNamesThai[month0]} ${year + 543}`)
     setSelectedDayEvents(dayEvents)
     setSelectedIsPast(clicked < today)
-    setFormError(''); setFormSuccess(''); setTopic(''); setNotes(''); setTime('09:00')
+    setFormError('')
+    setFormSuccess('')
+    resetApptForm()
     setDayModalOpen(true)
   }
 
@@ -529,7 +533,7 @@ export const Clinic: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleBooking} className="space-y-4">
+              <form onSubmit={handleFormSubmit(handleBooking)} className="space-y-4">
                 <div className={selectedDayEvents.length > 0 ? 'border-t border-[#E2E8F0] pt-4' : undefined}>
                   <p className="text-[10px] font-extrabold uppercase tracking-wider mb-1 text-[#64748B]">จองคิวปรึกษาวันนี้</p>
                   <p className="text-xs font-semibold text-[#64748B]">เจ้าหน้าที่จะยืนยันนัดหมายและติดต่อกลับโดยเร็ว</p>
@@ -551,19 +555,20 @@ export const Clinic: React.FC = () => {
                   <Input
                     type="text"
                     placeholder="เช่น ขอบข่ายทฤษฎีวิจัย หรือ การใช้โปรแกรม SPSS..."
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
+                    {...register('topic')}
                     className={inputBase}
                     style={{ ...inputBorder, background: '#FAFCFF' }}
                   />
+                  {apptErrors.topic && (
+                    <p className="text-[10px] text-[#9F1239] font-bold mt-1">{apptErrors.topic.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">รายละเอียดเพิ่มเติม</label>
                   <Textarea
                     rows={2}
                     placeholder="เขียนรายละเอียดเพิ่มเติมเพื่อให้ทีมเตรียมตัวได้ล่วงหน้า..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    {...register('notes')}
                     className={inputBase + ' resize-none'}
                     style={{ ...inputBorder, background: '#FAFCFF' }}
                   />
@@ -571,8 +576,8 @@ export const Clinic: React.FC = () => {
                 <div>
                   <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ช่วงเวลา *</label>
                   <Select
-                    value={time}
-                    onValueChange={(v) => setTime(v ?? '09:00')}
+                    value={formTime}
+                    onValueChange={(v) => setValue('time', v ?? '09:00')}
                     items={[
                       { value: '09:00', label: '09:00 – 10:00 (เช้า)' },
                       { value: '10:00', label: '10:00 – 11:00 (เช้า)' },
@@ -598,10 +603,10 @@ export const Clinic: React.FC = () => {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={createAppointmentMutation.isPending}
                   className="w-full py-2.5 h-auto rounded-full text-xs font-extrabold disabled:opacity-50 btn-primary"
                 >
-                  {isSubmitting ? 'กำลังส่ง...' : 'ส่งคำขอนัดหมาย →'}
+                  {createAppointmentMutation.isPending ? 'กำลังส่ง...' : 'ส่งคำขอนัดหมาย →'}
                 </Button>
               </form>
             )}

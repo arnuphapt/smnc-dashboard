@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
+import { useDashboardData } from '@/hooks/queries/useDashboard'
+import { useQueryClient } from '@tanstack/react-query'
 
 const supabase = createClient()
 import {
@@ -126,7 +128,12 @@ const DonutChart: React.FC<{
 
 export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?: string }> = ({ onNavigate, userRole }) => {
   const { user } = useAuth()
-  const [stats, setStats] = useState<StatCounts>({
+  const queryClient = useQueryClient()
+  const { data: dashboardData, isLoading } = useDashboardData()
+
+  const allItems = dashboardData?.items || []
+  const downloadableForms = dashboardData?.forms || []
+  const stats = dashboardData?.stats || {
     research: 0,
     intellectual_property: 0,
     innovation: 0,
@@ -134,71 +141,25 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
     copyright: 0,
     award: 0,
     utilization: 0,
-  })
+  }
+  const recentItems = allItems.slice(0, 5)
 
-  const [recentItems, setRecentItems] = useState<WisdomItem[]>([])
-  const [allItems, setAllItems] = useState<WisdomItem[]>([])
-  const [downloadableForms, setDownloadableForms] = useState<any[]>([])
   const [docSearch, setDocSearch] = useState('')
   const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'utilization' | 'repository'>('all')
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null)
 
-  const fetchDashboardData = async () => {
-    try {
-      const [wisdomRes, formsRes] = await Promise.all([
-        supabase.from('wisdom_items').select('*').order('created_at', { ascending: false }),
-        supabase.from('downloadable_forms').select('*').order('sort_order', { ascending: true })
-      ])
-
-      if (wisdomRes.error) throw wisdomRes.error
-
-      const items = (wisdomRes.data as WisdomItem[]) || []
-      setAllItems(items)
-      setRecentItems(items.slice(0, 5))
-      setDownloadableForms(formsRes.data || [])
-
-      const counts: StatCounts = {
-        research: 0,
-        intellectual_property: 0,
-        innovation: 0,
-        petty_patent: 0,
-        copyright: 0,
-        award: 0,
-        utilization: 0,
-      }
-
-      items.forEach((item) => {
-        if (item.category === 'research') counts.research++
-        else if (item.category === 'intellectual_property') {
-          counts.intellectual_property++
-          const ipType = item.metadata?.ip_type || ''
-          if (ipType.includes('อนุสิทธิบัตร')) counts.petty_patent++
-          if (ipType.includes('ลิขสิทธิ์')) counts.copyright++
-        } else if (item.category === 'innovation') counts.innovation++
-        else if (item.category === 'award') counts.award++
-        else if (item.category === 'utilization') counts.utilization++
-      })
-
-      setStats(counts)
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-    }
-  }
-
   useEffect(() => {
-    fetchDashboardData()
-
     const channel1 = supabase
       .channel('wisdom-items-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wisdom_items' }, () => {
-        fetchDashboardData()
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       })
       .subscribe()
 
     const channel2 = supabase
       .channel('downloadable-forms-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'downloadable_forms' }, () => {
-        fetchDashboardData()
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       })
       .subscribe()
 
@@ -206,7 +167,7 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
       supabase.removeChannel(channel1)
       supabase.removeChannel(channel2)
     }
-  }, [])
+  }, [queryClient])
 
   const getCategoryLabel = (catKey: string) => {
     switch (catKey) {

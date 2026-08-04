@@ -85,13 +85,17 @@ const PdfIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) =>
   </svg>
 )
 
+import { useQueryClient } from '@tanstack/react-query'
+import { useEthicsAttachments, useEthicsSubmissions } from '@/hooks/queries/useEthics'
+
 export const EthicsSubmissions: React.FC = () => {
 
   const { user, profile } = useAuth()
   const { getOptionsByCategory } = useMasters()
+  const queryClient = useQueryClient()
 
-  const [submissions, setSubmissions] = useState<EthicsSubmission[]>([])
-  const [attachments, setAttachments] = useState<EthicsAttachment[]>([])
+  const { data: submissions = [] } = useEthicsSubmissions(user?.id)
+  const { data: attachments = [] } = useEthicsAttachments()
   const [reviewSubmissions, setReviewSubmissions] = useState<any[]>([])
   const [expertProfiles, setExpertProfiles] = useState<Profile[]>([])
 
@@ -194,20 +198,11 @@ export const EthicsSubmissions: React.FC = () => {
         .eq('id', subId)
       if (error) throw error
       fetchReviewSubmissions()
-      fetchSubmissions()
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
       triggerAlert('สำเร็จ', 'มอบหมายผู้ทรงคุณวุฒิเรียบร้อยแล้ว!', 'primary')
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger')
     }
-  }
-
-  const fetchSubmissions = async () => {
-    if (!user) return
-    try {
-      const { data, error } = await supabase.from('ethics_submissions').select('*').eq('submitter_id', user.id).order('created_at', { ascending: false })
-      if (error) throw error
-      setSubmissions(data || [])
-    } catch (err) { console.error(err) }
   }
 
   const fetchReviewSubmissions = async () => {
@@ -223,14 +218,6 @@ export const EthicsSubmissions: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
-  const fetchAttachments = async () => {
-    try {
-      const { data, error } = await supabase.from('ethics_attachments').select('*')
-      if (error) throw error
-      setAttachments(data || [])
-    } catch (err) { console.error(err) }
-  }
-
   const fetchExpertProfiles = async () => {
     try {
       const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
@@ -241,18 +228,21 @@ export const EthicsSubmissions: React.FC = () => {
   }
 
   useEffect(() => {
-    fetchAttachments()
-    fetchSubmissions()
     fetchReviewSubmissions()
     fetchExpertProfiles()
   }, [user, profile])
 
   useEffect(() => {
     if (!user) return
-    const s = supabase.channel('ethics-list-sub-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => { fetchSubmissions(); fetchReviewSubmissions() }).subscribe()
-    const a = supabase.channel('ethics-list-att-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_attachments' }, () => fetchAttachments()).subscribe()
+    const s = supabase.channel('ethics-list-sub-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+      fetchReviewSubmissions()
+    }).subscribe()
+    const a = supabase.channel('ethics-list-att-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_attachments' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
+    }).subscribe()
     return () => { supabase.removeChannel(s); supabase.removeChannel(a) }
-  }, [user, profile])
+  }, [user, profile, queryClient])
 
   const handleDownloadFile = async (path: string) => {
     try {
@@ -291,8 +281,8 @@ export const EthicsSubmissions: React.FC = () => {
       }
 
       fetchReviewSubmissions()
-      fetchSubmissions()
-      fetchAttachments()
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
       triggerAlert('บันทึกสำเร็จ', 'บันทึกผลการพิจารณาและอัปโหลดเอกสารเรียบร้อยแล้ว!', 'primary')
     } catch (err: any) { triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger') }
   }
@@ -320,7 +310,8 @@ export const EthicsSubmissions: React.FC = () => {
 
       setDeleteConfirmOpen(false)
       setSubIdToDelete(null)
-      fetchSubmissions()
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถลบคำขอได้: ${err.message}`, 'danger')
     } finally {
@@ -402,8 +393,8 @@ export const EthicsSubmissions: React.FC = () => {
       setRevisionSuccess('ยื่นเล่มเอกสารปรับปรุงเรียบร้อยแล้ว!')
       setTimeout(() => {
         setRevisionModalOpen(false)
-        fetchSubmissions()
-        fetchAttachments()
+        queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+        queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
       }, 1500)
     } catch (err: any) {
       setRevisionError(err.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล')

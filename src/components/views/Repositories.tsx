@@ -21,15 +21,18 @@ import { formatAuthorsForDisplay } from '@/utils/authorHelper'
 
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
+import { useWisdomItems } from '@/hooks/queries/useWisdomItems'
+import { useQueryClient } from '@tanstack/react-query'
+
 export const Repositories: React.FC = () => {
   const { user } = useAuth()
   const { getOptionsByCategory } = useMasters()
   const { category } = useParams<{ category: string }>()
+  const queryClient = useQueryClient()
 
   const activeCategory = category && VALID_CATEGORIES.includes(category) ? category : 'research'
-  const [items, setItems] = useState<WisdomItem[]>([])
+  const { data: items = [], isLoading: loading } = useWisdomItems(activeCategory)
   const [profiles, setProfiles] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   // Dynamic filter states
   const [search, setSearch] = useState('')
@@ -63,26 +66,7 @@ export const Repositories: React.FC = () => {
     }
   }
 
-  const fetchItems = async () => {
-    setLoading(true)
-    try {
-      let query = supabase
-        .from('wisdom_items')
-        .select('*')
-        .eq('category', activeCategory)
-
-      const { data, error } = await query
-      if (error) throw error
-      setItems((data as WisdomItem[]) || [])
-    } catch (err) {
-      console.error('Error fetching wisdom items:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    fetchItems()
     fetchProfiles()
 
     const channel = supabase
@@ -91,7 +75,7 @@ export const Repositories: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'wisdom_items', filter: `category=eq.${activeCategory}` },
         () => {
-          fetchItems()
+          queryClient.invalidateQueries({ queryKey: ['wisdom_items', activeCategory] })
         }
       )
       .subscribe()
@@ -99,7 +83,7 @@ export const Repositories: React.FC = () => {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeCategory])
+  }, [activeCategory, queryClient])
 
   // Reset filters when activeCategory changes
   useEffect(() => {

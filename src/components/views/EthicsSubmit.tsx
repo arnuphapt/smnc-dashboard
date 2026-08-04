@@ -41,80 +41,72 @@ interface EthicsSubmission {
   created_at: string
 }
 
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { ethicsSubmissionSchema, EthicsSubmissionFormValues } from '@/schemas/ethicsSchema'
+import { useEthicsForms, useEthicsSubmissions, useSubmitEthics } from '@/hooks/queries/useEthics'
+import { useQueryClient } from '@tanstack/react-query'
+
 const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
 export const EthicsSubmit: React.FC = () => {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const { data: forms = [] } = useEthicsForms()
+  const { data: submissions = [] } = useEthicsSubmissions(user?.id)
+  const submitEthicsMutation = useSubmitEthics()
 
-  const [forms, setForms] = useState<DownloadableForm[]>([])
-  const [submissions, setSubmissions] = useState<EthicsSubmission[]>([])
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EthicsSubmissionFormValues>({
+    resolver: zodResolver(ethicsSubmissionSchema),
+    defaultValues: {
+      project_title: '',
+      project_description: '',
+    },
+  })
 
-  const [title, setTitle] = useState('')
-  const [desc, setDesc] = useState('')
   const [files, setFiles] = useState<FileList | null>(null)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const fetchForms = async () => {
-    try {
-      const { data, error } = await supabase.from('downloadable_forms').select('*').eq('category', 'ethics').order('sort_order', { ascending: true })
-      if (error) throw error
-      setForms(data || [])
-    } catch (err) { console.error(err) }
-  }
-
-  const fetchSubmissions = async () => {
-    if (!user) return
-    try {
-      const { data, error } = await supabase.from('ethics_submissions').select('*').eq('submitter_id', user.id).order('created_at', { ascending: false })
-      if (error) throw error
-      setSubmissions(data || [])
-    } catch (err) { console.error(err) }
-  }
-
-  useEffect(() => {
-    fetchForms()
-    fetchSubmissions()
-  }, [user])
 
   useEffect(() => {
     if (!user) return
-    const s = supabase.channel('ethics-submit-sub-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => fetchSubmissions()).subscribe()
-    return () => { supabase.removeChannel(s) }
-  }, [user])
+    const s = supabase
+      .channel('ethics-submit-sub-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(s)
+    }
+  }, [user, queryClient])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: EthicsSubmissionFormValues) => {
     if (!user) return
-    setFormError(''); setFormSuccess(''); setIsSubmitting(true)
-    if (!title.trim()) { setFormError('กรุณากรอกชื่อโครงร่างวิจัย'); setIsSubmitting(false); return }
-    try {
-      const { data: subData, error: subError } = await supabase.from('ethics_submissions').insert({ submitter_id: user.id, project_title: title.trim(), project_description: desc.trim(), status: 'ยื่นแล้ว' }).select().single()
-      if (subError) throw subError
-      const submissionId = subData.id
-      if (files && files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]
-          const extIndex = file.name.lastIndexOf('.')
-          const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
-          const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
-          const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
-          const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
-          const storagePath = `ethics/${user.id}/${Date.now()}_${safeName}${ext}`
+    setFormError('')
+    setFormSuccess('')
 
-          const { error: uploadError } = await supabase.storage.from('wisdom-private').upload(storagePath, file)
-          if (uploadError) throw uploadError
-          const { error: attachError } = await supabase.from('ethics_attachments').insert({ submission_id: submissionId, file_url: storagePath, file_name: file.name, file_type: file.type })
-          if (attachError) throw attachError
-        }
-      }
+    try {
+      await submitEthicsMutation.mutateAsync({
+        submitter_id: user.id,
+        project_title: values.project_title,
+        project_description: values.project_description,
+        files,
+      })
       setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว!')
-      setTitle(''); setDesc(''); setFiles(null)
+      reset()
+      setFiles(null)
       const fileInput = document.getElementById('ethics-files') as HTMLInputElement
       if (fileInput) fileInput.value = ''
-    } catch (err: any) { setFormError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล') } finally { setIsSubmitting(false) }
+    } catch (err: any) {
+      setFormError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    }
   }
 
   const pendingCount = submissions.filter(s => s.status === 'ยื่นแล้ว' || s.status === 'กำลังตรวจ').length
@@ -193,7 +185,7 @@ export const EthicsSubmit: React.FC = () => {
           {!user ? (
             <EmptyState icon={<UploadCloud className="w-12 h-12 stroke-[1.5]" />} title="เข้าสู่ระบบเพื่อยื่นเอกสาร" body="จำเป็นต้องลงชื่อเข้าใช้ก่อนอัปโหลดไฟล์และยื่นโครงร่างวิจัย" dashed />
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-2xl">
               <p className="text-xs font-semibold text-[#64748B]">แนบไฟล์แบบฟอร์มที่ระบุรายละเอียดครบถ้วนและลงลายมือชื่อแล้ว</p>
 
               {formError && (
@@ -210,11 +202,26 @@ export const EthicsSubmit: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ชื่อโครงร่างวิจัย *</label>
-                  <Input type="text" required placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..." value={title} onChange={(e) => setTitle(e.target.value)} className={inputBase} style={inputSty} />
+                  <Input
+                    type="text"
+                    placeholder="ระบุชื่อโครงการวิจัย (ภาษาไทยและอังกฤษ)..."
+                    {...register('project_title')}
+                    className={inputBase}
+                    style={inputSty}
+                  />
+                  {errors.project_title && (
+                    <p className="text-[10px] text-[#EF6C4A] font-bold mt-1">{errors.project_title.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">รายละเอียดสรุปย่อ</label>
-                  <Textarea rows={3} placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..." value={desc} onChange={(e) => setDesc(e.target.value)} className={inputBase + ' resize-none'} style={inputSty} />
+                  <Textarea
+                    rows={3}
+                    placeholder="วัตถุประสงค์หรือรายละเอียดเบื้องต้นของโครงการ..."
+                    {...register('project_description')}
+                    className={inputBase + ' resize-none'}
+                    style={inputSty}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">อัปโหลดเอกสารประกอบ * <span className="font-normal text-[#64748B]">(เลือกได้หลายไฟล์)</span></label>
@@ -225,10 +232,10 @@ export const EthicsSubmit: React.FC = () => {
 
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={submitEthicsMutation.isPending}
                 className="w-full sm:w-auto py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 mt-2 btn-primary px-8"
               >
-                {isSubmitting ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
+                {submitEthicsMutation.isPending ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
               </Button>
             </form>
           )}
