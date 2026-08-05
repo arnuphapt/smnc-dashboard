@@ -102,13 +102,25 @@ export const serializeReviewerNotes = (
   return `${structuredTag}=== ผลการประเมินรายเกณฑ์ ===\n${readableCriteria}\n\n=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\n${comments}`
 }
 
+interface ExportEvaluation {
+  id: string
+  submission_id: string
+  reviewer_id: string
+  status: string
+  reviewer_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Generate printable/exportable PDF layout window — Thai IRB official form style (Anonymous Expert Evaluation)
-export const handleExportEvaluation = (sub: any, submitterName: string) => {
+// Renders one scorecard block per evaluation passed in `evaluations` — each
+// assigned reviewer's evaluation is isolated (ethics_evaluations table), so a
+// submission with 2 completed reviews now shows both scorecards, not just one.
+// Labeled generically by array order ("ผู้ประเมินที่ 1" / "ผู้ประเมินที่ 2") — not by
+// real name, preserving the existing anonymity-from-submitter pattern.
+export const handleExportEvaluation = (sub: any, submitterName: string, evaluations: ExportEvaluation[] = []) => {
   const printWindow = window.open('', '_blank')
   if (!printWindow) return
-
-  const parsed = parseReviewerNotes(sub.reviewer_notes || '')
-  let cleanNotes = parsed.comments
 
   const translateScore = (s: string) => {
     if (s === 'pass') return '<span style="color:#16a34a;font-weight:700;">✓ ผ่าน</span>'
@@ -116,29 +128,77 @@ export const handleExportEvaluation = (sub: any, submitterName: string) => {
     return '<span style="color:#64748b;font-weight:700;">- N/A (ไม่เกี่ยวข้อง)</span>'
   }
 
+  const cleanNotesText = (notesText: string) => {
+    let cleanNotes = notesText
+    cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/g, '')
+    cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/g, '')
+    cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/g, '')
+    cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/g, '')
+    cleanNotes = cleanNotes
+      .replace(/\[.*?\]/g, '')
+      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+      .replace(/---/g, '\n')
+      .trim()
+    return cleanNotes
+  }
 
-  const riskLabel = RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย'
-  const intervalLabel = REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)'
+  // Fall back to the legacy single-evaluator source (sub.reviewer_notes) when no
+  // ethics_evaluations rows are available yet (e.g. pre-migration data that wasn't
+  // backfilled because assigned_reviewer_id was null on that submission).
+  const evaluationSource = evaluations.length > 0
+    ? evaluations
+    : (sub.reviewer_notes ? [{ reviewer_notes: sub.reviewer_notes } as ExportEvaluation] : [])
 
-  const criteria = [
-    { label: '1. วัตถุประสงค์และการออกแบบการวิจัย', val: parsed.scores.obj },
-    { label: '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง', val: parsed.scores.method },
-    { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', val: parsed.scores.privacy },
-    { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', val: parsed.scores.consent },
-    { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', val: parsed.scores.risk },
-    { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit },
-  ]
+  const evaluatorBlocksHtml = evaluationSource.map((ev, idx) => {
+    const parsed = parseReviewerNotes(ev.reviewer_notes || '')
+    const cleanNotes = cleanNotesText(parsed.comments)
+    const riskLabelEv = RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย'
+    const intervalLabelEv = REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)'
 
-  cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/g, '')
-  cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/g, '')
-  cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/g, '')
-  cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/g, '')
-  cleanNotes = cleanNotes
-    .replace(/\[.*?\]/g, '')
-    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
-    .replace(/---/g, '\n')
-    .trim()
+    const criteriaEv = [
+      { label: '1. วัตถุประสงค์และการออกแบบการวิจัย', val: parsed.scores.obj },
+      { label: '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง', val: parsed.scores.method },
+      { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', val: parsed.scores.privacy },
+      { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', val: parsed.scores.consent },
+      { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', val: parsed.scores.risk },
+      { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit },
+    ]
 
+    const criTableRowsEv = criteriaEv.map((c) => `
+      <tr>
+        <td style="border:1px solid #000;padding:6px 10px;font-size:13px;">${c.label}</td>
+        <td style="border:1px solid #000;padding:6px 10px;text-align:center;font-size:13px;">${translateScore(c.val)}</td>
+      </tr>`).join('')
+
+    return `
+  <div class="evaluator-block" style="${idx > 0 ? 'margin-top:24px;page-break-before:always;' : ''}">
+    <div class="section-title">ผู้ประเมินที่ ${idx + 1}</div>
+    <table class="info-table">
+      <tr>
+        <td class="lbl">ระดับความเสี่ยง:</td>
+        <td>☑ ${riskLabelEv}</td>
+        <td class="lbl">รอบรายงานความก้าวหน้า:</td>
+        <td>${intervalLabelEv}</td>
+      </tr>
+    </table>
+    <table class="criteria-table">
+      <thead>
+        <tr>
+          <th style="width:78%;text-align:left;">เกณฑ์การพิจารณา</th>
+          <th style="width:22%;">ผลการพิจารณา</th>
+        </tr>
+      </thead>
+      <tbody>${criTableRowsEv}</tbody>
+    </table>
+    <div class="section-title" style="margin-top:10px;">ข้อเสนอแนะเพิ่มเติมจากผู้ประเมินที่ ${idx + 1}</div>
+    <div class="notes-box">${(cleanNotes || 'ไม่มีข้อเสนอแนะเพิ่มเติม').replace(/\n/g, '<br/>')}</div>
+  </div>`
+  }).join('')
+
+  // Overall conclusion remains derived from the submission-level `status` field
+  // (last-write-wins, unchanged by this feature) — reconciling two reviewers'
+  // potentially differing statuses is an open question flagged for a human
+  // decision, not resolved here.
   const statusLabel = sub.status === 'อนุมัติ'
     ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
     : sub.status === 'รอแก้ไข'
@@ -151,17 +211,14 @@ export const handleExportEvaluation = (sub: any, submitterName: string) => {
   const thaiDate = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   const submittedDate = new Date(sub.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  // Calculate expiry for reporting: interval months from today
-  const intervalMonths = parseInt(parsed.progressReportInterval || '12')
+  // Calculate expiry for reporting: interval months from today, based on the
+  // first evaluator's reported interval (each evaluator's own interval is
+  // still shown individually within their own scorecard block below).
+  const firstParsed = evaluationSource.length > 0 ? parseReviewerNotes(evaluationSource[0].reviewer_notes || '') : null
+  const intervalMonths = parseInt(firstParsed?.progressReportInterval || '12')
   const expiryDate = new Date(today)
   expiryDate.setMonth(expiryDate.getMonth() + intervalMonths)
   const thaiExpiryDate = expiryDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-
-  const criTableRows = criteria.map((c) => `
-    <tr>
-      <td style="border:1px solid #000;padding:6px 10px;font-size:13px;">${c.label}</td>
-      <td style="border:1px solid #000;padding:6px 10px;text-align:center;font-size:13px;">${translateScore(c.val)}</td>
-    </tr>`).join('')
 
   const docHtml = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8"/>
@@ -233,28 +290,14 @@ body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 13px; color: 
       <td>${submittedDate}</td>
     </tr>
     <tr>
-      <td class="lbl">ระดับความเสี่ยง:</td>
-      <td>☑ ${riskLabel}</td>
-      <td class="lbl">รอบรายงานความก้าวหน้า:</td>
-      <td>${intervalLabel} (กำหนดส่ง: ${thaiExpiryDate})</td>
+      <td class="lbl">กำหนดส่งรายงานความก้าวหน้า:</td>
+      <td colspan="3">${thaiExpiryDate}</td>
     </tr>
   </table>
 
-  <!-- Criteria Checklist -->
-  <div class="section-title">เกณฑ์การพิจารณาจริยธรรมการวิจัย</div>
-  <table class="criteria-table">
-    <thead>
-      <tr>
-        <th style="width:78%;text-align:left;">เกณฑ์การพิจารณา</th>
-        <th style="width:22%;">ผลการพิจารณา</th>
-      </tr>
-    </thead>
-    <tbody>${criTableRows}</tbody>
-  </table>
-
-  <!-- Feedback / Comments -->
-  <div class="section-title">ข้อเสนอแนะเพิ่มเติมจากคณะกรรมการประเมิน</div>
-  <div class="notes-box">${(cleanNotes || 'ไม่มีข้อเสนอแนะเพิ่มเติม').replace(/\n/g, '<br/>')}</div>
+  <!-- Evaluator Scorecards (one block per assigned reviewer who has evaluated) -->
+  <div class="section-title">เกณฑ์การพิจารณาจริยธรรมการวิจัย และความเห็นผู้ประเมิน</div>
+  ${evaluatorBlocksHtml || '<div class="notes-box">ยังไม่มีผลการประเมิน</div>'}
 
   <!-- Bottom Section: Conclusion (Left) & Signature (Right) -->
   <div class="bottom-section">

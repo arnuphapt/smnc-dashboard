@@ -68,6 +68,9 @@ coverage/
 *.xlsx
 *.sql
 
+# ...but always track Supabase migration files
+!supabase/migrations/**
+
 # Output build directory
 dist/
 

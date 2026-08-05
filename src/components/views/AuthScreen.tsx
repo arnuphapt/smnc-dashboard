@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { Shield, Mail, Lock, CheckCircle, AlertCircle, Sparkles } from 'lucide-react'
 
@@ -35,10 +36,15 @@ export const AuthScreen: React.FC = () => {
       if (isLogin) {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
         if (signInError) throw signInError
+        toast.success('เข้าสู่ระบบสำเร็จ')
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({ email: trimmedEmail, password })
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: trimmedEmail, password })
         if (signUpError) throw signUpError
-        setSuccess('ลงทะเบียนสำเร็จ! กรุณาตรวจสอบกล่องข้อความในอีเมลเพื่อยืนยันบัญชีผู้ใช้ก่อนเข้าสู่ระบบ')
+        if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+          setError('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาเข้าสู่ระบบหรือรีเซ็ตรหัสผ่าน')
+        } else {
+          setSuccess('ลงทะเบียนสำเร็จ! กรุณาตรวจสอบกล่องข้อความในอีเมลเพื่อยืนยันบัญชีผู้ใช้ก่อนเข้าสู่ระบบ')
+        }
       }
     } catch (err: any) {
       setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบหรือลงทะเบียน')

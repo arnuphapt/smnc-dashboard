@@ -45,7 +45,7 @@ import { useAppointments, useUpdateAppointmentStatus } from '@/hooks/queries/use
 import { useQueryClient } from '@tanstack/react-query'
 
 export const ClinicAppointments: React.FC = () => {
-  const { user, profile } = useAuth()
+  const { user, profile, isPageAllowed } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all')
@@ -270,10 +270,12 @@ export const ClinicAppointments: React.FC = () => {
         subtitle="Research Clinic — ติดตามสถานะและจัดการคำขอจองนัดหมายรับคำปรึกษา"
         extraBadge="Research Clinic Queue"
         action={
-          <Link href="/clinic" className="shrink-0 btn-primary text-xs flex items-center gap-2 !py-2.5 !px-5">
-            <CalendarPlus className="w-4 h-4 stroke-[2.5]" />
-            จองนัดหมายปรึกษาใหม่
-          </Link>
+          isPageAllowed('clinic_request') ? (
+            <Link href="/clinic" className="shrink-0 btn-primary text-xs flex items-center gap-2 !py-2.5 !px-5">
+              <CalendarPlus className="w-4 h-4 stroke-[2.5]" />
+              จองนัดหมายปรึกษาใหม่
+            </Link>
+          ) : null
         }
       />
 

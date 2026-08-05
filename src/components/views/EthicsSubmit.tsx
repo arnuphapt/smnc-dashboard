@@ -17,6 +17,7 @@ import {
   FileCheck,
   Download,
   ClipboardList,
+  ShieldAlert,
 } from 'lucide-react'
 import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -51,11 +52,23 @@ const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none tra
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
 export const EthicsSubmit: React.FC = () => {
-  const { user } = useAuth()
+  const { user, isPageAllowed } = useAuth()
   const queryClient = useQueryClient()
   const { data: forms = [] } = useEthicsForms()
   const { data: submissions = [] } = useEthicsSubmissions(user?.id)
   const submitEthicsMutation = useSubmitEthics()
+
+  if (!isPageAllowed('ethics_submit')) {
+    return (
+      <div className="flex-1 space-y-6 animate-fadeIn">
+        <EmptyState
+          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
+          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
+          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้ายื่นโครงร่างวิจัย (IRB) กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
+        />
+      </div>
+    )
+  }
 
   const {
     register,

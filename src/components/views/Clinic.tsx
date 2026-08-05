@@ -22,12 +22,14 @@ import {
   FlaskConical,
   BarChart3,
   ShieldCheck,
+  ShieldAlert,
   Sparkles,
   ArrowRight,
   CheckCircle2,
   Headphones
 } from 'lucide-react'
 import { StatusBadge } from '@/components/StatusBadge'
+import { EmptyState } from '@/components/EmptyState'
 import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -59,7 +61,19 @@ interface Appointment {
 const monthNamesThai = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
 
 export const Clinic: React.FC = () => {
-  const { user } = useAuth()
+  const { user, isPageAllowed } = useAuth()
+
+  if (!isPageAllowed('clinic_request')) {
+    return (
+      <div className="flex-1 space-y-6 animate-fadeIn">
+        <EmptyState
+          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
+          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
+          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้าขอรับคำปรึกษาคลินิกวิจัย กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
+        />
+      </div>
+    )
+  }
   const queryClient = useQueryClient()
 
   const { data: clinicDesc = 'ยินดีต้อนรับสู่ คลินิกวิจัย (SMNC Research Clinic) แหล่งรวมข้อมูลและบริการคำปรึกษางานวิจัย' } = useClinicInfo()

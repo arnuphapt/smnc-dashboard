@@ -77,3 +77,43 @@ export const formatUserRolesText = (roleStr?: string | null): string => {
     })
     .join(', ')
 }
+
+export interface RolePermission {
+  id?: string
+  role: string
+  page_key: string
+  can_view: boolean
+}
+
+/**
+ * Checks if a specific page_key is allowed for a user based on DB permissions.
+ */
+export const isPageAllowedForUser = (
+  userRoleString: string | undefined | null,
+  pageKey: string,
+  permissions: RolePermission[]
+): boolean => {
+  if (!userRoleString) return true
+  if (hasRole(userRoleString, 'admin')) return true
+
+  const userRoles = getUserRoles(userRoleString)
+  if (userRoles.length === 0) return true
+
+  let hasExplicitRecord = false
+
+  for (const r of userRoles) {
+    const perm = permissions.find((p) => p.role === r && p.page_key === pageKey)
+    if (perm !== undefined) {
+      hasExplicitRecord = true
+      if (perm.can_view) {
+        return true
+      }
+    }
+  }
+
+  if (hasExplicitRecord) {
+    return false
+  }
+
+  return true
+}

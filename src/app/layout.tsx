@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Toaster } from 'sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { MasterProvider } from '@/context/MasterContext'
 import { QueryProvider } from '@/lib/query/QueryProvider'
@@ -36,6 +37,7 @@ export default function RootLayout({
             </MasterProvider>
           </AuthProvider>
         </QueryProvider>
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   )

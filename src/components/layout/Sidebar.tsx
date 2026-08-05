@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
-  const { profile } = useAuth()
+  const { profile, isPageAllowed } = useAuth()
   const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
@@ -35,18 +35,20 @@ export const Sidebar: React.FC = () => {
   const activeRepoCategory = pathname.split('/')[2] || 'research'
   const activeMasterdataSlug = pathname === '/master' ? '' : pathname.replace('/master/', '') || ''
 
-  interface SidebarChild { to: string; label: string; active: boolean; isHeader?: boolean }
-  interface SidebarItem { key: string; to: string; icon: React.ReactNode; label: string; active: boolean; children?: SidebarChild[] }
+  interface SidebarChild { to: string; label: string; active: boolean; isHeader?: boolean; pageKey?: string }
+  interface SidebarItem { key: string; pageKey?: string; to: string; icon: React.ReactNode; label: string; active: boolean; children?: SidebarChild[] }
 
-  const navItems: SidebarItem[] = [
-    { key: 'dashboard', to: '/', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, label: 'สรุปภาพรวม (Dashboard)', active: pathname === '/' },
+  const rawNavItems: SidebarItem[] = [
+    { key: 'dashboard', pageKey: 'dashboard', to: '/', icon: <LayoutDashboard className="w-4 h-4 shrink-0" />, label: 'สรุปภาพรวม (Dashboard)', active: pathname === '/' },
     {
       key: 'repositories',
+      pageKey: 'repositories',
       to: '/repositories/research',
       icon: <BookOpen className="w-4 h-4 shrink-0" />,
       label: 'คลังปัญญา 5 ด้าน',
       active: isRepositoriesActive,
       children: REPOSITORY_SUBNAV.map((cat) => ({
+        pageKey: `repositories_${(cat.slug ?? '').replace(/-/g, '_')}`,
         to: `/repositories/${cat.slug}`,
         label: cat.label,
         active: isRepositoriesActive && activeRepoCategory === cat.slug,
@@ -54,40 +56,44 @@ export const Sidebar: React.FC = () => {
     },
     {
       key: 'clinic',
+      pageKey: 'clinic',
       to: '/clinic',
       icon: <Calendar className="w-4 h-4 shrink-0" />,
       label: 'คลินิกวิจัย',
       active: pathname === '/clinic' || pathname === '/clinic/appointments',
       children: [
-        { to: '/clinic', label: 'ขอรับคำปรึกษา', active: pathname === '/clinic' },
-        { to: '/clinic/appointments', label: 'รวมคำขอจองนัดหมาย', active: pathname === '/clinic/appointments' },
+        { pageKey: 'clinic_request', to: '/clinic', label: 'ขอรับคำปรึกษา', active: pathname === '/clinic' },
+        { pageKey: 'clinic_appointments', to: '/clinic/appointments', label: 'รวมคำขอจองนัดหมาย', active: pathname === '/clinic/appointments' },
       ],
     },
     {
       key: 'ethics',
+      pageKey: 'ethics',
       to: '/ethics',
       icon: <Clipboard className="w-4 h-4 shrink-0" />,
       label: 'จริยธรรมการวิจัย',
       active: pathname === '/ethics' || pathname === '/ethics/submissions',
       children: [
-        { to: '/ethics', label: 'ยื่นโครงร่างวิจัย', active: pathname === '/ethics' },
-        { to: '/ethics/submissions', label: 'รวมคำขอยื่น', active: pathname === '/ethics/submissions' },
+        { pageKey: 'ethics_submit', to: '/ethics', label: 'ยื่นโครงร่างวิจัย', active: pathname === '/ethics' },
+        { pageKey: 'ethics_submissions', to: '/ethics/submissions', label: 'รวมคำขอยื่น', active: pathname === '/ethics/submissions' },
       ],
     },
     {
       key: 'ip-application',
+      pageKey: 'ip_application',
       to: '/ip-application',
       icon: <Award className="w-4 h-4 shrink-0" />,
       label: 'ทรัพย์สินทางปัญญา',
       active: pathname === '/ip-application' || pathname === '/ip-application/list',
       children: [
-        { to: '/ip-application', label: 'ยื่นขอขึ้นทะเบียน', active: pathname === '/ip-application' },
-        { to: '/ip-application/list', label: 'รวมคำขอยื่น', active: pathname === '/ip-application/list' },
+        { pageKey: 'ip_application_submit', to: '/ip-application', label: 'ยื่นขอขึ้นทะเบียน', active: pathname === '/ip-application' },
+        { pageKey: 'ip_application_list', to: '/ip-application/list', label: 'รวมคำขอยื่น', active: pathname === '/ip-application/list' },
       ],
     },
-    ...(hasRole(profile?.role, 'admin')
+    ...(hasRole(profile?.role, 'admin') || isPageAllowed('masterdata')
       ? [{
           key: 'masterdata',
+          pageKey: 'masterdata',
           to: '/master',
           icon: <Settings className="w-4 h-4 shrink-0" />,
           label: 'Masterdata',
@@ -111,6 +117,25 @@ export const Sidebar: React.FC = () => {
         } as SidebarItem]
       : []),
   ]
+
+  const navItems: SidebarItem[] = rawNavItems
+    .filter((item) => !item.pageKey || isPageAllowed(item.pageKey))
+    .map((item) => {
+      if (item.children) {
+        const allowedChildren = item.children.filter((child) => {
+          if (child.isHeader) return true
+          return child.pageKey ? isPageAllowed(child.pageKey) : true
+        })
+        const firstNavigableChild = allowedChildren.find((c) => !c.isHeader)
+        return {
+          ...item,
+          to: firstNavigableChild ? firstNavigableChild.to : item.to,
+          children: allowedChildren.length > 0 ? allowedChildren : undefined,
+        }
+      }
+      return item
+    })
+    .filter((item) => !item.children || item.children.length > 0)
 
   const isGroupExpanded = (item: SidebarItem) => expandedGroups[item.key] ?? item.active
   const toggleGroup = (key: string, currentlyExpanded: boolean) =>
@@ -213,15 +238,17 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Bottom Action CTA */}
-        <div className="pt-4 border-t border-[#E2E8F0]">
-          <Link
-            href="/clinic"
-            className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3"
-          >
-            <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
-            <span>ขอคำปรึกษาด่วน</span>
-          </Link>
-        </div>
+        {isPageAllowed('clinic_request') && (
+          <div className="pt-4 border-t border-[#E2E8F0]">
+            <Link
+              href="/clinic"
+              className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3"
+            >
+              <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
+              <span>ขอคำปรึกษาด่วน</span>
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* Mobile Bottom Menu (Visible on mobile screens < md) */}

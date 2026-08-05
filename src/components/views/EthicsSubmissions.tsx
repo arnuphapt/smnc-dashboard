@@ -71,6 +71,16 @@ interface EthicsAttachment {
   file_type?: string
 }
 
+interface EthicsEvaluation {
+  id: string
+  submission_id: string
+  reviewer_id: string
+  status: string
+  reviewer_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
@@ -90,7 +100,7 @@ import { useEthicsAttachments, useEthicsSubmissions } from '@/hooks/queries/useE
 
 export const EthicsSubmissions: React.FC = () => {
 
-  const { user, profile } = useAuth()
+  const { user, profile, isPageAllowed } = useAuth()
   const { getOptionsByCategory } = useMasters()
   const queryClient = useQueryClient()
 
@@ -98,6 +108,7 @@ export const EthicsSubmissions: React.FC = () => {
   const { data: attachments = [] } = useEthicsAttachments()
   const [reviewSubmissions, setReviewSubmissions] = useState<any[]>([])
   const [expertProfiles, setExpertProfiles] = useState<Profile[]>([])
+  const [evaluationCounts, setEvaluationCounts] = useState<Record<string, number>>({})
 
   const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'submitted' | 'reviewing' | 'revision' | 'approved'>('all')
 
@@ -127,6 +138,7 @@ export const EthicsSubmissions: React.FC = () => {
 
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [selectedSubForNotes, setSelectedSubForNotes] = useState<EthicsSubmission | null>(null)
+  const [notesModalEvaluations, setNotesModalEvaluations] = useState<EthicsEvaluation[]>([])
 
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [selectedSubForAssign, setSelectedSubForAssign] = useState<EthicsSubmission | null>(null)
@@ -227,12 +239,27 @@ export const EthicsSubmissions: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
+  // Fetch per-submission evaluation counts for the "X/2 ประเมินแล้ว" badge —
+  // one batched query instead of N+1 per-row queries.
+  const fetchEvaluationCounts = async () => {
+    try {
+      const { data, error } = await supabase.from('ethics_evaluations').select('submission_id')
+      if (error) throw error
+      const counts: Record<string, number> = {}
+      ;(data || []).forEach((row: { submission_id: string }) => {
+        counts[row.submission_id] = (counts[row.submission_id] || 0) + 1
+      })
+      setEvaluationCounts(counts)
+    } catch (err) { console.error(err) }
+  }
+
   useEffect(() => {
     if (hasRole(profile?.role, 'admin')) {
       fetch('/api/admin/cleanup-temp-experts', { method: 'POST' }).catch(() => {})
     }
     fetchReviewSubmissions()
     fetchExpertProfiles()
+    fetchEvaluationCounts()
   }, [user, profile])
 
   useEffect(() => {
@@ -244,7 +271,10 @@ export const EthicsSubmissions: React.FC = () => {
     const a = supabase.channel('ethics-list-att-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_attachments' }, () => {
       queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
     }).subscribe()
-    return () => { supabase.removeChannel(s); supabase.removeChannel(a) }
+    const e = supabase.channel('ethics-list-eval-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_evaluations' }, () => {
+      fetchEvaluationCounts()
+    }).subscribe()
+    return () => { supabase.removeChannel(s); supabase.removeChannel(a); supabase.removeChannel(e) }
   }, [user, profile, queryClient])
 
   const handleDownloadFile = async (path: string) => {
@@ -256,8 +286,30 @@ export const EthicsSubmissions: React.FC = () => {
   }
 
   const handleSaveReview = async (subId: string, status: string, notes: string) => {
+    if (!user?.id) {
+      triggerAlert('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่', 'danger')
+      return
+    }
     try {
-      const { error } = await supabase.from('ethics_submissions').update({ status, reviewer_notes: notes }).eq('id', subId)
+      // Upsert into ethics_evaluations so each reviewer's evaluation is isolated
+      // (was previously overwriting the shared ethics_submissions.reviewer_notes
+      // column, causing the 2nd reviewer's save to erase the 1st's).
+      // reviewer_id comes from the authenticated user (user.id), NOT the
+      // "ประเมินในนาม" dropdown (reviewerRoleLabel) — that value is unauthenticated
+      // free text and cannot be trusted as identity. reviewerRoleLabel is now
+      // cosmetic only and no longer drives persistence.
+      const { error: evalError } = await supabase
+        .from('ethics_evaluations')
+        .upsert(
+          { submission_id: subId, reviewer_id: user.id, status, reviewer_notes: notes },
+          { onConflict: 'submission_id,reviewer_id' }
+        )
+      if (evalError) throw evalError
+
+      // Still update ethics_submissions.status — it drives the submission-level
+      // lifecycle badge, which remains last-write-wins by design (only the
+      // per-reviewer evaluation content needed isolation, not the overall status).
+      const { error } = await supabase.from('ethics_submissions').update({ status }).eq('id', subId)
       if (error) throw error
 
       if (reviewFiles && reviewFiles.length > 0) {
@@ -322,6 +374,24 @@ export const EthicsSubmissions: React.FC = () => {
     }
   }
 
+  // Load ALL evaluations (one row per assigned reviewer) for the "ความเห็นผู้ทรงคุณวุฒิ"
+  // modal — mirrors the same ethics_evaluations query/order used by handleExportClick
+  // below so both surfaces show the same set of reviewer comments consistently.
+  const handleOpenNotesModal = async (sub: EthicsSubmission) => {
+    setSelectedSubForNotes(sub)
+    setNotesModalEvaluations([])
+    setNotesModalOpen(true)
+    try {
+      const { data: evalData, error: evalError } = await supabase
+        .from('ethics_evaluations')
+        .select('*')
+        .eq('submission_id', sub.id)
+        .order('created_at', { ascending: true })
+      if (evalError) throw evalError
+      setNotesModalEvaluations((evalData || []) as EthicsEvaluation[])
+    } catch (err) { console.error(err) }
+  }
+
   const handleExportClick = async (sub: any) => {
     // Fetch fresh data from DB to always show latest evaluation
     let freshSub = sub
@@ -337,7 +407,19 @@ export const EthicsSubmissions: React.FC = () => {
         submitterName = (freshData.profiles as any)?.full_name || (freshData.profiles as any)?.email || submitterName
       }
     } catch (err) { console.error(err) }
-    handleExportEvaluation(freshSub, submitterName)
+
+    let evaluations: EthicsEvaluation[] = []
+    try {
+      const { data: evalData, error: evalError } = await supabase
+        .from('ethics_evaluations')
+        .select('*')
+        .eq('submission_id', sub.id)
+        .order('created_at', { ascending: true })
+      if (evalError) throw evalError
+      evaluations = (evalData || []) as EthicsEvaluation[]
+    } catch (err) { console.error(err) }
+
+    handleExportEvaluation(freshSub, submitterName, evaluations)
   }
 
 
@@ -507,7 +589,20 @@ export const EthicsSubmissions: React.FC = () => {
     {
       key: 'status',
       header: 'สถานะ',
-      render: (sub) => <StatusBadge status={sub.status} size="sm" />,
+      render: (sub) => {
+        const assignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
+        const evaluatedCount = evaluationCounts[sub.id] || 0
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <StatusBadge status={sub.status} size="sm" />
+            {isReviewTabVisible && assignedCount > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap bg-slate-100 text-slate-600 border border-slate-200">
+                {evaluatedCount}/{assignedCount} ประเมินแล้ว
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'reviewer_notes',
@@ -516,7 +611,7 @@ export const EthicsSubmissions: React.FC = () => {
       render: (sub) => (
         sub.reviewer_notes ? (
           <button
-            onClick={() => { setSelectedSubForNotes(sub); setNotesModalOpen(true) }}
+            onClick={() => handleOpenNotesModal(sub)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors cursor-pointer shadow-xs whitespace-nowrap"
             title="ดูความเห็นผู้ทรงคุณวุฒิ"
           >
@@ -591,7 +686,12 @@ export const EthicsSubmissions: React.FC = () => {
           })
         }
 
-        if (sub.reviewer_notes) {
+        // Export/print only allowed once every assigned reviewer has submitted
+        // their evaluation (X/Y complete) — previously gated on `sub.reviewer_notes`
+        // truthiness alone, which only meant "at least one reviewer wrote something."
+        const exportAssignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
+        const exportEvaluatedCount = evaluationCounts[sub.id] || 0
+        if (exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount) {
           actionButtons.push({
             key: 'export',
             label: 'รายงานผล',
@@ -660,13 +760,15 @@ export const EthicsSubmissions: React.FC = () => {
         subtitle="Research Ethics — ติดตามสถานะและพิจารณาคำขอรับรองจริยธรรมการวิจัยในมนุษย์ (IRB)"
         extraBadge="Ethics Review Board"
         action={
-          <Link
-            href="/ethics"
-            className="shrink-0 btn-primary text-xs flex items-center gap-2 !py-2.5 !px-5"
-          >
-            <UploadCloud className="w-4 h-4 stroke-[2.5]" />
-            ยื่นโครงร่างวิจัยใหม่
-          </Link>
+          isPageAllowed('ethics_submit') ? (
+            <Link
+              href="/ethics"
+              className="shrink-0 btn-primary text-xs flex items-center gap-2 !py-2.5 !px-5"
+            >
+              <UploadCloud className="w-4 h-4 stroke-[2.5]" />
+              ยื่นโครงร่างวิจัยใหม่
+            </Link>
+          ) : null
         }
       />
 
@@ -795,10 +897,49 @@ export const EthicsSubmissions: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-5 overflow-y-auto max-h-[70vh]">
-            <p className="text-xs font-semibold italic text-[#334155] whitespace-pre-wrap leading-relaxed">
-              {selectedSubForNotes?.reviewer_notes ? selectedSubForNotes.reviewer_notes.replace(/\[.*?\]/g, '').replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim() : '—'}
-            </p>
+          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-4">
+            {(() => {
+              const cleanNotes = (notesText: string) => notesText
+                .replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
+                .replace(/\[.*?\]/g, '')
+                .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+                .trim()
+
+              // Fall back to the legacy single-evaluator source (sub.reviewer_notes) when
+              // no ethics_evaluations rows exist yet — same fallback as handleExportEvaluation.
+              const evaluationSource = notesModalEvaluations.length > 0
+                ? notesModalEvaluations
+                : (selectedSubForNotes?.reviewer_notes ? [{ reviewer_notes: selectedSubForNotes.reviewer_notes } as EthicsEvaluation] : [])
+
+              const assignedCount = selectedSubForNotes
+                ? [selectedSubForNotes.assigned_reviewer_id, selectedSubForNotes.assigned_reviewer_id_2].filter(Boolean).length
+                : 0
+              const slotCount = Math.max(assignedCount, evaluationSource.length)
+
+              if (slotCount === 0) {
+                return <p className="text-xs font-semibold text-[#334155]">—</p>
+              }
+
+              return Array.from({ length: slotCount }).map((_, idx) => {
+                const ev = evaluationSource[idx]
+                return (
+                  <div key={idx}>
+                    <p className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#00796B] mb-1">
+                      ผู้ประเมินที่ {idx + 1}
+                    </p>
+                    {ev ? (
+                      <p className="text-xs font-semibold text-[#334155] whitespace-pre-wrap leading-relaxed">
+                        {cleanNotes(ev.reviewer_notes || '') || '—'}
+                      </p>
+                    ) : (
+                      <p className="text-xs font-semibold text-[#94A3B8]">
+                        ผู้ประเมินที่ {idx + 1} ยังไม่ได้ประเมิน
+                      </p>
+                    )}
+                  </div>
+                )
+              })
+            })()}
           </div>
         </DialogContent>
       </Dialog>
