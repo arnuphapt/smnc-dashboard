@@ -29,6 +29,43 @@ export const REPORT_INTERVAL_OPTIONS = [
   { value: '12', label: 'ทุก 12 เดือน (1 ปี)' },
 ]
 
+// Per-reviewer evaluation-level vocabulary (3-way): เห็นชอบ / ไม่อนุมัติ / ส่งกลับแก้ไข
+export const EVALUATION_STATUS_LABELS: Record<string, string> = {
+  'อนุมัติ': 'เห็นชอบ',
+  'ไม่อนุมัติ': 'ไม่อนุมัติ',
+  'ส่งกลับแก้ไข': 'ส่งกลับแก้ไข',
+}
+
+export const translateEvaluationStatus = (status: string): string =>
+  EVALUATION_STATUS_LABELS[status] || status
+
+// Derives submission-level status (ยื่นแล้ว / กำลังตรวจ / อนุมัติ / ไม่อนุมัติ) from the
+// full set of per-reviewer evaluations for a submission, plus the assigned-reviewer
+// count. Pure function — no Supabase access — so it can be reused from any future
+// call site (e.g. an admin bulk-edit tool) without duplicating this logic.
+//
+// Rule (per user-confirmed Option A): "ส่งกลับแก้ไข" (send back for revision) is
+// treated identically to "ไม่อนุมัติ" (reject) for derivation purposes — either
+// non-approve value blocks the submission from ever reaching "อนุมัติ". There is no
+// submission-level status for "ส่งกลับแก้ไข" — the enum stays exactly 4 values.
+export const deriveSubmissionStatus = (
+  evaluations: { status: string }[],
+  assignedCount: number
+): string => {
+  if (evaluations.length === 0) return 'ยื่นแล้ว'
+  if (evaluations.length < assignedCount) return 'กำลังตรวจ'
+  // all assigned reviewers have submitted their evaluation
+  const hasNonApprove = evaluations.some(
+    (ev) => ev.status === 'ไม่อนุมัติ' || ev.status === 'ส่งกลับแก้ไข'
+  )
+  if (hasNonApprove) return 'ไม่อนุมัติ'
+  const allApprove = evaluations.every((ev) => ev.status === 'อนุมัติ')
+  if (allApprove) return 'อนุมัติ'
+  // defensive fallback — should be unreachable once evaluation status is
+  // constrained to {อนุมัติ, ไม่อนุมัติ, ส่งกลับแก้ไข} only
+  return 'กำลังตรวจ'
+}
+
 // Parse structured tag in notes
 export const parseReviewerNotes = (notesText: string) => {
   const scores: Record<string, 'pass' | 'fail' | 'na'> = {
@@ -170,10 +207,16 @@ export const handleExportEvaluation = (sub: any, submitterName: string, evaluati
         <td style="border:1px solid #000;padding:6px 10px;text-align:center;font-size:13px;">${translateScore(c.val)}</td>
       </tr>`).join('')
 
+    const verdictLabelEv = ev.status ? translateEvaluationStatus(ev.status) : 'ยังไม่ได้ประเมิน'
+
     return `
   <div class="evaluator-block" style="${idx > 0 ? 'margin-top:24px;page-break-before:always;' : ''}">
     <div class="section-title">ผู้ประเมินที่ ${idx + 1}</div>
     <table class="info-table">
+      <tr>
+        <td class="lbl">ผลการประเมิน:</td>
+        <td colspan="3"><strong>${verdictLabelEv}</strong></td>
+      </tr>
       <tr>
         <td class="lbl">ระดับความเสี่ยง:</td>
         <td>☑ ${riskLabelEv}</td>
@@ -195,17 +238,16 @@ export const handleExportEvaluation = (sub: any, submitterName: string, evaluati
   </div>`
   }).join('')
 
-  // Overall conclusion remains derived from the submission-level `status` field
-  // (last-write-wins, unchanged by this feature) — reconciling two reviewers'
-  // potentially differing statuses is an open question flagged for a human
-  // decision, not resolved here.
+  // Overall conclusion is derived from the submission-level `status` field, which
+  // is now recomputed by `deriveSubmissionStatus` (see EthicsTab.tsx) rather than
+  // last-write-wins. The submission-level enum has only 4 values (ยื่นแล้ว /
+  // กำลังตรวจ / อนุมัติ / ไม่อนุมัติ) — "รอแก้ไข" was removed as a submission-level
+  // status, so this aggregate stays a 2-way check (เห็นชอบ / ไม่เห็นชอบ).
   const statusLabel = sub.status === 'อนุมัติ'
-    ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
-    : sub.status === 'รอแก้ไข'
-    ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
+    ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ'
     : sub.status === 'ไม่อนุมัติ'
-    ? '☑ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
-    : '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ หากแก้ไขตามข้อเสนอแนะ'
+    ? '☑ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ'
+    : '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☐ เห็นชอบ'
 
   const today = new Date()
   const thaiDate = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })

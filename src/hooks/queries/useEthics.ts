@@ -33,7 +33,7 @@ export interface EthicsAttachment {
   file_url: string
   file_name: string
   file_type?: string
-  created_at: string
+  uploaded_at: string
 }
 
 export function useEthicsForms() {

@@ -22,7 +22,6 @@ import {
   FileEdit,
   FileCheck,
   Eye,
-  RotateCcw,
   ClipboardCheck,
   UserCheck,
   Check,
@@ -46,7 +45,9 @@ import {
   REPORT_INTERVAL_OPTIONS,
   parseReviewerNotes,
   serializeReviewerNotes,
-  handleExportEvaluation
+  handleExportEvaluation,
+  deriveSubmissionStatus,
+  translateEvaluationStatus
 } from './masterdata/EthicsTab'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
@@ -69,6 +70,7 @@ interface EthicsAttachment {
   file_url: string
   file_name?: string
   file_type?: string
+  uploaded_at?: string
 }
 
 interface EthicsEvaluation {
@@ -84,7 +86,7 @@ interface EthicsEvaluation {
 const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
-const PENDING_STATUSES = ['ยื่นแล้ว', 'กำลังตรวจ', 'รอแก้ไข']
+const PENDING_STATUSES = ['ยื่นแล้ว', 'กำลังตรวจ']
 const APPROVED_STATUSES = ['อนุมัติ', 'ไม่อนุมัติ']
 
 const PdfIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
@@ -108,9 +110,11 @@ export const EthicsSubmissions: React.FC = () => {
   const { data: attachments = [] } = useEthicsAttachments()
   const [reviewSubmissions, setReviewSubmissions] = useState<any[]>([])
   const [expertProfiles, setExpertProfiles] = useState<Profile[]>([])
-  const [evaluationCounts, setEvaluationCounts] = useState<Record<string, number>>({})
+  // Full per-submission evaluations list (not just a count) so the list row can
+  // render each reviewer's individual status, not only "X/Y ประเมินแล้ว".
+  const [evaluationsBySubmission, setEvaluationsBySubmission] = useState<Record<string, EthicsEvaluation[]>>({})
 
-  const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'submitted' | 'reviewing' | 'revision' | 'approved'>('all')
+  const [activeQueueTab, setActiveQueueTab] = useState<'all' | 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'sent_back'>('all')
 
   const [reviewNotes, setReviewNotes] = useState('')
   const [reviewStatus, setReviewStatus] = useState('กำลังตรวจ')
@@ -139,6 +143,9 @@ export const EthicsSubmissions: React.FC = () => {
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [selectedSubForNotes, setSelectedSubForNotes] = useState<EthicsSubmission | null>(null)
   const [notesModalEvaluations, setNotesModalEvaluations] = useState<EthicsEvaluation[]>([])
+
+  const [attachmentsModalOpen, setAttachmentsModalOpen] = useState(false)
+  const [selectedSubForAttachments, setSelectedSubForAttachments] = useState<EthicsSubmission | null>(null)
 
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [selectedSubForAssign, setSelectedSubForAssign] = useState<EthicsSubmission | null>(null)
@@ -239,17 +246,21 @@ export const EthicsSubmissions: React.FC = () => {
     } catch (err) { console.error(err) }
   }
 
-  // Fetch per-submission evaluation counts for the "X/2 ประเมินแล้ว" badge —
-  // one batched query instead of N+1 per-row queries.
+  // Fetch per-submission evaluations for the "X/2 ประเมินแล้ว" badge AND the
+  // per-reviewer status lines — one batched query instead of N+1 per-row queries.
   const fetchEvaluationCounts = async () => {
     try {
-      const { data, error } = await supabase.from('ethics_evaluations').select('submission_id')
+      const { data, error } = await supabase
+        .from('ethics_evaluations')
+        .select('*')
+        .order('created_at', { ascending: true })
       if (error) throw error
-      const counts: Record<string, number> = {}
-      ;(data || []).forEach((row: { submission_id: string }) => {
-        counts[row.submission_id] = (counts[row.submission_id] || 0) + 1
+      const bySubmission: Record<string, EthicsEvaluation[]> = {}
+      ;(data || []).forEach((row: EthicsEvaluation) => {
+        if (!bySubmission[row.submission_id]) bySubmission[row.submission_id] = []
+        bySubmission[row.submission_id].push(row)
       })
-      setEvaluationCounts(counts)
+      setEvaluationsBySubmission(bySubmission)
     } catch (err) { console.error(err) }
   }
 
@@ -306,10 +317,20 @@ export const EthicsSubmissions: React.FC = () => {
         )
       if (evalError) throw evalError
 
-      // Still update ethics_submissions.status — it drives the submission-level
-      // lifecycle badge, which remains last-write-wins by design (only the
-      // per-reviewer evaluation content needed isolation, not the overall status).
-      const { error } = await supabase.from('ethics_submissions').update({ status }).eq('id', subId)
+      // Recompute ethics_submissions.status from the full set of that submission's
+      // evaluations (not last-write-wins) — fetch fresh right after the upsert so
+      // the just-written row is included, then derive via the shared pure function.
+      const { data: freshEvaluations, error: fetchEvalError } = await supabase
+        .from('ethics_evaluations')
+        .select('*')
+        .eq('submission_id', subId)
+      if (fetchEvalError) throw fetchEvalError
+
+      const assignedCount = [selectedSubForReview?.assigned_reviewer_id, selectedSubForReview?.assigned_reviewer_id_2]
+        .filter(Boolean).length
+      const derivedStatus = deriveSubmissionStatus(freshEvaluations || [], assignedCount)
+
+      const { error } = await supabase.from('ethics_submissions').update({ status: derivedStatus }).eq('id', subId)
       if (error) throw error
 
       if (reviewFiles && reviewFiles.length > 0) {
@@ -340,6 +361,35 @@ export const EthicsSubmissions: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
       triggerAlert('บันทึกสำเร็จ', 'บันทึกผลการพิจารณาและอัปโหลดเอกสารเรียบร้อยแล้ว!', 'primary')
     } catch (err: any) { triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger') }
+  }
+
+  // Sends a fully-evaluated submission (2/2 done, any outcome) back to the
+  // submitter for revision: wipes both evaluation rows (per user-confirmed
+  // decision — no archival/versioning) and force-sets status to "ส่งกลับแก้ไข".
+  // deriveSubmissionStatus is never called here, so this manual override is
+  // not immediately recomputed away — it only changes again once the submitter
+  // resubmits via handleSubmitRevision, which sets status back to "ยื่นแล้ว".
+  const handleSendBackForRevision = async (subId: string) => {
+    try {
+      const { error: evalDeleteError } = await supabase
+        .from('ethics_evaluations')
+        .delete()
+        .eq('submission_id', subId)
+      if (evalDeleteError) throw evalDeleteError
+
+      const { error: statusError } = await supabase
+        .from('ethics_submissions')
+        .update({ status: 'ส่งกลับแก้ไข' })
+        .eq('id', subId)
+      if (statusError) throw statusError
+
+      fetchReviewSubmissions()
+      fetchEvaluationCounts()
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+      triggerAlert('สำเร็จ', 'ส่งกลับให้ผู้ยื่นแก้ไขเรียบร้อยแล้ว ผลการประเมินเดิมถูกล้างแล้ว', 'primary')
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger')
+    }
   }
 
   const handleDeleteSubmission = (subId: string) => {
@@ -502,14 +552,16 @@ export const EthicsSubmissions: React.FC = () => {
 
   const waitingCount = mergedSubmissions.filter(s => s.status === 'ยื่นแล้ว').length
   const reviewingCount = mergedSubmissions.filter(s => s.status === 'กำลังตรวจ').length
-  const revisionCount = mergedSubmissions.filter(s => s.status === 'รอแก้ไข').length
   const approvedCount = mergedSubmissions.filter(s => s.status === 'อนุมัติ').length
+  const rejectedCount = mergedSubmissions.filter(s => s.status === 'ไม่อนุมัติ').length
+  const sentBackCount = mergedSubmissions.filter(s => s.status === 'ส่งกลับแก้ไข').length
 
   const visibleSubmissions = mergedSubmissions.filter((s) => {
     if (activeQueueTab === 'submitted') return s.status === 'ยื่นแล้ว'
     if (activeQueueTab === 'reviewing') return s.status === 'กำลังตรวจ'
-    if (activeQueueTab === 'revision') return s.status === 'รอแก้ไข'
-    if (activeQueueTab === 'approved') return s.status === 'อนุมัติ' || s.status === 'ไม่อนุมัติ'
+    if (activeQueueTab === 'approved') return s.status === 'อนุมัติ'
+    if (activeQueueTab === 'rejected') return s.status === 'ไม่อนุมัติ'
+    if (activeQueueTab === 'sent_back') return s.status === 'ส่งกลับแก้ไข'
     return true
   })
 
@@ -517,8 +569,12 @@ export const EthicsSubmissions: React.FC = () => {
     setSelectedSubForReview(sub)
     setReviewStep(1)
     setReviewFiles(null)
-    const validStatuses = ['อนุมัติ', 'รอแก้ไข', 'ไม่อนุมัติ']
-    setReviewStatus(validStatuses.includes(sub.status) ? sub.status : 'อนุมัติ')
+    const validStatuses = ['อนุมัติ', 'ไม่อนุมัติ', 'ส่งกลับแก้ไข']
+    // Seed from the CURRENT USER's own prior evaluation (not the submission's
+    // derived status) — otherwise a 2nd reviewer opening the modal would see the
+    // 1st reviewer's already-derived-or-stale value instead of their own answer.
+    const ownEvaluation = (evaluationsBySubmission[sub.id] || []).find((ev) => ev.reviewer_id === user?.id)
+    setReviewStatus(ownEvaluation && validStatuses.includes(ownEvaluation.status) ? ownEvaluation.status : 'อนุมัติ')
     const parsed = parseReviewerNotes(sub.reviewer_notes || '')
     setScores(parsed.scores)
     setRiskLevel(parsed.riskLevel)
@@ -578,10 +634,15 @@ export const EthicsSubmissions: React.FC = () => {
         if (!assignedUser && !assignedUser2) {
           return <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">ยังไม่ได้มอบหมาย</span>
         }
+        const reviewerNames = [assignedUser?.full_name || assignedUser?.email, assignedUser2?.full_name || assignedUser2?.email].filter(Boolean)
         return (
-          <span className="text-xs font-semibold text-[#64748B] whitespace-nowrap">
-            {[assignedUser?.full_name || assignedUser?.email, assignedUser2?.full_name || assignedUser2?.email].filter(Boolean).join(', ')}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            {reviewerNames.map((name, idx) => (
+              <span key={idx} className="text-xs font-semibold text-[#64748B] whitespace-nowrap">
+                {idx + 1}. {name}
+              </span>
+            ))}
+          </div>
         )
       },
     } as DataTableColumn<EthicsSubmission>] : []),
@@ -591,7 +652,9 @@ export const EthicsSubmissions: React.FC = () => {
       header: 'สถานะ',
       render: (sub) => {
         const assignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
-        const evaluatedCount = evaluationCounts[sub.id] || 0
+        const subEvaluations = evaluationsBySubmission[sub.id] || []
+        const evaluatedCount = subEvaluations.length
+        const slotCount = Math.max(assignedCount, evaluatedCount)
         return (
           <div className="flex flex-col gap-1 items-start">
             <StatusBadge status={sub.status} size="sm" />
@@ -599,6 +662,18 @@ export const EthicsSubmissions: React.FC = () => {
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap bg-slate-100 text-slate-600 border border-slate-200">
                 {evaluatedCount}/{assignedCount} ประเมินแล้ว
               </span>
+            )}
+            {isReviewTabVisible && slotCount > 0 && (
+              <div className="flex flex-col gap-0.5">
+                {Array.from({ length: slotCount }).map((_, idx) => {
+                  const ev = subEvaluations[idx]
+                  return (
+                    <span key={idx} className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">
+                      ผู้ประเมินที่ {idx + 1}: {ev ? translateEvaluationStatus(ev.status) : 'ยังไม่ได้ประเมิน'}
+                    </span>
+                  )
+                })}
+              </div>
             )}
           </div>
         )
@@ -663,17 +738,20 @@ export const EthicsSubmissions: React.FC = () => {
           })
         }
 
-        subAttach.forEach((at) => {
+        if (subAttach.length > 0) {
           actionButtons.push({
-            key: `attach-${at.id}`,
-            label: at.file_name || 'ดาวน์โหลดเอกสาร PDF',
+            key: 'attachments',
+            label: `เอกสารแนบ (${subAttach.length} ไฟล์)`,
             icon: <PdfIcon className="w-4 h-4 text-red-600 shrink-0" />,
-            onClick: () => handleDownloadFile(at.file_url),
+            onClick: () => {
+              setSelectedSubForAttachments(sub)
+              setAttachmentsModalOpen(true)
+            },
             fullClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 bg-red-50 border border-red-200 hover:bg-red-600 hover:text-white transition-colors cursor-pointer shadow-xs shrink-0',
             iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 bg-red-50 border border-red-200 hover:bg-red-600 hover:text-white transition-colors cursor-pointer shadow-xs shrink-0',
             isPdfIcon: true,
           })
-        })
+        }
 
         if (isReviewTabVisible) {
           actionButtons.push({
@@ -690,7 +768,7 @@ export const EthicsSubmissions: React.FC = () => {
         // their evaluation (X/Y complete) — previously gated on `sub.reviewer_notes`
         // truthiness alone, which only meant "at least one reviewer wrote something."
         const exportAssignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
-        const exportEvaluatedCount = evaluationCounts[sub.id] || 0
+        const exportEvaluatedCount = (evaluationsBySubmission[sub.id] || []).length
         if (exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount) {
           actionButtons.push({
             key: 'export',
@@ -699,6 +777,38 @@ export const EthicsSubmissions: React.FC = () => {
             onClick: () => handleExportClick(sub),
             fullClass: 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap',
             iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full border border-[#DAEEFF] bg-[#F0F7FF] text-[#00796B] hover:bg-[#00796B] hover:text-white transition cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        // "ส่งกลับแก้ไข": once both assigned reviewers have evaluated (regardless
+        // of outcome — อนุมัติ/ไม่อนุมัติ doesn't matter), admin/reviewers can send
+        // the submission back to the submitter for revision. Same visibility rule
+        // as "พิจารณาผล"/"รายงานผล" above (isReviewTabVisible), gated additionally
+        // on the same 2/2-complete condition as the export button.
+        if (isReviewTabVisible && exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount) {
+          actionButtons.push({
+            key: 'send_back',
+            label: 'ส่งกลับแก้ไข',
+            icon: <FileEdit className="w-4 h-4" />,
+            onClick: () => handleSendBackForRevision(sub.id),
+            fullClass: 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white transition cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white transition cursor-pointer shadow-xs shrink-0',
+          })
+        }
+
+        // "ยื่นอีกรอบ": once the submission has been sent back for revision,
+        // the submitter (owner) can reopen the existing revision-submit modal
+        // (handleOpenRevisionModal/handleSubmitRevision) to upload a revised
+        // document — reuses the pre-existing "ส่งเล่มโครงร่างวิจัยฉบับแก้ไข" flow
+        // rather than building a parallel one.
+        if (isOwner && sub.status === 'ส่งกลับแก้ไข') {
+          actionButtons.push({
+            key: 'resubmit',
+            label: 'ยื่นอีกรอบ',
+            icon: <UploadCloud className="w-4 h-4" />,
+            onClick: () => handleOpenRevisionModal(sub),
+            fullClass: 'inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-[#00796B] text-white hover:bg-[#005F56] transition cursor-pointer shadow-xs whitespace-nowrap',
+            iconClass: 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#00796B] text-white hover:bg-[#005F56] transition cursor-pointer shadow-xs shrink-0',
           })
         }
 
@@ -792,14 +902,6 @@ export const EthicsSubmissions: React.FC = () => {
             iconColor: 'text-[#7C3AED]',
           },
           {
-            key: 'revision',
-            count: revisionCount,
-            label: 'รอแก้ไข',
-            icon: <RotateCcw className="w-5 h-5" />,
-            iconBg: 'bg-[#FFF8E7]',
-            iconColor: 'text-[#D97706]',
-          },
-          {
             key: 'approved',
             count: approvedCount,
             label: 'อนุมัติแล้ว',
@@ -807,13 +909,30 @@ export const EthicsSubmissions: React.FC = () => {
             iconBg: 'bg-[#E8F6F5]',
             iconColor: 'text-[#00796B]',
           },
+          {
+            key: 'rejected',
+            count: rejectedCount,
+            label: 'ไม่อนุมัติ',
+            icon: <AlertCircle className="w-5 h-5" />,
+            iconBg: 'bg-[#FEE2E2]',
+            iconColor: 'text-[#DC2626]',
+          },
+          {
+            key: 'sent_back',
+            count: sentBackCount,
+            label: 'ส่งกลับแก้ไข',
+            icon: <FileEdit className="w-5 h-5" />,
+            iconBg: 'bg-[#FEF3C7]',
+            iconColor: 'text-[#B45309]',
+          },
         ]}
         tabs={[
           { id: 'all', label: 'ทั้งหมด', count: mergedSubmissions.length },
           { id: 'submitted', label: 'ยื่นแล้ว / รอตรวจ', count: waitingCount },
           { id: 'reviewing', label: 'กำลังตรวจ', count: reviewingCount },
-          { id: 'revision', label: 'รอแก้ไข', count: revisionCount },
           { id: 'approved', label: 'อนุมัติแล้ว', count: approvedCount },
+          { id: 'sent_back', label: 'ส่งกลับแก้ไข', count: sentBackCount },
+          { id: 'rejected', label: 'ไม่อนุมัติ', count: rejectedCount },
         ]}
         activeTab={activeQueueTab}
         onTabChange={(tabId) => setActiveQueueTab(tabId as any)}
@@ -944,6 +1063,40 @@ export const EthicsSubmissions: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* MODAL: VIEW ATTACHMENTS */}
+      <Dialog open={attachmentsModalOpen} onOpenChange={setAttachmentsModalOpen}>
+        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">เอกสารแนบ</p>
+            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
+              {selectedSubForAttachments?.project_title}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-2">
+            {(() => {
+              const subAttach = selectedSubForAttachments
+                ? attachments.filter((a) => a.submission_id === selectedSubForAttachments.id)
+                : []
+              if (subAttach.length === 0) {
+                return <p className="text-xs font-semibold text-[#94A3B8]">ไม่มีเอกสารแนบ</p>
+              }
+              return subAttach.map((at) => (
+                <button
+                  key={at.id}
+                  type="button"
+                  onClick={() => handleDownloadFile(at.file_url)}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-red-50 border border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-colors cursor-pointer shadow-xs text-left"
+                >
+                  <PdfIcon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{at.file_name || 'เอกสาร PDF'}</span>
+                </button>
+              ))
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* MODAL: EXPERT EVALUATION SCORECARD (STEPPER WIZARD) */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
         <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
@@ -1011,6 +1164,30 @@ export const EthicsSubmissions: React.FC = () => {
                       {selectedSubForReview.project_title}
                     </div>
                   </div>
+
+                  {/* PER-REVIEWER EVALUATION STATUS (anonymized by slot index, not by name) */}
+                  {(() => {
+                    const assignedCount = [selectedSubForReview.assigned_reviewer_id, selectedSubForReview.assigned_reviewer_id_2].filter(Boolean).length
+                    const subEvaluations = evaluationsBySubmission[selectedSubForReview.id] || []
+                    const slotCount = Math.max(assignedCount, subEvaluations.length)
+                    if (slotCount === 0) return null
+                    return (
+                      <div className="pt-2 border-t border-slate-200/80">
+                        <div className="text-[10px] font-mono font-extrabold text-[#00796B] uppercase tracking-wider mb-1">สถานะการประเมินของผู้ทรงคุณวุฒิ</div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {Array.from({ length: slotCount }).map((_, idx) => {
+                            const ev = subEvaluations[idx]
+                            const isSelf = ev?.reviewer_id === user?.id
+                            return (
+                              <span key={idx} className="text-[11px] font-bold text-slate-600 whitespace-nowrap">
+                                ผู้ประเมินที่ {idx + 1}{isSelf ? ' (ตัวคุณ)' : ''}: {ev ? translateEvaluationStatus(ev.status) : 'ยังไม่ได้ประเมิน'}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* ATTACHED DOCUMENTS LIST FOR REVIEWER */}
                   <div className="pt-2 border-t border-slate-200/80">
@@ -1195,8 +1372,8 @@ export const EthicsSubmissions: React.FC = () => {
                         onValueChange={(v) => setReviewStatus(v ?? 'อนุมัติ')}
                         items={[
                           { value: 'อนุมัติ', label: 'เห็นชอบ' },
-                          { value: 'รอแก้ไข', label: 'เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล' },
-                          { value: 'ไม่อนุมัติ', label: 'ไม่เห็นชอบ' },
+                          { value: 'ไม่อนุมัติ', label: 'ไม่อนุมัติ' },
+                          { value: 'ส่งกลับแก้ไข', label: 'ส่งกลับแก้ไข' },
                         ]}
                       >
                         <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
@@ -1204,8 +1381,8 @@ export const EthicsSubmissions: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                           <SelectItem value="อนุมัติ">เห็นชอบ</SelectItem>
-                          <SelectItem value="รอแก้ไข">เห็นชอบ หากแก้ไขตามข้อเสนอแนะ/ หากมีคำชี้แจงที่สมเหตุสมผล</SelectItem>
-                          <SelectItem value="ไม่อนุมัติ">ไม่เห็นชอบ</SelectItem>
+                          <SelectItem value="ไม่อนุมัติ">ไม่อนุมัติ</SelectItem>
+                          <SelectItem value="ส่งกลับแก้ไข">ส่งกลับแก้ไข</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -2,10 +2,12 @@
 
 import React, { Suspense } from 'react'
 import { EthicsSubmissions } from '@/components/views/EthicsSubmissions'
+import { useRequirePageAccess } from '@/hooks/useRequirePageAccess'
 
 export const dynamic = 'force-dynamic'
 
 function SubmissionsContent() {
+  useRequirePageAccess('ethics_submissions')
   return <EthicsSubmissions />
 }
 

@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/PageHeader'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { createClient } from '@/lib/supabase/client'
+import { useRequirePageAccess } from '@/hooks/useRequirePageAccess'
 
 const supabase = createClient()
 
@@ -29,6 +30,7 @@ interface CategoryCount {
 }
 
 export default function RepositoriesLandingPage() {
+  useRequirePageAccess('repositories')
   const [counts, setCounts] = useState<CategoryCount>({
     research: 0,
     innovation: 0,
