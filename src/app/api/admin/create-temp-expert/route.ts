@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { cleanupExpiredTempAccounts } from '@/lib/tempAccountCleanup'
 
 function generateTempPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
     if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
+
+    // Auto cleanup any old expired temporary accounts before creating new one
+    await cleanupExpiredTempAccounts()
 
     const admin = createAdminClient()
     const password = generateTempPassword()

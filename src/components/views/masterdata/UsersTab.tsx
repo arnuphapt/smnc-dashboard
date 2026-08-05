@@ -42,6 +42,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
   } | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
 
+  React.useEffect(() => {
+    fetch('/api/admin/cleanup-temp-experts', { method: 'POST' }).catch(() => {})
+  }, [])
+
   const handleViewOrResetTempUser = async (profile: Profile) => {
     setResettingPassword(true)
     try {

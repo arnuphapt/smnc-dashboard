@@ -228,6 +228,9 @@ export const EthicsSubmissions: React.FC = () => {
   }
 
   useEffect(() => {
+    if (hasRole(profile?.role, 'admin')) {
+      fetch('/api/admin/cleanup-temp-experts', { method: 'POST' }).catch(() => {})
+    }
     fetchReviewSubmissions()
     fetchExpertProfiles()
   }, [user, profile])

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { deleteTempAccountIfExpired } from '@/lib/tempAccountCleanup'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -39,6 +40,7 @@ export async function middleware(request: NextRequest) {
       .single()
 
     if (profile?.is_temp_account && profile.temp_expires_at && new Date(profile.temp_expires_at) < new Date()) {
+      await deleteTempAccountIfExpired(user.id)
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('expired', '1')
