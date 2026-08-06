@@ -1,12 +1,27 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2, BookOpen } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2, BookOpen, Lock, User as UserIcon, FlaskConical } from 'lucide-react'
 import { DataTableColumn } from '@/components/DataTable'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { Profile } from '@/context/AuthContext'
-import { getUserRoles, ROLE_OPTIONS } from '@/utils/roleHelper'
+import { getUserRoles, fetchRoleOptions, RoleOption } from '@/utils/roleHelper'
 import { parseAuthors } from '@/utils/authorHelper'
 import { WisdomItem } from '../Dashboard'
+
+// Lookup from a role's icon_name (fixed palette, see roleHelper.ts ICON_KEYS)
+// to the actual lucide component. Lives here (not roleHelper.ts) to keep that
+// file free of JSX, matching the pattern used for COLOR_MAP.
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Shield,
+  GraduationCap,
+  UserCheck,
+  Lock,
+  User: UserIcon,
+  Users,
+  BookOpen,
+  FlaskConical,
+}
+const getRoleIcon = (roleOpt: RoleOption | undefined) => ICON_MAP[roleOpt?.iconName || ''] || Shield
 
 interface UsersTabProps {
   profiles: Profile[]
@@ -22,6 +37,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
   const [newFullName, setNewFullName] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('')
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([])
+
+  useEffect(() => {
+    fetchRoleOptions().then(setRoleOptions)
+  }, [])
 
   // Add User modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -122,7 +142,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
         return (
           <div className="flex flex-wrap gap-1">
             {roles.map((r) => {
-              const opt = ROLE_OPTIONS.find((o) => o.value === r)
+              const opt = roleOptions.find((o) => o.value === r)
               return (
                 <span
                   key={r}
@@ -273,12 +293,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
             label: 'ระดับสิทธิ์',
             value: selectedRole,
             onChange: setSelectedRole,
-            options: [
-              { value: 'admin', label: 'ผู้ดูแลระบบ (Admin)' },
-              { value: 'assistant_admin', label: 'ผู้ช่วยแอดมิน (Assistant Admin)' },
-              { value: 'expert', label: 'ผู้ทรงคุณวุฒิ (Expert)' },
-              { value: 'teacher', label: 'อาจารย์ (Teacher)' }
-            ]
+            options: roleOptions.map((o) => ({ value: o.value, label: o.label }))
           }
         ]}
         columns={columns}
@@ -403,7 +418,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
                   ระดับสิทธิ์การใช้งาน
                 </label>
                 <div className="flex flex-col gap-1.5">
-                  {ROLE_OPTIONS.map((roleOpt) => {
+                  {roleOptions.map((roleOpt) => {
                     const currentRoles = getUserRoles(addRole)
                     const isChecked = currentRoles.includes(roleOpt.value)
                     const toggleRole = () => {
@@ -416,7 +431,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
                       }
                       setAddRole(updated.join(','))
                     }
-                    const IconComponent = roleOpt.value === 'admin' ? Shield : roleOpt.value === 'expert' ? UserCheck : GraduationCap
+                    const IconComponent = getRoleIcon(roleOpt)
 
                     return (
                       <button
@@ -496,7 +511,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
                 สิทธิ์การใช้งาน
               </label>
               <div className="flex flex-col gap-2">
-                {ROLE_OPTIONS.map((roleOpt) => {
+                {roleOptions.map((roleOpt) => {
                   const currentRoles = getUserRoles(newRole)
                   const isChecked = currentRoles.includes(roleOpt.value)
                   const toggleRole = () => {
@@ -510,7 +525,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
                     setNewRole(updated.join(','))
                   }
 
-                  const IconComponent = roleOpt.value === 'admin' ? Shield : roleOpt.value === 'expert' ? UserCheck : GraduationCap
+                  const IconComponent = getRoleIcon(roleOpt)
 
                   return (
                     <button

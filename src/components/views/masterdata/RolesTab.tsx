@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/services/supabase'
-import { Shield, Lock, Check, X, GraduationCap, UserCheck, Edit2 } from 'lucide-react'
+import { Shield, Lock, Check, X, GraduationCap, UserCheck, Edit2, Plus, User as UserIcon, Users, BookOpen, FlaskConical } from 'lucide-react'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { DataTableColumn } from '@/components/DataTable'
+import { ICON_KEYS, COLOR_KEYS, COLOR_MAP } from '@/utils/roleHelper'
 
 interface RolePermission {
   id: string
@@ -17,9 +18,10 @@ interface RolePermission {
 interface RoleRow {
   key: string
   label: string
+  short_label: string
   desc: string
-  icon: React.ReactNode
-  colorClass: string
+  icon_name: string
+  color_key: string
   isLocked: boolean
 }
 
@@ -54,46 +56,64 @@ const pages: PageItem[] = [
   { key: 'masterdata', label: 'ระบบหลังบ้าน (Masterdata)' },
 ]
 
-const ROLES: RoleRow[] = [
-  {
-    key: 'teacher',
-    label: 'อาจารย์ (Teacher)',
-    desc: 'คณาจารย์และบุคลากรทั่วไปที่ใช้งานระบบยื่นคำขอและสืบค้นข้อมูล',
-    icon: <GraduationCap className="w-4 h-4" />,
-    colorClass: 'bg-teal-50 text-teal-700 border-teal-200',
-    isLocked: false,
-  },
-  {
-    key: 'expert',
-    label: 'ผู้ทรงคุณวุฒิ (Expert)',
-    desc: 'ผู้ทรงคุณวุฒิที่ได้รับมอบหมายเพื่อพิจารณาจริยธรรมการวิจัยของโครงการวิจัย',
-    icon: <UserCheck className="w-4 h-4" />,
-    colorClass: 'bg-purple-50 text-purple-700 border-purple-200',
-    isLocked: false,
-  },
-  {
-    key: 'assistant_admin',
-    label: 'ผู้ช่วยแอดมิน (Assistant Admin)',
-    desc: 'ผู้ช่วยดูแลระบบ เข้าถึงและจัดการระบบได้ตามสิทธิ์ที่ได้รับมอบหมาย',
-    icon: <Shield className="w-4 h-4 text-orange-600" />,
-    colorClass: 'bg-orange-50 text-orange-700 border-orange-200',
-    isLocked: false,
-  },
-  {
-    key: 'admin',
-    label: 'ผู้ดูแลระบบ (Admin)',
-    desc: 'ผู้ดูแลระบบที่มีสิทธิ์สูงสุด สิทธิ์การเข้าถึงทุกหน้าถูกล็อกถาวร',
-    icon: <Shield className="w-4 h-4" />,
-    colorClass: 'bg-red-50 text-red-700 border-red-200',
-    isLocked: true,
-  },
-]
+// Lookup from icon_name (fixed palette, see roleHelper.ts ICON_KEYS) to the
+// actual lucide component. Lives here (UI layer) to keep roleHelper.ts free
+// of JSX, mirroring the same pattern used in UsersTab.tsx.
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Shield,
+  GraduationCap,
+  UserCheck,
+  Lock,
+  User: UserIcon,
+  Users,
+  BookOpen,
+  FlaskConical,
+}
+const getIcon = (iconName: string) => ICON_MAP[iconName] || Shield
+
+const SLUG_REGEX = /^[a-z][a-z0-9_]*$/
 
 export const RolesTab: React.FC = () => {
+  const [roles, setRoles] = useState<RoleRow[]>([])
+  const [rolesLoading, setRolesLoading] = useState(true)
   const [permissions, setPermissions] = useState<RolePermission[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editingRole, setEditingRole] = useState<RoleRow | null>(null)
+
+  // Create-role modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [newKey, setNewKey] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+  const [newShortLabel, setNewShortLabel] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newIconName, setNewIconName] = useState<string>(ICON_KEYS[0])
+  const [newColorKey, setNewColorKey] = useState<string>(COLOR_KEYS[0])
+  const [createError, setCreateError] = useState('')
+  const [createLoading, setCreateLoading] = useState(false)
+
+  const fetchRoles = async () => {
+    setRolesLoading(true)
+    try {
+      const { data, error } = await supabase.from('roles').select('*').order('sort_order')
+      if (error) throw error
+      setRoles(
+        (data || []).map((r: any) => ({
+          key: r.key,
+          label: r.label,
+          short_label: r.short_label,
+          desc: r.description,
+          icon_name: r.icon_name,
+          color_key: r.color_key,
+          isLocked: r.is_locked,
+        }))
+      )
+    } catch (err) {
+      console.error('Error fetching roles:', err)
+    } finally {
+      setRolesLoading(false)
+    }
+  }
 
   const fetchPermissions = async () => {
     setLoading(true)
@@ -109,6 +129,7 @@ export const RolesTab: React.FC = () => {
   }
 
   useEffect(() => {
+    fetchRoles()
     fetchPermissions()
   }, [])
 
@@ -138,12 +159,107 @@ export const RolesTab: React.FC = () => {
     return perm ? perm.can_view : true
   }
 
-  const filteredRoles = ROLES.filter(
+  const filteredRoles = roles.filter(
     (r) =>
       !search.trim() ||
       r.label.toLowerCase().includes(search.toLowerCase()) ||
       r.desc.toLowerCase().includes(search.toLowerCase())
   )
+
+  const resetCreateForm = () => {
+    setNewKey('')
+    setNewLabel('')
+    setNewShortLabel('')
+    setNewDesc('')
+    setNewIconName(ICON_KEYS[0])
+    setNewColorKey(COLOR_KEYS[0])
+    setCreateError('')
+  }
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateError('')
+
+    const trimmedKey = newKey.trim().toLowerCase()
+    const trimmedLabel = newLabel.trim()
+    const trimmedShortLabel = newShortLabel.trim()
+
+    if (!trimmedKey || !SLUG_REGEX.test(trimmedKey)) {
+      setCreateError('รหัสสิทธิ์ต้องเป็นตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข หรือ _ เท่านั้น และต้องขึ้นต้นด้วยตัวอักษร')
+      return
+    }
+    if (!trimmedLabel) {
+      setCreateError('กรุณาระบุชื่อสิทธิ์ (label)')
+      return
+    }
+    if (!trimmedShortLabel) {
+      setCreateError('กรุณาระบุชื่อย่อสิทธิ์ (short label)')
+      return
+    }
+    if (roles.some((r) => r.key === trimmedKey)) {
+      setCreateError('ระดับสิทธิ์นี้มีอยู่แล้ว')
+      return
+    }
+
+    setCreateLoading(true)
+    try {
+      const nextSortOrder = roles.length > 0 ? Math.max(...roles.map((_, i) => i)) + 2 : 1
+
+      const { error: roleError } = await supabase.from('roles').insert({
+        key: trimmedKey,
+        label: trimmedLabel,
+        short_label: trimmedShortLabel,
+        description: newDesc.trim(),
+        icon_name: newIconName,
+        color_key: newColorKey,
+        is_locked: false,
+        sort_order: nextSortOrder,
+      })
+
+      if (roleError) {
+        // Postgres PK violation -> friendly duplicate message instead of raw error dump
+        if ((roleError as any).code === '23505') {
+          setCreateError('ระดับสิทธิ์นี้มีอยู่แล้ว')
+        } else {
+          setCreateError(roleError.message || 'เกิดข้อผิดพลาดในการสร้างระดับสิทธิ์')
+        }
+        setCreateLoading(false)
+        return
+      }
+
+      // Security-critical: auto-seed one deny-all (can_view: false) row per
+      // existing page_key for the new role in the SAME submit flow. Given the
+      // any-role-allows semantics in isPageAllowedForUser (absence of a
+      // record = allowed), a role with zero permission rows would grant full
+      // access by omission the moment it's assigned to a user. Deny-all here
+      // makes the unsafe state require an explicit, auditable admin opt-in
+      // per page instead of being the silent default. See plan section 2d.
+      const denyAllRows = pages.map((p) => ({ role: trimmedKey, page_key: p.key, can_view: false }))
+      const { error: permError } = await supabase.from('role_permissions').insert(denyAllRows)
+
+      if (permError) {
+        // Role now exists with no permission rows — surface this clearly so
+        // the admin knows to open "จัดการสิทธิ์เข้าถึง" and the seeding will
+        // self-heal there (handleToggle upserts missing rows on demand).
+        setCreateError(
+          `สร้างระดับสิทธิ์ "${trimmedLabel}" สำเร็จ แต่การตั้งค่าสิทธิ์เริ่มต้น (ปิดทุกหน้า) ล้มเหลว: ${permError.message}. กรุณาเปิด "แก้ไขสิทธิ์" เพื่อตรวจสอบสิทธิ์ของระดับนี้ด้วยตนเอง`
+        )
+        setCreateLoading(false)
+        await fetchRoles()
+        await fetchPermissions()
+        return
+      }
+
+      setIsCreateModalOpen(false)
+      resetCreateForm()
+      await fetchRoles()
+      await fetchPermissions()
+    } catch (err: any) {
+      setCreateError(err?.message || 'เกิดข้อผิดพลาดในการสร้างระดับสิทธิ์')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
 
   const columns: DataTableColumn<RoleRow>[] = [
     {
@@ -191,13 +307,21 @@ export const RolesTab: React.FC = () => {
       <MasterDataTable
         badge="ระดับสิทธิ์"
         title="ระดับสิทธิ์การใช้งานและการเข้าถึง"
+        actionButton={{
+          label: 'เพิ่มสิทธิ์ใหม่',
+          onClick: () => {
+            resetCreateForm()
+            setIsCreateModalOpen(true)
+          },
+          icon: <Plus className="w-4 h-4" />,
+        }}
         searchPlaceholder="ค้นหาระดับสิทธิ์..."
         searchValue={search}
         onSearchChange={setSearch}
         columns={columns}
         data={filteredRoles}
         getRowKey={(r) => r.key}
-        loading={loading}
+        loading={loading || rolesLoading}
         loadingLabel="กำลังโหลดการตั้งค่าสิทธิ์..."
         empty={{
           icon: <Shield className="w-9 h-9 stroke-[1.5]" />,
@@ -212,8 +336,12 @@ export const RolesTab: React.FC = () => {
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-5 max-h-[90vh]">
               {/* Modal Header */}
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${editingRole.colorClass}`}>
-                  {editingRole.icon}
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                    COLOR_MAP[editingRole.color_key]?.bgClass || COLOR_MAP.slate.bgClass
+                  }`}
+                >
+                  {React.createElement(getIcon(editingRole.icon_name), { className: 'w-4 h-4' })}
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-800">จัดการสิทธิ์เข้าถึง</h3>
@@ -267,6 +395,162 @@ export const RolesTab: React.FC = () => {
                   เสร็จสิ้น
                 </button>
               </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Create Role Modal */}
+      {isCreateModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800">เพิ่มระดับสิทธิ์ใหม่</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    ระดับสิทธิ์ใหม่จะเริ่มต้นด้วยการปิดการเข้าถึงทุกหน้า ต้องเปิดสิทธิ์รายหน้าเองภายหลัง
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {createError && (
+                <div className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  {createError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                    รหัสสิทธิ์ (slug) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="เช่น lab_coordinator"
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">ตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข หรือ _ เท่านั้น ขึ้นต้นด้วยตัวอักษร</p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                    ชื่อเต็ม (label) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="เช่น ผู้ประสานงานห้องปฏิบัติการ (Lab Coordinator)"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                    ชื่อย่อ (short label) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="เช่น ผู้ประสานงาน"
+                    value={newShortLabel}
+                    onChange={(e) => setNewShortLabel(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                    คำอธิบาย
+                  </label>
+                  <textarea
+                    placeholder="คำอธิบายสิทธิ์นี้ (แสดงในตารางระดับสิทธิ์)"
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    rows={2}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1.5">
+                    ไอคอน
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {ICON_KEYS.map((iconKey) => {
+                      const IconComp = getIcon(iconKey)
+                      const selected = newIconName === iconKey
+                      return (
+                        <button
+                          key={iconKey}
+                          type="button"
+                          onClick={() => setNewIconName(iconKey)}
+                          className={`flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer ${
+                            selected
+                              ? 'border-[#0EA5A0] bg-[#0EA5A0]/10 text-[#0EA5A0]'
+                              : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                          title={iconKey}
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1.5">
+                    สี
+                  </label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {COLOR_KEYS.map((colorKey) => {
+                      const selected = newColorKey === colorKey
+                      const colors = COLOR_MAP[colorKey]
+                      return (
+                        <button
+                          key={colorKey}
+                          type="button"
+                          onClick={() => setNewColorKey(colorKey)}
+                          className={`h-8 rounded-xl border-2 transition-all cursor-pointer ${colors.bgClass} ${
+                            selected ? 'ring-2 ring-offset-1 ring-[#0EA5A0] border-[#0EA5A0]' : 'border-transparent'
+                          }`}
+                          title={colorKey}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createLoading}
+                    className="btn-primary text-xs !py-2 !px-4 h-auto cursor-pointer disabled:opacity-50"
+                  >
+                    {createLoading ? 'กำลังสร้าง...' : 'สร้างระดับสิทธิ์'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>,
           document.body

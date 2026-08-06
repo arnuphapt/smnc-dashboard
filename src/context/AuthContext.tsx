@@ -8,7 +8,7 @@ import { User } from '@supabase/supabase-js'
 
 const supabase = createClient()
 
-import { RolePermission, isPageAllowedForUser, hasRole } from '@/utils/roleHelper'
+import { RolePermission, isPageAllowedForUser, hasRole, fetchRoleOptions } from '@/utils/roleHelper'
 
 /**
  * Canonical top-level page-key list, mirrored from Sidebar.tsx's rawNavItems
@@ -21,7 +21,7 @@ export interface Profile {
   id: string
   email: string
   full_name?: string
-  role: 'admin' | 'teacher' | 'expert' | string
+  role: string
   created_at: string
   is_temp_account?: boolean
   temp_expires_at?: string
@@ -87,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchPermissions()
+    // Populate the module-level ROLE_OPTIONS cache once app-wide, so
+    // formatUserRolesText() (used by Topbar.tsx, EthicsSubmissions.tsx) has
+    // real labels instead of falling back to raw uppercase role keys.
+    // Fetched here rather than per-component to avoid an N+1 fetch pattern.
+    fetchRoleOptions()
 
     // Realtime listener for role_permissions table updates
     const channel = supabase

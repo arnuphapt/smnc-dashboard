@@ -37,13 +37,26 @@ describe('userSchema', () => {
     }
   })
 
-  it('fails validation when role is invalid', () => {
+  it('fails validation when role is empty', () => {
     const invalidData = {
       email: 'user@smnc.ac.th',
       password: 'password123',
-      role: 'super_admin',
+      role: '',
     }
     const result = createUserSchema.safeParse(invalidData)
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('กรุณาเลือกสิทธิ์ผู้ใช้งาน')
+    }
+  })
+
+  it('passes validation for dynamically-created role keys not in the original 4 (roles are now runtime-fetched, not a closed enum)', () => {
+    const validData = {
+      email: 'user@smnc.ac.th',
+      password: 'password123',
+      role: 'lab_coordinator',
+    }
+    const result = createUserSchema.safeParse(validData)
+    expect(result.success).toBe(true)
   })
 })
