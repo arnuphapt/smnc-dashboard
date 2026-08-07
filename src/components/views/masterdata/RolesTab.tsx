@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/services/supabase'
-import { Shield, Lock, Check, X, GraduationCap, UserCheck, Edit2, Plus, User as UserIcon, Users, BookOpen, FlaskConical } from 'lucide-react'
+import { Shield, Lock, Check, X, GraduationCap, UserCheck, Edit2, Plus, User as UserIcon, Users, BookOpen, FlaskConical, Trash2 } from 'lucide-react'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { DataTableColumn } from '@/components/DataTable'
 import { ICON_KEYS, COLOR_KEYS, COLOR_MAP } from '@/utils/roleHelper'
@@ -29,36 +29,34 @@ interface PageItem {
   key: string
   label: string
   isSub?: boolean
+  parentKey?: string
 }
 
 const pages: PageItem[] = [
   { key: 'dashboard', label: 'สรุปภาพรวม (Dashboard)' },
 
   { key: 'repositories', label: 'คลังผลงานปัญญา 5 ด้าน' },
-  { key: 'repositories_research', label: '↳ คลังผลงานวิจัย', isSub: true },
-  { key: 'repositories_innovation', label: '↳ คลังนวัตกรรม', isSub: true },
-  { key: 'repositories_intellectual_property', label: '↳ คลังทรัพย์สินทางปัญญา', isSub: true },
-  { key: 'repositories_award', label: '↳ คลังรางวัลและความสำเร็จ', isSub: true },
-  { key: 'repositories_utilization', label: '↳ การนำไปใช้ประโยชน์', isSub: true },
+  { key: 'repositories_research', label: '↳ คลังผลงานวิจัย', isSub: true, parentKey: 'repositories' },
+  { key: 'repositories_innovation', label: '↳ คลังนวัตกรรม', isSub: true, parentKey: 'repositories' },
+  { key: 'repositories_intellectual_property', label: '↳ คลังทรัพย์สินทางปัญญา', isSub: true, parentKey: 'repositories' },
+  { key: 'repositories_award', label: '↳ คลังรางวัลและความสำเร็จ', isSub: true, parentKey: 'repositories' },
+  { key: 'repositories_utilization', label: '↳ การนำไปใช้ประโยชน์', isSub: true, parentKey: 'repositories' },
 
   { key: 'clinic', label: 'บริการคลินิกวิจัย' },
-  { key: 'clinic_request', label: '↳ ขอรับคำปรึกษา', isSub: true },
-  { key: 'clinic_appointments', label: '↳ รวมคำขอจองนัดหมาย', isSub: true },
+  { key: 'clinic_request', label: '↳ ขอรับคำปรึกษา', isSub: true, parentKey: 'clinic' },
+  { key: 'clinic_appointments', label: '↳ รวมคำขอจองนัดหมาย', isSub: true, parentKey: 'clinic' },
 
   { key: 'ethics', label: 'บริการจริยธรรมการวิจัย' },
-  { key: 'ethics_submit', label: '↳ ยื่นโครงร่างวิจัย (IRB)', isSub: true },
-  { key: 'ethics_submissions', label: '↳ รวมคำขอยื่นจริยธรรม', isSub: true },
+  { key: 'ethics_submit', label: '↳ ยื่นโครงร่างวิจัย (IRB)', isSub: true, parentKey: 'ethics' },
+  { key: 'ethics_submissions', label: '↳ รวมคำขอยื่นจริยธรรม', isSub: true, parentKey: 'ethics' },
 
   { key: 'ip_application', label: 'บริการทรัพย์สินทางปัญญา' },
-  { key: 'ip_application_submit', label: '↳ ยื่นขอขึ้นทะเบียน IP', isSub: true },
-  { key: 'ip_application_list', label: '↳ รวมคำขอยื่น IP', isSub: true },
+  { key: 'ip_application_submit', label: '↳ ยื่นขอขึ้นทะเบียน IP', isSub: true, parentKey: 'ip_application' },
+  { key: 'ip_application_list', label: '↳ รวมคำขอยื่น IP', isSub: true, parentKey: 'ip_application' },
 
   { key: 'masterdata', label: 'ระบบหลังบ้าน (Masterdata)' },
 ]
 
-// Lookup from icon_name (fixed palette, see roleHelper.ts ICON_KEYS) to the
-// actual lucide component. Lives here (UI layer) to keep roleHelper.ts free
-// of JSX, mirroring the same pattern used in UsersTab.tsx.
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Shield,
   GraduationCap,
@@ -87,10 +85,35 @@ export const RolesTab: React.FC = () => {
   const [newLabel, setNewLabel] = useState('')
   const [newShortLabel, setNewShortLabel] = useState('')
   const [newDesc, setNewDesc] = useState('')
-  const [newIconName, setNewIconName] = useState<string>(ICON_KEYS[0])
-  const [newColorKey, setNewColorKey] = useState<string>(COLOR_KEYS[0])
   const [createError, setCreateError] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
+
+  // Edit-role draft modal state
+  const [editTab, setEditTab] = useState<'permissions' | 'details'>('permissions')
+  const [editLabel, setEditLabel] = useState('')
+  const [editShortLabel, setEditShortLabel] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [draftPermissions, setDraftPermissions] = useState<Record<string, boolean>>({})
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  useEffect(() => {
+    if (editingRole) {
+      setEditLabel(editingRole.label)
+      setEditShortLabel(editingRole.short_label)
+      setEditDesc(editingRole.desc || '')
+      setEditError('')
+      setEditTab('permissions')
+
+      // Populate draftPermissions for editingRole.key
+      const initialDraft: Record<string, boolean> = {}
+      pages.forEach((p) => {
+        const permRow = permissions.find((pr) => pr.role === editingRole.key && pr.page_key === p.key)
+        initialDraft[p.key] = permRow ? permRow.can_view : true
+      })
+      setDraftPermissions(initialDraft)
+    }
+  }, [editingRole, permissions])
 
   const fetchRoles = async () => {
     setRolesLoading(true)
@@ -133,30 +156,119 @@ export const RolesTab: React.FC = () => {
     fetchPermissions()
   }, [])
 
-  const handleToggle = async (role: string, pageKey: string, currentVal: boolean) => {
-    if (role === 'admin') return
+  const isDraftAllowed = (pageKey: string) => {
+    return draftPermissions[pageKey] !== false
+  }
+
+  const handleDraftToggle = (pageKey: string) => {
+    if (!editingRole || editingRole.key === 'admin') return
+    const currentVal = isDraftAllowed(pageKey)
     const newVal = !currentVal
-    setPermissions((prev) => {
-      const exists = prev.some((p) => p.role === role && p.page_key === pageKey)
-      if (exists) {
-        return prev.map((p) => (p.role === role && p.page_key === pageKey ? { ...p, can_view: newVal } : p))
+
+    const childPages = pages.filter((p) => p.parentKey === pageKey)
+    let keysToUpdate: string[] = []
+
+    if (childPages.length > 0) {
+      // Main menu toggled -> bulk toggle parent AND all sub-menu items together locally
+      keysToUpdate = [pageKey, ...childPages.map((c) => c.key)]
+    } else {
+      keysToUpdate = [pageKey]
+      const clickedPage = pages.find((p) => p.key === pageKey)
+      if (clickedPage?.parentKey) {
+        const parentKey = clickedPage.parentKey
+        const siblings = pages.filter((p) => p.parentKey === parentKey)
+        const allSiblingsEnabled = siblings.every((s) => (s.key === pageKey ? newVal : isDraftAllowed(s.key)))
+        const allSiblingsDisabled = siblings.every((s) => (s.key === pageKey ? newVal : isDraftAllowed(s.key)) === false)
+
+        if (allSiblingsEnabled && !isDraftAllowed(parentKey)) {
+          keysToUpdate.push(parentKey)
+        } else if (allSiblingsDisabled && isDraftAllowed(parentKey)) {
+          keysToUpdate.push(parentKey)
+        }
       }
-      return [...prev, { id: `${role}-${pageKey}`, role, page_key: pageKey, can_view: newVal }]
+    }
+
+    setDraftPermissions((prev) => {
+      const next = { ...prev }
+      keysToUpdate.forEach((k) => {
+        next[k] = newVal
+      })
+      return next
     })
+  }
+
+  const handleSaveEditRole = async () => {
+    if (!editingRole) return
+    if (!editLabel.trim()) {
+      setEditError('กรุณาระบุชื่อสิทธิ์ (label)')
+      return
+    }
+    if (!editShortLabel.trim()) {
+      setEditError('กรุณาระบุชื่อย่อสิทธิ์ (short label)')
+      return
+    }
+
+    setSaveLoading(true)
+    setEditError('')
     try {
-      const { error } = await supabase
+      // 1. Update role metadata
+      const resRole = await fetch('/api/admin/roles', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: editingRole.key,
+          label: editLabel.trim(),
+          short_label: editShortLabel.trim(),
+          description: editDesc.trim(),
+          icon_name: editingRole.icon_name || 'Shield',
+          color_key: editingRole.color_key || 'slate',
+        }),
+      })
+
+      const roleData = await resRole.json()
+      if (!resRole.ok) throw new Error(roleData.error || 'เกิดข้อผิดพลาดในการแก้ไขระดับสิทธิ์')
+
+      // 2. Save all draft permissions for editingRole.key
+      const upsertRows = pages.map((p) => ({
+        role: editingRole.key,
+        page_key: p.key,
+        can_view: draftPermissions[p.key] !== false,
+      }))
+
+      const { error: permError } = await supabase
         .from('role_permissions')
-        .upsert({ role, page_key: pageKey, can_view: newVal }, { onConflict: 'role,page_key' })
-      if (error) throw error
+        .upsert(upsertRows, { onConflict: 'role,page_key' })
+
+      if (permError) throw permError
+
+      await fetchRoles()
+      await fetchPermissions()
+      setEditingRole(null)
     } catch (err: any) {
-      console.error('Error updating permission:', err?.message || err)
-      fetchPermissions()
+      setEditError(err?.message || 'ไม่สามารถบันทึกข้อมูลระดับสิทธิ์ได้')
+    } finally {
+      setSaveLoading(false)
     }
   }
 
-  const isAllowed = (role: string, pageKey: string) => {
-    const perm = permissions.find((p) => p.role === role && p.page_key === pageKey)
-    return perm ? perm.can_view : true
+  const handleDeleteRole = async (roleKey: string) => {
+    if (['admin', 'teacher', 'expert', 'assistant_admin'].includes(roleKey)) {
+      alert('ไม่สามารถลบระดับสิทธิ์เริ่มต้นของระบบได้')
+      return
+    }
+    if (!confirm(`คุณต้องการลบระดับสิทธิ์ "${roleKey}" ใช่หรือไม่?`)) return
+    try {
+      const res = await fetch(`/api/admin/roles?key=${roleKey}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาดในการลบระดับสิทธิ์')
+      setEditingRole(null)
+      await fetchRoles()
+      await fetchPermissions()
+    } catch (err: any) {
+      alert(err.message || 'ไม่สามารถลบระดับสิทธิ์ได้')
+    }
   }
 
   const filteredRoles = roles.filter(
@@ -171,8 +283,6 @@ export const RolesTab: React.FC = () => {
     setNewLabel('')
     setNewShortLabel('')
     setNewDesc('')
-    setNewIconName(ICON_KEYS[0])
-    setNewColorKey(COLOR_KEYS[0])
     setCreateError('')
   }
 
@@ -205,48 +315,25 @@ export const RolesTab: React.FC = () => {
     try {
       const nextSortOrder = roles.length > 0 ? Math.max(...roles.map((_, i) => i)) + 2 : 1
 
-      const { error: roleError } = await supabase.from('roles').insert({
-        key: trimmedKey,
-        label: trimmedLabel,
-        short_label: trimmedShortLabel,
-        description: newDesc.trim(),
-        icon_name: newIconName,
-        color_key: newColorKey,
-        is_locked: false,
-        sort_order: nextSortOrder,
+      const res = await fetch('/api/admin/roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: trimmedKey,
+          label: trimmedLabel,
+          short_label: trimmedShortLabel,
+          description: newDesc.trim(),
+          icon_name: 'Shield',
+          color_key: 'teal',
+          sort_order: nextSortOrder,
+        }),
       })
 
-      if (roleError) {
-        // Postgres PK violation -> friendly duplicate message instead of raw error dump
-        if ((roleError as any).code === '23505') {
-          setCreateError('ระดับสิทธิ์นี้มีอยู่แล้ว')
-        } else {
-          setCreateError(roleError.message || 'เกิดข้อผิดพลาดในการสร้างระดับสิทธิ์')
-        }
-        setCreateLoading(false)
-        return
-      }
+      const data = await res.json()
 
-      // Security-critical: auto-seed one deny-all (can_view: false) row per
-      // existing page_key for the new role in the SAME submit flow. Given the
-      // any-role-allows semantics in isPageAllowedForUser (absence of a
-      // record = allowed), a role with zero permission rows would grant full
-      // access by omission the moment it's assigned to a user. Deny-all here
-      // makes the unsafe state require an explicit, auditable admin opt-in
-      // per page instead of being the silent default. See plan section 2d.
-      const denyAllRows = pages.map((p) => ({ role: trimmedKey, page_key: p.key, can_view: false }))
-      const { error: permError } = await supabase.from('role_permissions').insert(denyAllRows)
-
-      if (permError) {
-        // Role now exists with no permission rows — surface this clearly so
-        // the admin knows to open "จัดการสิทธิ์เข้าถึง" and the seeding will
-        // self-heal there (handleToggle upserts missing rows on demand).
-        setCreateError(
-          `สร้างระดับสิทธิ์ "${trimmedLabel}" สำเร็จ แต่การตั้งค่าสิทธิ์เริ่มต้น (ปิดทุกหน้า) ล้มเหลว: ${permError.message}. กรุณาเปิด "แก้ไขสิทธิ์" เพื่อตรวจสอบสิทธิ์ของระดับนี้ด้วยตนเอง`
-        )
+      if (!res.ok) {
+        setCreateError(data.error || 'เกิดข้อผิดพลาดในการสร้างระดับสิทธิ์')
         setCreateLoading(false)
-        await fetchRoles()
-        await fetchPermissions()
         return
       }
 
@@ -333,67 +420,195 @@ export const RolesTab: React.FC = () => {
       {editingRole &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-5 max-h-[90vh]">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 flex flex-col gap-4 max-h-[85vh] overflow-hidden">
               {/* Modal Header */}
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
-                    COLOR_MAP[editingRole.color_key]?.bgClass || COLOR_MAP.slate.bgClass
-                  }`}
-                >
-                  {React.createElement(getIcon(editingRole.icon_name), { className: 'w-4 h-4' })}
+              <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                      COLOR_MAP[editingRole.color_key]?.bgClass || COLOR_MAP.slate.bgClass
+                    }`}
+                  >
+                    {React.createElement(getIcon(editingRole.icon_name), { className: 'w-4 h-4' })}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">จัดการสิทธิ์เข้าถึง / แก้ไขระดับสิทธิ์</h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{editingRole.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800">จัดการสิทธิ์เข้าถึง</h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{editingRole.label}</p>
-                </div>
-              </div>
-
-              {/* Page toggles */}
-              <div className="space-y-2 flex-1 min-h-0 flex flex-col">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0]">
-                  หน้าที่สามารถเข้าถึงได้
-                </label>
-                <div className="flex flex-col gap-2 overflow-y-auto pr-1.5 max-h-[55vh]">
-                  {pages.map((page) => {
-                    const active = isAllowed(editingRole.key, page.key)
-                    return (
-                      <button
-                        key={page.key}
-                        type="button"
-                        onClick={() => handleToggle(editingRole.key, page.key, active)}
-                        className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold text-left transition-all duration-150 cursor-pointer w-full ${
-                          page.isSub ? 'ml-4 w-[calc(100%-1rem)] bg-slate-50/70 text-[11px]' : ''
-                        } ${
-                          active
-                            ? 'border-[#0EA5A0] bg-[#0EA5A0]/8 text-[#0EA5A0]'
-                            : 'border-slate-200 text-slate-400 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className={active ? 'text-slate-700 font-extrabold' : 'text-slate-400'}>{page.label}</span>
-                        <span
-                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                            active ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-50 text-rose-400'
-                          }`}
-                        >
-                          {active ? <Check className="w-3 h-3 stroke-[3]" /> : <X className="w-3 h-3 stroke-[3]" />}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingRole(null)}
-                  className="px-5 py-2 rounded-xl text-xs font-bold cursor-pointer transition text-white"
-                  style={{ background: 'linear-gradient(135deg, #0B1D3A 0%, #1A3A5C 100%)' }}
+                  className="text-slate-400 hover:text-slate-600 transition cursor-pointer"
                 >
-                  เสร็จสิ้น
+                  <X className="w-4 h-4" />
                 </button>
+              </div>
+
+              {/* Modal Tab Switcher */}
+              <div className="flex border-b border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditTab('permissions')}
+                  className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+                    editTab === 'permissions'
+                      ? 'border-[#0EA5A0] text-[#0EA5A0]'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  สิทธิ์การเข้าถึงหน้า
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditTab('details')}
+                  className={`pb-2.5 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+                    editTab === 'details'
+                      ? 'border-[#0EA5A0] text-[#0EA5A0]'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  รายละเอียดระดับสิทธิ์
+                </button>
+              </div>
+
+              {/* Scrollable Tab Content Area */}
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+                {editError && (
+                  <div className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                    {editError}
+                  </div>
+                )}
+
+                {/* Tab 1: Permissions */}
+                {editTab === 'permissions' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0]">
+                        หน้าที่สามารถเข้าถึงได้ (คลิกเมนูหลักเพื่อเปิด/ปิดพร้อมเมนูย่อย)
+                      </label>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {pages.map((page) => {
+                        const active = isDraftAllowed(page.key)
+                        return (
+                          <button
+                            key={page.key}
+                            type="button"
+                            onClick={() => handleDraftToggle(page.key)}
+                            className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold text-left transition-all duration-150 cursor-pointer w-full ${
+                              page.isSub ? 'ml-4 w-[calc(100%-1rem)] bg-slate-50/70 text-[11px]' : ''
+                            } ${
+                              active
+                                ? 'border-[#0EA5A0] bg-[#0EA5A0]/8 text-[#0EA5A0]'
+                                : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className={active ? 'text-slate-700 font-extrabold' : 'text-slate-400'}>{page.label}</span>
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                                active ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-50 text-rose-400'
+                              }`}
+                            >
+                              {active ? <Check className="w-3 h-3 stroke-[3]" /> : <X className="w-3 h-3 stroke-[3]" />}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Details */}
+                {editTab === 'details' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                        รหัสสิทธิ์ (slug)
+                      </label>
+                      <input
+                        type="text"
+                        disabled
+                        value={editingRole.key}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-mono cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                        ชื่อเต็ม (label) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editLabel}
+                        onChange={(e) => setEditLabel(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                        ชื่อย่อ (short label) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editShortLabel}
+                        onChange={(e) => setEditShortLabel(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1">
+                        คำอธิบาย
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer with Unified Action Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 shrink-0">
+                <div>
+                  {!['admin', 'teacher', 'expert', 'assistant_admin'].includes(editingRole.key) ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRole(editingRole.key)}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      ลบสิทธิ์
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingRole(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEditRole}
+                    disabled={saveLoading}
+                    className="px-5 py-2 rounded-xl text-xs font-bold text-white transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, #0EA5A0 0%, #00796B 100%)' }}
+                  >
+                    {saveLoading ? 'กำลังบันทึก...' : 'บันทึก'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>,
@@ -476,76 +691,27 @@ export const RolesTab: React.FC = () => {
                     คำอธิบาย
                   </label>
                   <textarea
-                    placeholder="คำอธิบายสิทธิ์นี้ (แสดงในตารางระดับสิทธิ์)"
+                    rows={2}
+                    placeholder="คำอธิบายสิทธิ์และการใช้งาน..."
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    rows={2}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] resize-none"
+                    className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0]"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1.5">
-                    ไอคอน
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {ICON_KEYS.map((iconKey) => {
-                      const IconComp = getIcon(iconKey)
-                      const selected = newIconName === iconKey
-                      return (
-                        <button
-                          key={iconKey}
-                          type="button"
-                          onClick={() => setNewIconName(iconKey)}
-                          className={`flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer ${
-                            selected
-                              ? 'border-[#0EA5A0] bg-[#0EA5A0]/10 text-[#0EA5A0]'
-                              : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                          title={iconKey}
-                        >
-                          <IconComp className="w-4 h-4" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] mb-1.5">
-                    สี
-                  </label>
-                  <div className="grid grid-cols-6 gap-2">
-                    {COLOR_KEYS.map((colorKey) => {
-                      const selected = newColorKey === colorKey
-                      const colors = COLOR_MAP[colorKey]
-                      return (
-                        <button
-                          key={colorKey}
-                          type="button"
-                          onClick={() => setNewColorKey(colorKey)}
-                          className={`h-8 rounded-xl border-2 transition-all cursor-pointer ${colors.bgClass} ${
-                            selected ? 'ring-2 ring-offset-1 ring-[#0EA5A0] border-[#0EA5A0]' : 'border-transparent'
-                          }`}
-                          title={colorKey}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
+                <div className="pt-2 flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                   >
                     ยกเลิก
                   </button>
                   <button
                     type="submit"
                     disabled={createLoading}
-                    className="btn-primary text-xs !py-2 !px-4 h-auto cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition cursor-pointer disabled:opacity-50"
+                    style={{ background: 'linear-gradient(135deg, #0EA5A0 0%, #00796B 100%)' }}
                   >
                     {createLoading ? 'กำลังสร้าง...' : 'สร้างระดับสิทธิ์'}
                   </button>

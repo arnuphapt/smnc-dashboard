@@ -204,6 +204,14 @@ export const EthicsSubmissions: React.FC = () => {
     risk: 'pass',
     benefit: 'pass',
   })
+  const [revisionDetails, setRevisionDetails] = useState<Record<string, string>>({
+    obj: '',
+    method: '',
+    privacy: '',
+    consent: '',
+    risk: '',
+    benefit: '',
+  })
 
   const handleAssignReviewer = async (subId: string, reviewerId: string | null, reviewerId2: string | null) => {
     if (reviewerId && reviewerId2 && reviewerId === reviewerId2) {
@@ -577,6 +585,7 @@ export const EthicsSubmissions: React.FC = () => {
     setReviewStatus(ownEvaluation && validStatuses.includes(ownEvaluation.status) ? ownEvaluation.status : 'อนุมัติ')
     const parsed = parseReviewerNotes(sub.reviewer_notes || '')
     setScores(parsed.scores)
+    setRevisionDetails(parsed.revisionDetails || { obj: '', method: '', privacy: '', consent: '', risk: '', benefit: '' })
     setRiskLevel(parsed.riskLevel)
     setProgressReportInterval(parsed.progressReportInterval)
 
@@ -1231,10 +1240,9 @@ export const EthicsSubmissions: React.FC = () => {
                           : EVALUATION_CRITERIA
 
                         return activeCriteria.map((criterion) => (
-
-                          <div key={criterion.key} className="space-y-1">
-                            <div className="text-[10px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
-                            <div className="grid grid-cols-3 gap-1.5 bg-white p-1.5 rounded-xl border border-[#E2E8F0]">
+                          <div key={criterion.key} className="space-y-1.5 bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                            <div className="text-[11px] font-extrabold text-[#0F172A] leading-snug">{criterion.label}</div>
+                            <div className="grid grid-cols-2 gap-2">
                               {[
                                 {
                                   val: 'pass',
@@ -1244,20 +1252,14 @@ export const EthicsSubmissions: React.FC = () => {
                                 },
                                 {
                                   val: 'fail',
-                                  label: 'ต้องแก้ไข',
+                                  label: 'แก้ไข',
                                   active: 'bg-[#D97706] text-white border-[#D97706] shadow-xs',
                                   inactive: 'bg-white text-[#D97706] border-slate-200 hover:bg-amber-50 hover:border-amber-300'
-                                },
-                                {
-                                  val: 'na',
-                                  label: 'N/A',
-                                  active: 'bg-[#64748B] text-white border-[#64748B] shadow-xs',
-                                  inactive: 'bg-white text-[#64748B] border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                                 }
                               ].map((opt) => {
-                                const isSelected = scores[criterion.key] === opt.val
+                                const isSelected = scores[criterion.key] === opt.val || (opt.val === 'fail' && scores[criterion.key] === 'na')
                                 return (
-                                  <label key={opt.val} className="cursor-pointer text-[10px] font-black text-center">
+                                  <label key={opt.val} className="cursor-pointer text-xs font-black text-center">
                                     <input
                                       type="radio"
                                       name={`expert-score-${criterion.key}`}
@@ -1272,6 +1274,17 @@ export const EthicsSubmissions: React.FC = () => {
                                   </label>
                                 )
                               })}
+                            </div>
+
+                            <div className="pt-1">
+                              <label className="block text-[10px] font-extrabold text-slate-500 mb-1">รายละเอียดการแก้ไข</label>
+                              <input
+                                type="text"
+                                placeholder="ระบุรายละเอียดการแก้ไขสำหรับข้อนี้ (ถ้ามี)..."
+                                value={revisionDetails[criterion.key] || ''}
+                                onChange={(e) => setRevisionDetails((prev) => ({ ...prev, [criterion.key]: e.target.value }))}
+                                className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                              />
                             </div>
                           </div>
                         ))
@@ -1329,51 +1342,14 @@ export const EthicsSubmissions: React.FC = () => {
                     <label className="block text-xs font-black text-[#0F172A]">ขั้นตอนที่ 3: สรุปผลการประเมินและข้อเสนอแนะ</label>
 
                     <div>
-                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ประเมินในนาม (เพื่อสถิติการแสดงผลรายงาน)</label>
-                      <Select
-                        value={reviewerRoleLabel}
-                        onValueChange={(v) => setReviewerRoleLabel(v ?? '')}
-                        items={
-                          expertProfiles.length > 0
-                            ? expertProfiles.map((p) => ({
-                                value: p.email,
-                                label: `${p.email} (${formatUserRolesText(p.role)})`
-                              }))
-                            : [
-                                { value: 'ผู้ทรงคุณวุฒิท่านที่ 1', label: 'ผู้ทรงคุณวุฒิท่านที่ 1' },
-                                { value: 'ผู้ทรงคุณวุฒิท่านที่ 2', label: 'ผู้ทรงคุณวุฒิท่านที่ 2' },
-                              ]
-                        }
-                      >
-                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                          {expertProfiles.length > 0 ? (
-                            expertProfiles.map((p) => (
-                              <SelectItem key={p.id} value={p.email}>
-                                {p.email} ({formatUserRolesText(p.role)})
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 1">ผู้ทรงคุณวุฒิท่านที่ 1</SelectItem>
-                              <SelectItem value="ผู้ทรงคุณวุฒิท่านที่ 2">ผู้ทรงคุณวุฒิท่านที่ 2</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
                       <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">สถานะผลประเมิน *</label>
                       <Select
                         value={reviewStatus}
                         onValueChange={(v) => setReviewStatus(v ?? 'อนุมัติ')}
                         items={[
                           { value: 'อนุมัติ', label: 'เห็นชอบ' },
-                          { value: 'ไม่อนุมัติ', label: 'ไม่อนุมัติ' },
-                          { value: 'ส่งกลับแก้ไข', label: 'ส่งกลับแก้ไข' },
+                          { value: 'ไม่อนุมัติ', label: 'ไม่เห็นชอบ' },
+                          { value: 'ส่งกลับแก้ไข', label: 'ส่งแก้ไข' },
                         ]}
                       >
                         <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
@@ -1381,14 +1357,14 @@ export const EthicsSubmissions: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
                           <SelectItem value="อนุมัติ">เห็นชอบ</SelectItem>
-                          <SelectItem value="ไม่อนุมัติ">ไม่อนุมัติ</SelectItem>
-                          <SelectItem value="ส่งกลับแก้ไข">ส่งกลับแก้ไข</SelectItem>
+                          <SelectItem value="ไม่อนุมัติ">ไม่เห็นชอบ</SelectItem>
+                          <SelectItem value="ส่งกลับแก้ไข">ส่งแก้ไข</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ข้อแนะนำและคอมเมนต์เพิ่มเติม</label>
+                      <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">ข้อเสนอแนะเพิ่มเติม</label>
                       <Textarea
                         rows={3}
                         value={reviewNotes}
@@ -1401,7 +1377,7 @@ export const EthicsSubmissions: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">
-                        แนบเอกสารผลประเมิน / ใบรับรองเพิ่มเติม <span className="font-normal text-[#64748B]">(ถ้ามี)</span>
+                        เอกสารแนบอื่นๆ <span className="font-normal text-[#64748B]">(ถ้ามี)</span>
                       </label>
                       <Input
                         type="file"
@@ -1444,7 +1420,7 @@ export const EthicsSubmissions: React.FC = () => {
                     type="button"
                     onClick={() => {
                       const taggedNotes = reviewNotes
-                      const serialized = serializeReviewerNotes(scores, taggedNotes, riskLevel, progressReportInterval)
+                      const serialized = serializeReviewerNotes(scores, taggedNotes, riskLevel, progressReportInterval, revisionDetails)
                       handleSaveReview(selectedSubForReview.id, reviewStatus, serialized)
                       setReviewModalOpen(false)
                     }}

@@ -25,26 +25,71 @@ insert into roles (key, label, short_label, description, icon_name, color_key, i
   ('admin', 'ผู้ดูแลระบบ (Admin)', 'ผู้ดูแลระบบ', 'ผู้ดูแลระบบที่มีสิทธิ์สูงสุด สิทธิ์การเข้าถึงทุกหน้าถูกล็อกถาวร', 'Shield', 'red', true, 4)
 on conflict (key) do nothing;
 
+-- Ensure is_admin helper function exists in public schema
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1
+    from profiles
+    where id = auth.uid()
+      and (role = 'admin' or role like '%admin%' or role like 'admin,%' or role like '%, admin%')
+  );
+$$;
+
 alter table roles enable row level security;
 
 -- SELECT: public read — role labels/icons need to be readable app-wide to
 -- render badges/labels, matching role_permissions's existing public-read policy.
+drop policy if exists "Allow public read access to roles" on roles;
 create policy "Allow public read access to roles"
   on roles for select
   using (true);
 
--- INSERT/UPDATE/DELETE: gated by is_admin() (reuse existing SECURITY DEFINER
--- function). Role creation is a genuine privilege-boundary action — unlike
--- role_permissions today, this table must NOT be left world-writable.
+-- INSERT/UPDATE/DELETE: gated by is_admin() or direct profile check
+drop policy if exists "Allow admins to insert roles" on roles;
 create policy "Allow admins to insert roles"
   on roles for insert
-  with check (public.is_admin());
+  with check (
+    public.is_admin()
+    or exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and (profiles.role = 'admin' or profiles.role like '%admin%')
+    )
+  );
 
+drop policy if exists "Allow admins to update roles" on roles;
 create policy "Allow admins to update roles"
   on roles for update
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (
+    public.is_admin()
+    or exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and (profiles.role = 'admin' or profiles.role like '%admin%')
+    )
+  )
+  with check (
+    public.is_admin()
+    or exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and (profiles.role = 'admin' or profiles.role like '%admin%')
+    )
+  );
 
+drop policy if exists "Allow admins to delete roles" on roles;
 create policy "Allow admins to delete roles"
   on roles for delete
-  using (public.is_admin());
+  using (
+    public.is_admin()
+    or exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and (profiles.role = 'admin' or profiles.role like '%admin%')
+    )
+  );

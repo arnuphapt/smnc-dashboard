@@ -12,7 +12,7 @@ jest.mock('@/services/supabase', () => ({
   },
 }))
 
-import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef } from './roleHelper'
+import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef, isPageAllowedForUser } from './roleHelper'
 
 // Fixture matching the 4 roles seeded by the roles table migration
 // (supabase/migrations/20260806000000_add_roles_table.sql).
@@ -159,6 +159,41 @@ describe('roleHelper utils', () => {
 
     it('falls back to uppercase role name for unknown roles', () => {
       expect(formatUserRolesText('custom_role')).toBe('CUSTOM_ROLE')
+    })
+  })
+
+  describe('isPageAllowedForUser', () => {
+    const permissions = [
+      { role: 'expert', page_key: 'ethics_submit', can_view: false },
+      { role: 'expert', page_key: 'ethics_submissions', can_view: true },
+      { role: 'teacher', page_key: 'ethics_submit', can_view: true },
+    ]
+
+    it('returns true if user is null or undefined or empty', () => {
+      expect(isPageAllowedForUser(null, 'ethics_submit', permissions)).toBe(true)
+      expect(isPageAllowedForUser(undefined, 'ethics_submit', permissions)).toBe(true)
+      expect(isPageAllowedForUser('', 'ethics_submit', permissions)).toBe(true)
+    })
+
+    it('returns true if user is admin', () => {
+      expect(isPageAllowedForUser('admin', 'ethics_submit', permissions)).toBe(true)
+      expect(isPageAllowedForUser('admin, expert', 'ethics_submit', permissions)).toBe(true)
+    })
+
+    it('returns false if explicit record sets can_view to false', () => {
+      expect(isPageAllowedForUser('expert', 'ethics_submit', permissions)).toBe(false)
+    })
+
+    it('returns true if explicit record sets can_view to true', () => {
+      expect(isPageAllowedForUser('expert', 'ethics_submissions', permissions)).toBe(true)
+    })
+
+    it('returns true if no explicit record exists for user role', () => {
+      expect(isPageAllowedForUser('expert', 'unrecorded_page', permissions)).toBe(true)
+    })
+
+    it('returns true if any of multi-roles allows access', () => {
+      expect(isPageAllowedForUser('expert, teacher', 'ethics_submit', permissions)).toBe(true)
     })
   })
 })

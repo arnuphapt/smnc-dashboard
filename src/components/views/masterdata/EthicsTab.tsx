@@ -76,6 +76,14 @@ export const parseReviewerNotes = (notesText: string) => {
     risk: 'pass',
     benefit: 'pass',
   }
+  const revisionDetails: Record<string, string> = {
+    obj: '',
+    method: '',
+    privacy: '',
+    consent: '',
+    risk: '',
+    benefit: '',
+  }
   let riskLevel = '1'
   let progressReportInterval = '12'
   let comments = notesText
@@ -92,6 +100,15 @@ export const parseReviewerNotes = (notesText: string) => {
     comments = comments.replace(/\[progressReportInterval:(?:6|12)\]\s*/, '')
   }
 
+  const revMatch = comments.match(/\[revisionDetails:([^\]]+)\]/)
+  if (revMatch) {
+    try {
+      const decoded = JSON.parse(decodeURIComponent(revMatch[1]))
+      Object.assign(revisionDetails, decoded)
+    } catch {}
+    comments = comments.replace(/\[revisionDetails:[^\]]+\]\s*/, '')
+  }
+
   const match = comments.match(/\[obj:(pass|fail|na)\]\[method:(pass|fail|na)\]\[privacy:(pass|fail|na)\]\[consent:(pass|fail|na)\]\[risk:(pass|fail|na)\]\[benefit:(pass|fail|na)\]/)
   if (match) {
     scores.obj = match[1] as any
@@ -102,9 +119,9 @@ export const parseReviewerNotes = (notesText: string) => {
     scores.benefit = match[6] as any
     
     comments = comments.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
-    comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
+    comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/, '')
   }
-  return { scores, riskLevel, progressReportInterval, comments }
+  return { scores, revisionDetails, riskLevel, progressReportInterval, comments }
 }
 
 // Serialize checklist + comments to text format
@@ -112,31 +129,34 @@ export const serializeReviewerNotes = (
   scores: Record<string, 'pass' | 'fail' | 'na'>,
   comments: string,
   riskLevel: string = '1',
-  progressReportInterval: string = '12'
+  progressReportInterval: string = '12',
+  revisionDetails: Record<string, string> = {}
 ) => {
-  const structuredTag = `[riskLevel:${riskLevel}][progressReportInterval:${progressReportInterval}][obj:${scores.obj}][method:${scores.method}][privacy:${scores.privacy}][consent:${scores.consent}][risk:${scores.risk}][benefit:${scores.benefit}]\n`
+  const revJson = encodeURIComponent(JSON.stringify(revisionDetails))
+  const structuredTag = `[riskLevel:${riskLevel}][progressReportInterval:${progressReportInterval}][revisionDetails:${revJson}][obj:${scores.obj}][method:${scores.method}][privacy:${scores.privacy}][consent:${scores.consent}][risk:${scores.risk}][benefit:${scores.benefit}]\n`
   
   const translateScore = (s: 'pass' | 'fail' | 'na') => {
     if (s === 'pass') return 'ผ่าน'
-    if (s === 'fail') return 'ต้องแก้ไข'
-    return 'ไม่เกี่ยวข้อง'
+    return 'แก้ไข'
   }
 
   const riskLabel = RISK_LEVEL_OPTIONS.find(r => r.value === riskLevel)?.label || riskLevel
   const intervalLabel = REPORT_INTERVAL_OPTIONS.find(i => i.value === progressReportInterval)?.label || `${progressReportInterval} เดือน`
 
+  const getRevNote = (key: string) => (revisionDetails[key] ? ` (รายละเอียดการแก้ไข: ${revisionDetails[key]})` : '')
+
   const readableCriteria = [
     `ระดับความเสี่ยง: ${riskLabel}`,
     `ระยะเวลารายงานความก้าวหน้า: ${intervalLabel}`,
-    `1. วัตถุประสงค์และการออกแบบการวิจัย: [${translateScore(scores.obj)}]`,
-    `2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง: [${translateScore(scores.method)}]`,
-    `3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล: [${translateScore(scores.privacy)}]`,
-    `4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent): [${translateScore(scores.consent)}]`,
-    `5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร: [${translateScore(scores.risk)}]`,
-    `6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม: [${translateScore(scores.benefit)}]`,
+    `1. วัตถุประสงค์และการออกแบบการวิจัย: [${translateScore(scores.obj)}]${getRevNote('obj')}`,
+    `2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง: [${translateScore(scores.method)}]${getRevNote('method')}`,
+    `3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล: [${translateScore(scores.privacy)}]${getRevNote('privacy')}`,
+    `4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent): [${translateScore(scores.consent)}]${getRevNote('consent')}`,
+    `5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร: [${translateScore(scores.risk)}]${getRevNote('risk')}`,
+    `6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม: [${translateScore(scores.benefit)}]${getRevNote('benefit')}`,
   ].join('\n')
 
-  return `${structuredTag}=== ผลการประเมินรายเกณฑ์ ===\n${readableCriteria}\n\n=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\n${comments}`
+  return `${structuredTag}=== ผลการประเมินรายเกณฑ์ ===\n${readableCriteria}\n\n=== ข้อเสนอแนะเพิ่มเติม ===\n${comments}`
 }
 
 interface ExportEvaluation {

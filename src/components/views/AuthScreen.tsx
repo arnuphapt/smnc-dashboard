@@ -18,6 +18,29 @@ export const AuthScreen: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotEmail.trim()) return
+    setForgotLoading(true)
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
+      })
+      if (resetErr) throw resetErr
+      toast.success('ส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว')
+      setShowForgotModal(false)
+      setForgotEmail('')
+    } catch (err: any) {
+      toast.error(err.message || 'ไม่สามารถส่งลิงก์รีเซ็ตรหัสผ่านได้')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -38,7 +61,14 @@ export const AuthScreen: React.FC = () => {
         if (signInError) throw signInError
         toast.success('เข้าสู่ระบบสำเร็จ')
       } else {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: trimmedEmail, password })
+        const redirectUrl = `${window.location.origin}/auth/confirm`
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+          },
+        })
         if (signUpError) throw signUpError
         if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
           setError('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาเข้าสู่ระบบหรือรีเซ็ตรหัสผ่าน')
@@ -150,9 +180,23 @@ export const AuthScreen: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-[0.12em] mb-1.5" style={{ color: '#64748B' }}>
-                  รหัสผ่าน (Password)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: '#64748B' }}>
+                    รหัสผ่าน (Password)
+                  </label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(email)
+                        setShowForgotModal(true)
+                      }}
+                      className="text-[11px] font-bold text-[#00796B] hover:underline cursor-pointer"
+                    >
+                      ลืมรหัสผ่าน?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10" style={{ color: '#94A3B8' }} />
                   <Input
@@ -192,6 +236,54 @@ export const AuthScreen: React.FC = () => {
         <p className="text-center text-[10px] mt-4 font-medium" style={{ color: '#94A3B8' }}>
           © {new Date().getFullYear()} คลังปัญญาดิจิทัล วิทยาลัยพยาบาลศรีมหาสารคาม
         </p>
+
+        {/* Forgot Password Modal */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-800">ลืมรหัสผ่าน?</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  กรุณาระบุอีเมลที่คุณใช้สมัครสมาชิก ระบบจะส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปยังอีเมลของคุณ
+                </p>
+              </div>
+
+              <form onSubmit={handleForgotSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                    อีเมล
+                  </label>
+                  <Input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="username@smnc.ac.th"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowForgotModal(false)}
+                    className="rounded-xl text-xs font-bold"
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="btn-primary rounded-xl text-xs font-extrabold"
+                  >
+                    {forgotLoading ? 'กำลังส่ง...' : 'ส่งลิงก์รีเซ็ต'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
