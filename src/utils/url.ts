@@ -1,0 +1,12 @@
+export function getBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin
+  }
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return 'http://localhost:3000'
+}

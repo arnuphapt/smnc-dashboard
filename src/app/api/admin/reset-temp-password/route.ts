@@ -60,7 +60,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message || 'ไม่สามารถรีเซ็ตรหัสผ่านได้' }, { status: 500 })
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
+    const origin = request.headers.get('origin') || (request.headers.get('host') ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}` : '')
+    const baseUrl = (origin && !origin.includes('localhost')) ? origin : (process.env.NEXT_PUBLIC_SITE_URL || origin || '')
     const redirectPath = profile.temp_target_submission_id
       ? `/ethics/submissions?highlight=${profile.temp_target_submission_id}`
       : `/ethics/submissions`

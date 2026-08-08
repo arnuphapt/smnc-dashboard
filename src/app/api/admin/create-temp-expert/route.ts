@@ -90,7 +90,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
+    const origin = request.headers.get('origin') || (request.headers.get('host') ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}` : '')
+    const baseUrl = (origin && !origin.includes('localhost')) ? origin : (process.env.NEXT_PUBLIC_SITE_URL || origin || '')
     const redirectPath = targetSubmissionId
       ? `/ethics/submissions?highlight=${targetSubmissionId}`
       : `/ethics/submissions`
