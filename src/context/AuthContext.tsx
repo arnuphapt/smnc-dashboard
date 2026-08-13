@@ -26,6 +26,7 @@ export interface Profile {
   is_temp_account?: boolean
   temp_expires_at?: string
   temp_target_submission_id?: string
+  is_confirmed?: boolean
 }
 
 interface AuthContextType {

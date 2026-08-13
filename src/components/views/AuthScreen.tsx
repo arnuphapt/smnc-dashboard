@@ -61,19 +61,15 @@ export const AuthScreen: React.FC = () => {
         if (signInError) throw signInError
         toast.success('เข้าสู่ระบบสำเร็จ')
       } else {
-        const redirectUrl = `${window.location.origin}/auth/confirm`
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: trimmedEmail,
           password,
-          options: {
-            emailRedirectTo: redirectUrl,
-          },
         })
         if (signUpError) throw signUpError
         if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
           setError('อีเมลนี้มีผู้ใช้งานแล้ว กรุณาเข้าสู่ระบบหรือรีเซ็ตรหัสผ่าน')
         } else {
-          setSuccess('ลงทะเบียนสำเร็จ! กรุณาตรวจสอบกล่องข้อความในอีเมลเพื่อยืนยันบัญชีผู้ใช้ก่อนเข้าสู่ระบบ')
+          setSuccess('ลงทะเบียนสำเร็จ! บัญชีของคุณถูกลงทะเบียนแล้ว กรุณารอผู้ดูแลระบบ (Admin) กดยืนยันการใช้งานบัญชี')
         }
       }
     } catch (err: any) {

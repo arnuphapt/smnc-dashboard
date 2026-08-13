@@ -7,6 +7,7 @@ import { Profile } from '@/context/AuthContext'
 import { getUserRoles, fetchRoleOptions, RoleOption } from '@/utils/roleHelper'
 import { parseAuthors } from '@/utils/authorHelper'
 import { WisdomItem } from '../Dashboard'
+import { toast } from 'sonner'
 
 // Lookup from a role's icon_name (fixed palette, see roleHelper.ts ICON_KEYS)
 // to the actual lucide component. Lives here (not roleHelper.ts) to keep that
@@ -65,6 +66,29 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
   React.useEffect(() => {
     fetch('/api/admin/cleanup-temp-experts', { method: 'POST' }).catch(() => {})
   }, [])
+
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
+  const handleConfirmUser = async (profile: Profile, isConfirmed: boolean) => {
+    setConfirmingId(profile.id)
+    try {
+      const res = await fetch('/api/admin/users/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, isConfirmed }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'ไม่สามารถอัปเดตสถานะการยืนยันบัญชีได้')
+      toast.success(data.message || 'อัปเดตสถานะการยืนยันบัญชีผู้ใช้เรียบร้อยแล้ว')
+      if (typeof window !== 'undefined') {
+        window.location.reload()
+      }
+    } catch (err: any) {
+      alert(err.message || 'เกิดข้อผิดพลาดในการยืนยันสิทธิ์บัญชีผู้ใช้')
+    } finally {
+      setConfirmingId(null)
+    }
+  }
 
   const handleViewOrResetTempUser = async (profile: Profile) => {
     setResettingPassword(true)
@@ -158,7 +182,25 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
         )
       },
     },
-
+    {
+      key: 'is_confirmed',
+      header: 'สถานะการยืนยัน',
+      render: (p) => {
+        const isConfirmed = p.is_confirmed !== false
+        return (
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+              isConfirmed
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border border-amber-300'
+            }`}
+          >
+            {isConfirmed ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Clock className="w-3 h-3 text-amber-600" />}
+            {isConfirmed ? 'ยืนยันแล้ว' : 'รอยืนยันโดย Admin'}
+          </span>
+        )
+      },
+    },
     {
       key: 'created_at',
       header: 'วันที่ลงทะเบียน',
@@ -179,6 +221,16 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
       align: 'right',
       render: (p) => (
         <div className="flex items-center justify-end gap-1.5">
+          {p.is_confirmed === false && (
+            <button
+              onClick={() => handleConfirmUser(p, true)}
+              disabled={confirmingId === p.id}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-extrabold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700 disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{confirmingId === p.id ? 'กำลังบันทึก...' : 'ยืนยันบัญชี'}</span>
+            </button>
+          )}
           {p.is_temp_account && (
             <button
               onClick={() => handleViewOrResetTempUser(p)}

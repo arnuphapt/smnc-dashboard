@@ -134,11 +134,8 @@ describe('AuthScreen component (Login & Registration Flow)', () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'newteacher@smnc.ac.th',
         password: 'securepass123',
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        },
       })
-      expect(screen.getByText(/ลงทะเบียนสำเร็จ! กรุณาตรวจสอบกล่องข้อความในอีเมล/i)).toBeInTheDocument()
+      expect(screen.getByText(/ลงทะเบียนสำเร็จ! บัญชีของคุณถูกลงทะเบียนแล้ว กรุณารอผู้ดูแลระบบ/i)).toBeInTheDocument()
     })
   })
 
