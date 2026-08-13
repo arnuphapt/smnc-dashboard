@@ -73,7 +73,11 @@ export const AuthScreen: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบหรือลงทะเบียน')
+      let msg = err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบหรือลงทะเบียน'
+      if (msg && msg.includes('Email logins are disabled')) {
+        msg = 'การเข้าสู่ระบบด้วยอีเมลถูกปิดใช้งานอยู่ (Email logins are disabled) กรุณาเปิดใช้งาน Email Provider ใน Supabase Console -> Authentication -> Providers'
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }
