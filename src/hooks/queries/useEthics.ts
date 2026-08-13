@@ -113,6 +113,14 @@ export function useSubmitEthics() {
       const submissionId = subData.id
 
       if (files && files.length > 0) {
+        const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          if (file.size > MAX_FILE_SIZE) {
+            throw new Error(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินกำหนด (${(file.size / (1024 * 1024)).toFixed(1)} MB) ขนาดสูงสุดที่รองรับคือ 50 MB ต่อไฟล์`)
+          }
+        }
+
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
           const extIndex = file.name.lastIndexOf('.')
