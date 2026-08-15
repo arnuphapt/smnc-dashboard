@@ -627,11 +627,12 @@ export const EthicsSubmissions: React.FC = () => {
     {
       key: 'project_title',
       header: 'ชื่อโครงร่างวิจัย',
+      className: 'min-w-[420px] max-w-[650px]',
       render: (sub) => (
-        <>
-          <div className="text-xs font-extrabold text-[#0F172A]">{sub.project_title}</div>
-          {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{sub.project_description}</p>}
-        </>
+        <div className="min-w-[380px] space-y-1 py-1">
+          <div className="text-xs font-extrabold text-[#0F172A] leading-relaxed break-words">{sub.project_title}</div>
+          {sub.project_description && <p className="text-[11px] font-medium text-[#64748B] leading-normal line-clamp-3">{sub.project_description}</p>}
+        </div>
       ),
     },
     ...(isReviewTabVisible ? [{

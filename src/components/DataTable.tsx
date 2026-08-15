@@ -35,6 +35,8 @@ export interface DataTableColumn<T> {
   align?: 'left' | 'center' | 'right'
   sortable?: boolean
   render: (row: T) => React.ReactNode
+  className?: string
+  headerClassName?: string
 }
 
 export interface DataTableProps<T> {
@@ -420,9 +422,8 @@ export function DataTable<T>({
             >
               {card.icon && (
                 <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center ${
-                    card.iconBg || 'bg-[#F1F5F9]'
-                  } ${card.iconColor || 'text-[#475569]'} shrink-0`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center ${card.iconBg || 'bg-[#F1F5F9]'
+                    } ${card.iconColor || 'text-[#475569]'} shrink-0`}
                 >
                   {card.icon}
                 </div>
@@ -448,11 +449,10 @@ export function DataTable<T>({
               key={tab.id}
               type="button"
               onClick={() => onTabChange?.(tab.id)}
-              className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === tab.id
+              className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${activeTab === tab.id
                   ? 'bg-[#00796B] text-white shadow-md shadow-[#00796B]/20'
                   : 'bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A]'
-              }`}
+                }`}
             >
               {tab.label} {tab.count !== undefined ? `(${tab.count})` : ''}
             </button>

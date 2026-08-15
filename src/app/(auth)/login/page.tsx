@@ -4,12 +4,13 @@ import React, { useEffect, Suspense } from 'react'
 import { AuthScreen } from '@/components/views/AuthScreen'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { isPageAllowedForUser, getDefaultRouteForUser } from '@/utils/roleHelper'
 import { AlertCircle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 function LoginContent() {
-  const { user } = useAuth()
+  const { user, profile, permissions, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -17,10 +18,15 @@ function LoginContent() {
   const redirectTarget = searchParams ? searchParams.get('redirect') : null
 
   useEffect(() => {
-    if (user && !isExpired) {
-      router.replace(redirectTarget ? decodeURIComponent(redirectTarget) : '/')
+    if (user && !isExpired && !loading) {
+      if (redirectTarget) {
+        router.replace(decodeURIComponent(redirectTarget))
+      } else {
+        const targetRoute = getDefaultRouteForUser(profile?.role, permissions)
+        router.replace(targetRoute)
+      }
     }
-  }, [user, router, redirectTarget, isExpired])
+  }, [user, profile, permissions, loading, router, redirectTarget, isExpired])
 
   if (user && !isExpired) {
     return null

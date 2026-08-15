@@ -1,15 +1,34 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Dashboard } from '@/components/views/Dashboard'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { useRequirePageAccess } from '@/hooks/useRequirePageAccess'
+import { isPageAllowedForUser, getDefaultRouteForUser } from '@/utils/roleHelper'
 
 export default function HomePage() {
-  useRequirePageAccess('dashboard')
   const router = useRouter()
-  const { profile } = useAuth()
+  const { user, profile, permissions, loading } = useAuth()
+
+  const isAllowed = isPageAllowedForUser(profile?.role, 'dashboard', permissions)
+
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    if (!isAllowed) {
+      const targetRoute = getDefaultRouteForUser(profile?.role, permissions)
+      if (targetRoute !== '/') {
+        router.replace(targetRoute)
+      }
+    }
+  }, [loading, user, isAllowed, profile, permissions, router])
+
+  if (loading || !user || !isAllowed) {
+    return null
+  }
 
   const handleDashboardNavigate = (tab: string) => {
     const REPOSITORY_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
@@ -22,3 +41,4 @@ export default function HomePage() {
 
   return <Dashboard onNavigate={handleDashboardNavigate} userRole={profile?.role} />
 }
+

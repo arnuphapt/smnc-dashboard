@@ -14,9 +14,16 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }))
 
+let mockProfile: any = null
+let mockPermissions: any[] = []
+let mockLoading = false
+
 jest.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser,
+    profile: mockProfile,
+    permissions: mockPermissions,
+    loading: mockLoading,
   }),
 }))
 

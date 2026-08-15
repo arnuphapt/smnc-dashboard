@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import { isPageAllowedForUser } from '@/utils/roleHelper'
+import { isPageAllowedForUser, getDefaultRouteForUser } from '@/utils/roleHelper'
 
 /**
  * Route-level access guard. Mirrors the fire-and-forget redirect pattern
@@ -28,7 +28,9 @@ export function useRequirePageAccess(pageKey: string): void {
 
     if (!isPageAllowedForUser(profile?.role, pageKey, permissions)) {
       toast.error('ไม่มีสิทธิ์เข้าถึงหน้านี้')
-      router.push('/')
+      const defaultRoute = getDefaultRouteForUser(profile?.role, permissions)
+      router.push(defaultRoute)
     }
   }, [loading, user, profile, permissions, pageKey, router])
 }
+

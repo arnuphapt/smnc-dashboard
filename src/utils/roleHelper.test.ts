@@ -12,7 +12,7 @@ jest.mock('@/services/supabase', () => ({
   },
 }))
 
-import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef, isPageAllowedForUser } from './roleHelper'
+import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef, isPageAllowedForUser, getDefaultRouteForUser, RolePermission } from './roleHelper'
 
 // Fixture matching the 4 roles seeded by the roles table migration
 // (supabase/migrations/20260806000000_add_roles_table.sql).
@@ -196,4 +196,41 @@ describe('roleHelper utils', () => {
       expect(isPageAllowedForUser('expert, teacher', 'ethics_submit', permissions)).toBe(true)
     })
   })
+
+  describe('getDefaultRouteForUser', () => {
+    const permissions: RolePermission[] = [
+      { role: 'expert', page_key: 'dashboard', can_view: false },
+      { role: 'expert', page_key: 'ethics', can_view: true },
+      { role: 'expert', page_key: 'ethics_submissions', can_view: true },
+      { role: 'expert', page_key: 'ethics_submit', can_view: false },
+      { role: 'teacher', page_key: 'dashboard', can_view: true },
+      { role: 'clinic_reviewer', page_key: 'dashboard', can_view: false },
+      { role: 'clinic_reviewer', page_key: 'ethics_submissions', can_view: false },
+      { role: 'clinic_reviewer', page_key: 'ethics_submit', can_view: false },
+      { role: 'clinic_reviewer', page_key: 'ethics', can_view: false },
+      { role: 'clinic_reviewer', page_key: 'clinic_appointments', can_view: true },
+    ]
+
+    it('returns / for null or undefined role', () => {
+      expect(getDefaultRouteForUser(null, permissions)).toBe('/')
+      expect(getDefaultRouteForUser(undefined, permissions)).toBe('/')
+    })
+
+    it('returns / for admin role', () => {
+      expect(getDefaultRouteForUser('admin', permissions)).toBe('/')
+    })
+
+    it('returns / for role with dashboard access', () => {
+      expect(getDefaultRouteForUser('teacher', permissions)).toBe('/')
+    })
+
+    it('returns /ethics/submissions for expert role without dashboard access', () => {
+      expect(getDefaultRouteForUser('expert', permissions)).toBe('/ethics/submissions')
+    })
+
+    it('returns /clinic/appointments for clinic_reviewer role without dashboard access', () => {
+      expect(getDefaultRouteForUser('clinic_reviewer', permissions)).toBe('/clinic/appointments')
+    })
+  })
 })
+

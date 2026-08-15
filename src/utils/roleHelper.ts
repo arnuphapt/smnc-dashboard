@@ -176,3 +176,50 @@ export const isPageAllowedForUser = (
 
   return false
 }
+
+/**
+ * Determines the default landing route for a user based on their permissions.
+ * Prevents non-dashboard roles (like expert) from landing on forbidden dashboard '/'
+ * and triggering access-denied error toasts.
+ */
+export const getDefaultRouteForUser = (
+  userRoleString: string | undefined | null,
+  permissions: RolePermission[]
+): string => {
+  if (!userRoleString) return '/'
+  if (hasRole(userRoleString, 'admin')) return '/'
+
+  // Check if user has explicit access to dashboard
+  if (isPageAllowedForUser(userRoleString, 'dashboard', permissions)) {
+    return '/'
+  }
+
+  // Priority list of landing pages based on user roles / permissions
+  const candidateRoutes: { pageKey: string; route: string }[] = [
+    { pageKey: 'ethics_submissions', route: '/ethics/submissions' },
+    { pageKey: 'ethics_submit', route: '/ethics' },
+    { pageKey: 'ethics', route: '/ethics/submissions' },
+    { pageKey: 'clinic_appointments', route: '/clinic/appointments' },
+    { pageKey: 'clinic_request', route: '/clinic' },
+    { pageKey: 'clinic', route: '/clinic' },
+    { pageKey: 'repositories_research', route: '/repositories/research' },
+    { pageKey: 'repositories_innovation', route: '/repositories/innovation' },
+    { pageKey: 'repositories_intellectual_property', route: '/repositories/intellectual-property' },
+    { pageKey: 'repositories_award', route: '/repositories/award' },
+    { pageKey: 'repositories_utilization', route: '/repositories/utilization' },
+    { pageKey: 'repositories', route: '/repositories/research' },
+    { pageKey: 'ip_application_list', route: '/ip-application/list' },
+    { pageKey: 'ip_application_submit', route: '/ip-application' },
+    { pageKey: 'ip_application', route: '/ip-application/list' },
+    { pageKey: 'masterdata', route: '/master' },
+  ]
+
+  for (const item of candidateRoutes) {
+    if (isPageAllowedForUser(userRoleString, item.pageKey, permissions)) {
+      return item.route
+    }
+  }
+
+  return '/'
+}
+
