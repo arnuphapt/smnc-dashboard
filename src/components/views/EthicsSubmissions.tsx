@@ -969,15 +969,15 @@ export const EthicsSubmissions: React.FC = () => {
 
       {/* MODAL: SUBMIT REVISED PROPOSAL */}
       <Dialog open={revisionModalOpen} onOpenChange={setRevisionModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
             <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">แก้ไขส่งปรับปรุง</p>
-            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
+            <DialogTitle className="header-display text-base font-black text-[#0F172A]">
               ส่งเล่มโครงร่างวิจัยฉบับแก้ไข
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-5">
+          <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0">
             {selectedSubForRevision && (
               <form onSubmit={handleSubmitRevision} className="space-y-4">
                 <p className="text-xs font-semibold text-[#64748B]">
@@ -1026,15 +1026,15 @@ export const EthicsSubmissions: React.FC = () => {
 
       {/* MODAL: VIEW REVIEWER NOTES */}
       <Dialog open={notesModalOpen} onOpenChange={setNotesModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
             <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">ความเห็นผู้ทรงคุณวุฒิ</p>
-            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
+            <DialogTitle className="header-display text-sm font-black text-[#0F172A] line-clamp-2 leading-relaxed" title={selectedSubForNotes?.project_title}>
               {selectedSubForNotes?.project_title}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-4">
+          <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-4">
             {(() => {
               const cleanNotes = (notesText: string) => notesText
                 .replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
@@ -1083,15 +1083,17 @@ export const EthicsSubmissions: React.FC = () => {
 
       {/* MODAL: VIEW ATTACHMENTS */}
       <Dialog open={attachmentsModalOpen} onOpenChange={setAttachmentsModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">เอกสารแนบ</p>
-            <DialogTitle className="header-display text-lg font-black text-[#0F172A]">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+            <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#64748B]">
+              เอกสารแนบ {selectedSubForAttachments ? `(${attachments.filter((a) => a.submission_id === selectedSubForAttachments.id).length} ไฟล์)` : ''}
+            </p>
+            <DialogTitle className="header-display text-sm font-black text-[#0F172A] line-clamp-2 leading-relaxed" title={selectedSubForAttachments?.project_title}>
               {selectedSubForAttachments?.project_title}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-5 overflow-y-auto max-h-[70vh] space-y-2">
+          <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 space-y-2">
             {(() => {
               const subAttach = selectedSubForAttachments
                 ? attachments.filter((a) => a.submission_id === selectedSubForAttachments.id)
@@ -1117,8 +1119,8 @@ export const EthicsSubmissions: React.FC = () => {
 
       {/* MODAL: EXPERT EVALUATION SCORECARD (STEPPER WIZARD) */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
-          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+        <DialogContent className="max-w-xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
             <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#00796B]">พิจารณาข้อเสนอ</p>
             <DialogTitle className="header-display text-base font-black text-[#0F172A]">
               ประเมินจริยธรรมโครงร่างวิจัย
@@ -1128,7 +1130,7 @@ export const EthicsSubmissions: React.FC = () => {
           {selectedSubForReview && (
             <>
               {/* STEPPER PROGRESS INDICATOR */}
-              <div className="px-6 py-4 bg-[#FAFDFD] border-b border-[#E2E8F0]">
+              <div className="px-6 py-4 bg-[#FAFDFD] border-b border-[#E2E8F0] shrink-0">
                 <div className="flex items-center justify-between relative max-w-sm mx-auto">
                   {/* Connecting line */}
                   <div className="absolute top-4 left-6 right-6 h-0.5 bg-[#E2E8F0] -z-0" />
@@ -1173,7 +1175,7 @@ export const EthicsSubmissions: React.FC = () => {
               </div>
 
               {/* STEP CONTENT CONTAINER */}
-              <div className="px-6 py-5 overflow-y-auto max-h-[58vh] space-y-4">
+              <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0 space-y-4">
                 {/* PROJECT TITLE HEADER & ATTACHMENTS LIST */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                   <div>
@@ -1447,8 +1449,8 @@ export const EthicsSubmissions: React.FC = () => {
 
       {/* MODAL: ASSIGN REVIEWER */}
       <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-        <DialogContent className="max-w-md p-6 rounded-3xl bg-white border border-[#E2E8F0] shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-[#E2E8F0]">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-3xl bg-white border border-[#E2E8F0] shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
             <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#7C3AED]">
               มอบหมายงานวิจัย
             </p>
@@ -1457,7 +1459,7 @@ export const EthicsSubmissions: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-4 space-y-4 text-xs">
+          <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 space-y-4 text-xs">
             {selectedSubForAssign && (
               <>
                 <div>
