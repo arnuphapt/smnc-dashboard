@@ -372,19 +372,10 @@ export const EthicsSubmissions: React.FC = () => {
   }
 
   // Sends a fully-evaluated submission (2/2 done, any outcome) back to the
-  // submitter for revision: wipes both evaluation rows (per user-confirmed
-  // decision — no archival/versioning) and force-sets status to "ส่งกลับแก้ไข".
-  // deriveSubmissionStatus is never called here, so this manual override is
-  // not immediately recomputed away — it only changes again once the submitter
-  // resubmits via handleSubmitRevision, which sets status back to "ยื่นแล้ว".
+  // submitter for revision: preserves evaluation rows so submitters and admins
+  // can view comments and instructions, and sets status to "ส่งกลับแก้ไข".
   const handleSendBackForRevision = async (subId: string) => {
     try {
-      const { error: evalDeleteError } = await supabase
-        .from('ethics_evaluations')
-        .delete()
-        .eq('submission_id', subId)
-      if (evalDeleteError) throw evalDeleteError
-
       const { error: statusError } = await supabase
         .from('ethics_submissions')
         .update({ status: 'ส่งกลับแก้ไข' })
@@ -394,7 +385,7 @@ export const EthicsSubmissions: React.FC = () => {
       fetchReviewSubmissions()
       fetchEvaluationCounts()
       queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
-      triggerAlert('สำเร็จ', 'ส่งกลับให้ผู้ยื่นแก้ไขเรียบร้อยแล้ว ผลการประเมินเดิมถูกล้างแล้ว', 'primary')
+      triggerAlert('สำเร็จ', 'ส่งกลับให้ผู้ยื่นแก้ไขเรียบร้อยแล้ว', 'primary')
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', err.message, 'danger')
     }
@@ -701,8 +692,10 @@ export const EthicsSubmissions: React.FC = () => {
       key: 'reviewer_notes',
       header: 'ความเห็นผู้ทรงคุณวุฒิ',
       align: 'center',
-      render: (sub) => (
-        sub.reviewer_notes ? (
+      render: (sub) => {
+        const hasEvaluations = (evaluationsBySubmission[sub.id] && evaluationsBySubmission[sub.id].length > 0)
+        const hasNotes = Boolean(sub.reviewer_notes || hasEvaluations)
+        return hasNotes ? (
           <button
             onClick={() => handleOpenNotesModal(sub)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold text-[#00796B] bg-[#F0F7FF] border border-[#DAEEFF] hover:bg-[#E0F2FE] transition-colors cursor-pointer shadow-xs whitespace-nowrap"
@@ -714,7 +707,7 @@ export const EthicsSubmissions: React.FC = () => {
         ) : (
           <span className="text-xs text-[#94A3B8]">—</span>
         )
-      ),
+      },
     },
     {
       key: 'created_at',

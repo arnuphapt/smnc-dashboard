@@ -34,3 +34,21 @@ USING (
       )
   )
 );
+
+DROP POLICY IF EXISTS "Allow reviewers and admins to view evaluations" ON public.ethics_evaluations;
+CREATE POLICY "Allow reviewers and admins to view evaluations" 
+ON public.ethics_evaluations FOR SELECT 
+USING (
+  auth.uid() = reviewer_id 
+  OR EXISTS (
+    SELECT 1 FROM ethics_submissions s 
+    WHERE s.id = ethics_evaluations.submission_id 
+      AND (
+        s.submitter_id = auth.uid() 
+        OR s.assigned_reviewer_id = auth.uid() 
+        OR s.assigned_reviewer_id_2 = auth.uid() 
+        OR EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND (profiles.role = 'admin' OR profiles.role LIKE '%admin%'))
+      )
+  )
+);
+
