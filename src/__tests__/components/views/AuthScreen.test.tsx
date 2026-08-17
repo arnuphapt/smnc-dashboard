@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { AuthScreen } from './AuthScreen'
+import { AuthScreen } from '@/components/views/AuthScreen'
 import { toast } from 'sonner'
 
 const mockSignInWithPassword = jest.fn()

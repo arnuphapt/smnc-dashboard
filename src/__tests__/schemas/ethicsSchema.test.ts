@@ -1,4 +1,4 @@
-import { ethicsSubmissionSchema } from './ethicsSchema'
+import { ethicsSubmissionSchema } from '@/schemas/ethicsSchema'
 
 describe('ethicsSchema', () => {
   it('validates project_title with 3+ characters', () => {

@@ -34,6 +34,8 @@ export const wisdomItemSchema = z.object({
   utilizationDate: z.string().optional(),
   published: z.string().optional(),
   presented: z.string().optional(),
+  submissionDate: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 export type WisdomItemFormValues = z.infer<typeof wisdomItemSchema>

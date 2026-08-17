@@ -12,7 +12,7 @@ jest.mock('@/services/supabase', () => ({
   },
 }))
 
-import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef, isPageAllowedForUser, getDefaultRouteForUser, RolePermission } from './roleHelper'
+import { getUserRoles, hasRole, hasExactRole, formatUserRolesText, fetchRoleOptions, ROLE_OPTIONS as roleOptionsRef, isPageAllowedForUser, getDefaultRouteForUser, RolePermission } from '@/utils/roleHelper'
 
 // Fixture matching the 4 roles seeded by the roles table migration
 // (supabase/migrations/20260806000000_add_roles_table.sql).

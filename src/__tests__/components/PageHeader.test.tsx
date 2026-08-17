@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { PageHeader, ContentPanel, SectionHeader } from './PageHeader'
+import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
 
 describe('PageHeader components', () => {
   describe('PageHeader', () => {

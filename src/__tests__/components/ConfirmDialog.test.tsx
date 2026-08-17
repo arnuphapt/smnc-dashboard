@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ConfirmDialog } from './ConfirmDialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 describe('ConfirmDialog component', () => {
   it('renders title, description and confirm/cancel buttons', () => {

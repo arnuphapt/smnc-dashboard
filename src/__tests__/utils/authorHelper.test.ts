@@ -1,4 +1,4 @@
-import { parseAuthors, formatAuthorsForDisplay } from './authorHelper'
+import { parseAuthors, formatAuthorsForDisplay } from '@/utils/authorHelper'
 
 describe('authorHelper', () => {
   describe('parseAuthors', () => {

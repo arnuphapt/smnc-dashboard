@@ -1,4 +1,4 @@
-import { isValidSmncEmail, SMNC_EMAIL_DOMAIN } from './validation'
+import { isValidSmncEmail, SMNC_EMAIL_DOMAIN } from '@/utils/validation'
 
 describe('validation utils', () => {
   it('defines correct domain constant', () => {

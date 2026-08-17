@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import LoginPage from './page'
+import LoginPage from '@/app/(auth)/login/page'
 
 const mockPush = jest.fn()
 const mockReplace = jest.fn()

@@ -1,4 +1,4 @@
-import { ipStatusUpdateSchema } from './ipSchema'
+import { ipStatusUpdateSchema } from '@/schemas/ipSchema'
 
 describe('ipSchema', () => {
   it('validates ipStatusUpdateSchema with required status', () => {

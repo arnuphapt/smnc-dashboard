@@ -1,4 +1,4 @@
-import { wisdomItemSchema } from './wisdomItemSchema'
+import { wisdomItemSchema } from '@/schemas/wisdomItemSchema'
 
 describe('wisdomItemSchema', () => {
   it('validates valid wisdom item data', () => {

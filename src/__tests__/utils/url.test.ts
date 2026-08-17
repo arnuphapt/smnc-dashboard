@@ -1,4 +1,4 @@
-import { getBaseUrl } from './url'
+import { getBaseUrl } from '@/utils/url'
 
 describe('url utils', () => {
   const originalEnv = process.env

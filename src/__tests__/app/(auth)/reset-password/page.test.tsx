@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import ResetPasswordPage from './page'
+import ResetPasswordPage from '@/app/(auth)/reset-password/page'
 import { toast } from 'sonner'
 
 const mockUpdateUser = jest.fn()

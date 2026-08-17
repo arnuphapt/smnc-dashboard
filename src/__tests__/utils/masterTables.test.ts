@@ -1,4 +1,4 @@
-import { getTableForCategory, getValueFieldForCategory } from './masterTables'
+import { getTableForCategory, getValueFieldForCategory } from '@/utils/masterTables'
 
 describe('masterTables utils', () => {
   describe('getTableForCategory', () => {

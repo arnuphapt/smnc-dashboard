@@ -145,7 +145,8 @@ export const exportItemToWord = (item: WisdomItem, categoryLabel: string) => {
         utilization_type: 'ประเภทการใช้ประโยชน์',
         journal_name: 'ตีพิมพ์ในวารสาร',
         registration_number: 'เลขที่คำขอ',
-        registration_date: 'วันที่จดทะเบียนสิทธิ์',
+        registration_date: 'วันที่อนุมัติ',
+        submission_date: 'วันที่ส่ง',
         organizer: 'รายละเอียดเวทีการนำเสนอ',
         organization_used: 'หน่วยงานที่อ้างอิงนำไปใช้',
         impact_summary: 'ประโยชน์เชิงประจักษ์',
@@ -153,7 +154,7 @@ export const exportItemToWord = (item: WisdomItem, categoryLabel: string) => {
         scope: 'ขอบเขตของผลงาน',
         creator_type: 'กลุ่มผู้สร้างสรรค์',
         source: 'ที่มาของผลงาน',
-        patent_number: 'เลขที่อนุสิทธิบัตร/สิทธิบัตร',
+        patent_number: 'เลขที่',
         application_status: 'สถานะเลขคำขอ',
         status: 'สถานะการยื่นขอสิทธิ์ปัจจุบัน',
         contribution: 'การมีส่วนร่วมในผลงาน',
@@ -162,6 +163,7 @@ export const exportItemToWord = (item: WisdomItem, categoryLabel: string) => {
         award_name: 'รางวัลที่ได้รับ',
         innovation_type: 'ประเภทนวัตกรรม',
         ip_status: 'การยื่นขอทรัพย์สินทางปัญญา',
+        notes: 'หมายเหตุ',
       }
       return `<tr>
         <td style="width: 35%; font-weight: bold; background: #f8fafc;">${labelMap[key] || key}</td>

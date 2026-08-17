@@ -1,5 +1,5 @@
-import { downloadWordDocument, exportCategoryReportToWord, exportItemToWord } from './wordExport'
-import { WisdomItem } from '../components/views/Dashboard'
+import { downloadWordDocument, exportCategoryReportToWord, exportItemToWord } from '@/utils/wordExport'
+import { WisdomItem } from '@/components/views/Dashboard'
 
 describe('wordExport utils', () => {
   let createObjectURLSpy: any

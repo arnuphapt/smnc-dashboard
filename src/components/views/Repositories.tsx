@@ -263,11 +263,13 @@ export const Repositories: React.FC = () => {
         { key: 'scope', header: 'ขอบเขตผลงาน', sortable: true, render: (item) => item.metadata?.scope ? <StatusBadge status={item.metadata.scope} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'creator_type', header: 'ผู้สร้างสรรค์', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.creator_type || '-'}</span> },
         { key: 'source', header: 'ที่มาของผลงาน', sortable: true, render: (item) => <span className="text-slate-500">{item.metadata?.source || '-'}</span> },
-        { key: 'registration_date', header: 'วันที่ส่งออก', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.registration_date || '-'}</span> },
+        { key: 'submission_date', header: 'วันที่ส่ง', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.submission_date || '-'}</span> },
+        { key: 'registration_date', header: 'วันที่อนุมัติ', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.registration_date || '-'}</span> },
         { key: 'application_status', header: 'สถานะเลขคำขอ', sortable: true, render: (item) => item.metadata?.application_status ? <StatusBadge status={item.metadata.application_status} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
         { key: 'registration_number', header: 'เลขที่คำขอ', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.registration_number || '-'}</span> },
-        { key: 'patent_number', header: 'เลขที่อนุสิทธิบัตร/สิทธิบัตร', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.patent_number || '-'}</span> },
+        { key: 'patent_number', header: 'เลขที่', sortable: true, render: (item) => <span className="font-mono text-slate-500">{item.metadata?.patent_number || '-'}</span> },
         { key: 'status', header: 'สถานะปัจจุบัน', sortable: true, render: (item) => item.metadata?.status ? <StatusBadge status={item.metadata.status} size="sm" /> : <span className="text-slate-400 font-medium">-</span> },
+        { key: 'notes', header: 'หมายเหตุ', sortable: true, render: (item) => <span className="text-slate-500 truncate max-w-[200px]" title={item.metadata?.notes}>{item.metadata?.notes || '-'}</span> },
         linkColumn,
       ]
     }

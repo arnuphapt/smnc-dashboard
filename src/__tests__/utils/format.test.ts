@@ -1,4 +1,4 @@
-import { formatExcelDate, getCategoryLabel, getCategoryColor } from './format'
+import { formatExcelDate, getCategoryLabel, getCategoryColor } from '@/utils/format'
 
 describe('format utils', () => {
   describe('formatExcelDate', () => {

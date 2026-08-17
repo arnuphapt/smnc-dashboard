@@ -1,4 +1,4 @@
-import { createUserSchema } from './userSchema'
+import { createUserSchema } from '@/schemas/userSchema'
 
 describe('userSchema', () => {
   it('passes validation with valid email, password, and role', () => {

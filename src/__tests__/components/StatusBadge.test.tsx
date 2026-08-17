@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { StatusBadge, StatusIcon, isPendingStatus, resolveStatusConfig } from './StatusBadge'
+import { StatusBadge, StatusIcon, isPendingStatus, resolveStatusConfig } from '@/components/StatusBadge'
 
 describe('StatusBadge component', () => {
   describe('resolveStatusConfig', () => {

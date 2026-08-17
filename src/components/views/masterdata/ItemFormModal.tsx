@@ -89,6 +89,10 @@ interface ItemFormModalProps {
   setMetaPublished: (value: string) => void
   metaPresented: string
   setMetaPresented: (value: string) => void
+  metaSubmissionDate?: string
+  setMetaSubmissionDate?: (value: string) => void
+  metaNotes?: string
+  setMetaNotes?: (value: string) => void
 }
 
 const SCOPE_CATEGORIES: Array<WisdomItem['category']> = ['research', 'innovation', 'award', 'intellectual_property']
@@ -125,6 +129,7 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   metaCreatorType, setMetaCreatorType, metaAwardName, setMetaAwardName,
   metaUtilizationDate, setMetaUtilizationDate,
   metaPublished, setMetaPublished, metaPresented, setMetaPresented,
+  metaSubmissionDate, setMetaSubmissionDate, metaNotes, setMetaNotes,
   // setFormCategory is not needed in the form body anymore since it is locked to page category
   // but we keep it in props to avoid breaking consumers
 }) => {
@@ -515,17 +520,27 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">เลขที่อนุสิทธิบัตร/สิทธิบัตร</label>
+                    <label className="block text-slate-500 font-bold mb-1">เลขที่</label>
                     <Input
                       type="text"
                       value={metaPatentNum}
                       onChange={(e) => setMetaPatentNum(e.target.value)}
-                      placeholder="เช่น 21567"
+                      placeholder="เช่น ว.001255"
                       className="w-full light-input"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">วันที่อนุมัติ / ขึ้นทะเบียนสิทธิ์</label>
+                    <label className="block text-slate-500 font-bold mb-1">วันที่ส่ง</label>
+                    <Input
+                      type="text"
+                      value={metaSubmissionDate || ''}
+                      onChange={(e) => setMetaSubmissionDate?.(e.target.value)}
+                      placeholder="เช่น 10 มกราคม 2569"
+                      className="w-full light-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">วันที่อนุมัติ</label>
                     <Input
                       type="text"
                       value={metaRegDate}
@@ -584,6 +599,16 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="col-span-1 md:col-span-2">
+                    <label className="block text-slate-500 font-bold mb-1">หมายเหตุ</label>
+                    <Textarea
+                      rows={2}
+                      value={metaNotes || ''}
+                      onChange={(e) => setMetaNotes?.(e.target.value)}
+                      placeholder="ระบุรายละเอียดอื่นๆ หรือหมายเหตุ..."
+                      className="w-full light-input resize-none"
+                    />
                   </div>
                 </>
               )}

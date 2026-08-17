@@ -1,4 +1,4 @@
-import { getMediaUrl } from './supabase'
+import { getMediaUrl } from '@/services/supabase'
 
 describe('supabase service helpers', () => {
   describe('getMediaUrl', () => {

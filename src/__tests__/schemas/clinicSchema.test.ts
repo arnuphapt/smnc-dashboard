@@ -1,4 +1,4 @@
-import { appointmentSchema, clinicEventSchema } from './clinicSchema'
+import { appointmentSchema, clinicEventSchema } from '@/schemas/clinicSchema'
 
 describe('clinicSchema', () => {
   describe('appointmentSchema', () => {

@@ -111,6 +111,8 @@ export const MasterdataPanel: React.FC = () => {
   const [metaUtilizationDate, setMetaUtilizationDate] = useState('')
   const [metaPublished, setMetaPublished] = useState('')
   const [metaPresented, setMetaPresented] = useState('')
+  const [metaSubmissionDate, setMetaSubmissionDate] = useState('')
+  const [metaNotes, setMetaNotes] = useState('')
 
   // Lookups Form State
   const [lookupCategory, setLookupCategory] = useState('research_type')
@@ -330,6 +332,8 @@ export const MasterdataPanel: React.FC = () => {
     setMetaUtilizationDate('')
     setMetaPublished('')
     setMetaPresented('')
+    setMetaSubmissionDate('')
+    setMetaNotes('')
 
     setIsFormOpen(true)
   }
@@ -379,6 +383,8 @@ export const MasterdataPanel: React.FC = () => {
     setMetaUtilizationDate(item.metadata.utilization_date || '')
     setMetaPublished(item.metadata.published || '')
     setMetaPresented(item.metadata.presented || '')
+    setMetaSubmissionDate(item.metadata.submission_date || '')
+    setMetaNotes(item.metadata.notes || item.metadata.remarks || '')
 
     setIsFormOpen(true)
   }
@@ -445,6 +451,8 @@ export const MasterdataPanel: React.FC = () => {
         metadata.status = metaIpCurrentStatus
         metadata.patent_number = metaPatentNum
         metadata.creator_type = metaCreatorType
+        metadata.submission_date = metaSubmissionDate
+        metadata.notes = metaNotes
       } else if (formCategory === 'award') {
         metadata.award_level = metaSubtype
         metadata.organizer = metaOrganizer
@@ -1152,6 +1160,10 @@ export const MasterdataPanel: React.FC = () => {
         setMetaPublished={setMetaPublished}
         metaPresented={metaPresented}
         setMetaPresented={setMetaPresented}
+        metaSubmissionDate={metaSubmissionDate}
+        setMetaSubmissionDate={setMetaSubmissionDate}
+        metaNotes={metaNotes}
+        setMetaNotes={setMetaNotes}
       />
 
       <ConfirmDialog

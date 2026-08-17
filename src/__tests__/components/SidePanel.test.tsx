@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { SidePanel, FieldLabel } from './SidePanel'
+import { SidePanel, FieldLabel } from '@/components/SidePanel'
 
 describe('SidePanel component', () => {
   it('renders panel with title, subtitle, content and footer', () => {

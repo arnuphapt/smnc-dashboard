@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MasterDataTable } from './MasterDataTable'
+import { MasterDataTable } from '@/components/MasterDataTable'
 
 interface TestItem {
   id: string
