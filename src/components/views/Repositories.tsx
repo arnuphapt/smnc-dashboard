@@ -17,7 +17,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { exportItemToWord, exportCategoryReportToWord } from '@/utils/wordExport'
-import { formatAuthorsForDisplay } from '@/utils/authorHelper'
+import { formatAuthorsForDisplay, parseAuthors } from '@/utils/authorHelper'
 
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
@@ -115,11 +115,18 @@ export const Repositories: React.FC = () => {
   }
 
   const getUniqueAuthors = () => {
-    const vals = items
-      .map(item => item.authors)
-      .filter(Boolean)
-      .map(val => String(val))
-    return Array.from(new Set(vals)).sort()
+    const authorSet = new Set<string>()
+    items.forEach((item) => {
+      if (!item.authors) return
+      const parsed = parseAuthors(item.authors)
+      parsed.forEach((a) => {
+        if (a.name && a.name.trim()) {
+          const resolvedName = profiles.find(p => p.email?.toLowerCase().trim() === a.name.toLowerCase().trim())?.full_name || a.name.trim()
+          authorSet.add(resolvedName)
+        }
+      })
+    })
+    return Array.from(authorSet).sort((a, b) => a.localeCompare(b, 'th'))
   }
 
   const getSubtypeCategory = () => {
@@ -151,7 +158,14 @@ export const Repositories: React.FC = () => {
       (item.authors && item.authors.toLowerCase().includes(search.toLowerCase()))
 
     const matchesYear = !selectedYear || String(item.metadata?.year) === selectedYear
-    const matchesAuthor = !selectedAuthor || item.authors === selectedAuthor
+    const matchesAuthor = !selectedAuthor || (() => {
+      if (!item.authors) return false
+      const parsed = parseAuthors(item.authors)
+      return parsed.some((a) => {
+        const resolvedName = profiles.find(p => p.email?.toLowerCase().trim() === a.name.toLowerCase().trim())?.full_name || a.name.trim()
+        return resolvedName === selectedAuthor || a.name.trim() === selectedAuthor || item.authors === selectedAuthor
+      })
+    })()
     const matchesScope = !selectedScope || item.metadata?.scope === selectedScope
     const matchesRank = !selectedRank || item.metadata?.journal_rank === selectedRank
     const matchesStatus = !selectedStatus || item.metadata?.status === selectedStatus
@@ -337,7 +351,7 @@ export const Repositories: React.FC = () => {
         onChange: setSelectedAuthor,
         placeholder: 'นักวิจัยทั้งหมด',
         options: getUniqueAuthors().map((auth) => ({ value: auth, label: auth })),
-        className: 'max-w-[150px] truncate',
+        className: 'min-w-[140px]',
       },
     ]
 
@@ -626,32 +640,39 @@ export const Repositories: React.FC = () => {
                   if (key === 'department' || key === 'contribution' || !val) return null
                   const labelMap: Record<string, string> = {
                     research_type: 'ประเภทงานวิจัย',
-                    ip_type: 'ประเภททรัพย์สินทางปัญญา',
-                    award_level: 'ระดับรางวัลเชิดชูเกียรติ',
-                    utilization_type: 'ประเภทการใช้ประโยชน์',
-                    journal_name: 'ตีพิมพ์ในวารสาร',
-                    registration_number: 'เลขทะเบียนเอกสารสิทธิ์ / เลขที่คำขอ',
-                    registration_date: 'วันที่จดทะเบียนสิทธิ์',
-                    organizer: 'รายละเอียดเวทีการนำเสนอ',
-                    organization_used: 'หน่วยงานที่อ้างอิงนำไปใช้',
-                    impact_summary: 'ประโยชน์เชิงประจักษ์',
-                    year: 'ปี',
-                    scope: 'ขอบเขตของผลงาน',
-                    creator_type: 'กลุ่มผู้สร้างสรรค์',
+                    ip_type: 'ประเภทของงาน',
+                    award_level: 'ระดับเวทีการนำเสนอ',
+                    utilization_type: 'ประเภทผลงาน',
+                    journal_name: 'วารสาร',
+                    journal_rank: 'ฐานวารสาร',
+                    registration_number: 'เลขที่คำขอ',
+                    patent_number: 'เลขที่',
+                    submission_date: 'วันที่ส่ง',
+                    registration_date: 'วันที่อนุมัติ',
+                    application_status: 'สถานะเลขคำขอ',
+                    status: 'สถานะปัจจุบัน',
+                    creator_type: 'ผู้สร้างสรรค์',
                     source: 'ที่มาของผลงาน',
+                    scope: 'ขอบเขตผลงาน',
+                    organizer: 'รายละเอียดเวทีการนำเสนอ',
+                    organization_used: 'หน่วยงานที่นำไปใช้ประโยชน์',
+                    utilization_date: 'วันที่ขอนำไปใช้ประโยชน์',
+                    impact_summary: 'ประโยชน์เชิงประจักษ์',
+                    year: 'ปี พ.ศ.',
+                    fiscal_year: 'ปีงบประมาณ',
+                    academic_year: 'ปีการศึกษา',
                     ip_subtype: 'ประเภททรัพย์สินทางปัญญาย่อย',
                     export_date: 'วันที่ส่งออกเอกสาร',
-                    application_status: 'สถานะเลขคำขอ',
-                    status: 'สถานะการยื่นขอสิทธิ์ปัจจุบัน',
                     contribution: 'การมีส่วนร่วมในผลงาน',
                     funding: 'ทุนวิจัยที่ได้รับ',
-                    journal_rank: 'ระดับฐานข้อมูลวารสาร',
                     presenter: 'ผู้นำเสนอผลงาน',
                     award_name: 'รางวัลที่ได้รับ',
-                    innovation_type: 'ประเภทนวัตกรรม',
-                    ip_status: 'การยื่นขอทรัพย์สินทางปัญญา',
-                    published: 'การตีพิมพ์เผยแพร่',
-                    presented: 'การนำเสนอผลงานวิชาการ',
+                    innovation_type: 'ประเภทของนวัตกรรม',
+                    ip_status: 'ยื่นขอจดทรัพย์สินทางปัญญา',
+                    published: 'ตีพิมพ์ (Published)',
+                    presented: 'นำเสนอผลงาน (Presented)',
+                    notes: 'หมายเหตุ',
+                    remarks: 'หมายเหตุ',
                     drive_link: 'ลิงก์ไดรฟ์รายละเอียดผลงาน',
                   }
 

@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 import { parseAuthors, AuthorItem } from '@/utils/authorHelper'
 
@@ -47,6 +48,10 @@ interface ItemFormModalProps {
   setMetaSubtype: (value: string) => void
   metaYear: string
   setMetaYear: (value: string) => void
+  metaFiscalYear?: string
+  setMetaFiscalYear?: (value: string) => void
+  metaAcademicYear?: string
+  setMetaAcademicYear?: (value: string) => void
   metaJournal: string
   setMetaJournal: (value: string) => void
   metaRegNum: string
@@ -120,6 +125,7 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
   formCategory, formTitle, setFormTitle, formDescription: _formDescription, setFormDescription: _setFormDescription,
   formAuthors, setFormAuthors, formIsPublic, setFormIsPublic, imageFile, setImageFile, setDocFile,
   metaDept, setMetaDept, metaSubtype, setMetaSubtype, metaYear, setMetaYear,
+  metaFiscalYear, setMetaFiscalYear, metaAcademicYear, setMetaAcademicYear,
   metaJournal, setMetaJournal, metaRegNum, setMetaRegNum, metaRegDate, setMetaRegDate,
   metaOrganizer, setMetaOrganizer, metaOrgUsed, setMetaOrgUsed, metaImpact, setMetaImpact,
   metaScope, setMetaScope, metaJournalRank, setMetaJournalRank,
@@ -221,79 +227,126 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
             />
           </div>
 
-          {/* Authors & Year */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-slate-500 font-bold mb-1">คณะผู้จัดทำ (Authors)</label>
+          {/* Authors */}
+          <div>
+            <label className="block text-slate-500 font-bold mb-1">คณะผู้จัดทำ (Authors)</label>
+            <input type="text" required value={formAuthors} readOnly tabIndex={-1} aria-hidden className="sr-only" />
 
-              {/* Hidden field just to keep native "required" validation working now that the visible control is a picker, not a text input. */}
-              <input type="text" required value={formAuthors} readOnly tabIndex={-1} aria-hidden className="sr-only" />
+            <div className="space-y-2 mb-2 min-h-[1.5rem]">
+              {authorList.length === 0 ? (
+                <span className="text-slate-400 italic text-xs">ยังไม่ได้เลือกคณะผู้จัดทำ</span>
+              ) : (
+                authorList.map((author, index) => (
+                  <div key={`${author.name}-${index}`} className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs">
+                    <span className="font-bold shrink-0">{author.name}</span>
+                    <Select
+                      value={author.contribution || 'Co author'}
+                      onValueChange={(val) => val && updateAuthorContribution(index, val)}
+                    >
+                      <SelectTrigger className="h-7 text-[11px] font-bold bg-white border border-teal-200 text-teal-800 rounded-lg px-2 min-w-[150px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white text-xs border border-slate-200 rounded-xl">
+                        <SelectItem value="First author">First author (ผู้แต่งหลัก)</SelectItem>
+                        <SelectItem value="Corresponding author">Corresponding author (ผู้รับผิดชอบบทความ)</SelectItem>
+                        <SelectItem value="Co author">Co author (ผู้ร่วมแต่ง)</SelectItem>
+                        <SelectItem value="First author, Corresponding author">First author & Corresponding author</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <button type="button" onClick={() => removeAuthor(index)} className="hover:text-red-600 cursor-pointer ml-auto p-1">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
 
-              <div className="space-y-2 mb-2 min-h-[1.5rem]">
-                {authorList.length === 0 ? (
-                  <span className="text-slate-400 italic">ยังไม่ได้เลือกคณะผู้จัดทำ</span>
-                ) : (
-                  authorList.map((author, index) => (
-                    <div key={`${author.name}-${index}`} className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs">
-                      <span className="font-bold shrink-0">{author.name}</span>
-                      <Select
-                        value={author.contribution || 'Co author'}
-                        onValueChange={(val) => val && updateAuthorContribution(index, val)}
-                      >
-                        <SelectTrigger className="h-7 text-[11px] font-bold bg-white border border-teal-200 text-teal-800 rounded-lg px-2 min-w-[150px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white text-xs border border-slate-200 rounded-xl">
-                          <SelectItem value="First author">First author (ผู้แต่งหลัก)</SelectItem>
-                          <SelectItem value="Corresponding author">Corresponding author (ผู้รับผิดชอบบทความ)</SelectItem>
-                          <SelectItem value="Co author">Co author (ผู้ร่วมแต่ง)</SelectItem>
-                          <SelectItem value="First author, Corresponding author">First author & Corresponding author</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <button type="button" onClick={() => removeAuthor(index)} className="hover:text-red-600 cursor-pointer ml-auto p-1">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))
-                )}
+            <SearchableSelect
+              value=""
+              onValueChange={(v) => v && addAuthor(v)}
+              placeholder="เลือกจากผู้ใช้งานในระบบ..."
+              searchPlaceholder="พิมพ์ชื่อ หรือ อีเมล เพื่อค้นหา..."
+              options={profiles.map((p) => ({
+                value: p.full_name || p.email,
+                label: p.full_name ? `${p.full_name} (${p.email})` : p.email,
+                sublabel: p.full_name ? p.email : undefined,
+              }))}
+              triggerClassName="light-input"
+            />
+
+            <div className="flex gap-2 mt-2">
+              <Input
+                type="text"
+                value={manualAuthor}
+                onChange={(e) => setManualAuthor(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addAuthor(manualAuthor); setManualAuthor('') }
+                }}
+                placeholder="หรือพิมพ์ชื่อที่ยังไม่มีในระบบ..."
+                className="flex-1 light-input"
+              />
+              <Button type="button" variant="outline" onClick={() => { addAuthor(manualAuthor); setManualAuthor('') }}>
+                เพิ่ม
+              </Button>
+            </div>
+          </div>
+
+          {/* Year Section */}
+          {formCategory === 'intellectual_property' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-slate-500 font-bold mb-1">ปี พ.ศ.</label>
+                <Select
+                  value={metaYear}
+                  onValueChange={(v) => setMetaYear(v ?? '')}
+                  items={getOptionsByCategory('year').map((opt) => ({ value: opt.value, label: opt.value }))}
+                >
+                  <SelectTrigger className="w-full light-input">
+                    <SelectValue placeholder="เลือกปี พ.ศ..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getOptionsByCategory('year').map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select
-                value=""
-                onValueChange={(v) => v && addAuthor(v)}
-                items={profiles.map((p) => ({
-                  value: p.full_name || p.email,
-                  label: p.full_name ? `${p.full_name} (${p.email})` : p.email
-                }))}
-              >
-                <SelectTrigger className="w-full light-input">
-                  <SelectValue placeholder="เลือกจากผู้ใช้งานในระบบ..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.full_name || p.email}>
-                      {p.full_name ? `${p.full_name} (${p.email})` : p.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex gap-2 mt-2">
-                <Input
-                  type="text"
-                  value={manualAuthor}
-                  onChange={(e) => setManualAuthor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); addAuthor(manualAuthor); setManualAuthor('') }
-                  }}
-                  placeholder="หรือพิมพ์ชื่อที่ยังไม่มีในระบบ..."
-                  className="flex-1 light-input"
-                />
-                <Button type="button" variant="outline" onClick={() => { addAuthor(manualAuthor); setManualAuthor('') }}>
-                  เพิ่ม
-                </Button>
+              <div>
+                <label className="block text-slate-500 font-bold mb-1">ปีงบประมาณ</label>
+                <Select
+                  value={metaFiscalYear || ''}
+                  onValueChange={(v) => setMetaFiscalYear?.(v ?? '')}
+                  items={getOptionsByCategory('year').map((opt) => ({ value: opt.value, label: opt.value }))}
+                >
+                  <SelectTrigger className="w-full light-input">
+                    <SelectValue placeholder="เลือกปีงบประมาณ..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getOptionsByCategory('year').map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-slate-500 font-bold mb-1">ปีการศึกษา</label>
+                <Select
+                  value={metaAcademicYear || ''}
+                  onValueChange={(v) => setMetaAcademicYear?.(v ?? '')}
+                  items={getOptionsByCategory('year').map((opt) => ({ value: opt.value, label: opt.value }))}
+                >
+                  <SelectTrigger className="w-full light-input">
+                    <SelectValue placeholder="เลือกปีการศึกษา..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getOptionsByCategory('year').map((opt) => (
+                      <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+          ) : (
             <div>
               <label className="block text-slate-500 font-bold mb-1">ปี</label>
               <Select
@@ -311,7 +364,7 @@ export const ItemFormModal: React.FC<ItemFormModalProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          )}
 
           {/* Category-Specific fields */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-4">

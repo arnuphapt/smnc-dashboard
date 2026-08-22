@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
@@ -400,12 +401,23 @@ export const EthicsSubmissions: React.FC = () => {
     if (!subIdToDelete) return
     setDeleteLoading(true)
     try {
-      const { error: attError } = await supabase
-        .from('ethics_attachments')
-        .delete()
-        .eq('submission_id', subIdToDelete)
-      if (attError) throw attError
+      // 1. Delete associated attachments if any
+      const subAttachments = attachments.filter((a) => a.submission_id === subIdToDelete)
+      for (const att of subAttachments) {
+        if (att.file_url) {
+          try {
+            await supabase.storage.from('wisdom-private').remove([att.file_url])
+          } catch (e) {
+            console.error('Failed to remove attachment file from storage:', e)
+          }
+        }
+      }
+      await supabase.from('ethics_attachments').delete().eq('submission_id', subIdToDelete)
 
+      // 2. Delete evaluations if any
+      await supabase.from('ethics_evaluations').delete().eq('submission_id', subIdToDelete)
+
+      // 3. Delete the submission
       const { error: subError } = await supabase
         .from('ethics_submissions')
         .delete()
@@ -416,6 +428,8 @@ export const EthicsSubmissions: React.FC = () => {
       setSubIdToDelete(null)
       queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
       queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
+      fetchReviewSubmissions()
+      triggerAlert('ลบสำเร็จ', 'ลบคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว', 'primary')
     } catch (err: any) {
       triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถลบคำขอได้: ${err.message}`, 'danger')
     } finally {
@@ -823,7 +837,9 @@ export const EthicsSubmissions: React.FC = () => {
           })
         }
 
-        if (isOwner) {
+        const canDelete = isOwner || hasRole(profile?.role, 'admin') || hasRole(profile?.role, 'assistant_admin')
+
+        if (canDelete) {
           actionButtons.push({
             key: 'delete',
             label: 'ลบคำขอ',
@@ -1537,36 +1553,24 @@ export const EthicsSubmissions: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">ผู้ทรงคุณวุฒิท่านที่ 1</label>
                   {(() => {
-                    const selectedProfile = expertProfiles.find((p) => p.id === assignReviewerId)
-                    const displayName = selectedProfile ? (selectedProfile.full_name || selectedProfile.email) : ''
-                    const labelText = selectedProfile
-                      ? `${displayName} (${formatUserRolesText(selectedProfile.role)}${(selectedProfile as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
-                      : assignReviewerId === 'unassigned' || !assignReviewerId
-                      ? '— ยังไม่ได้มอบหมาย —'
-                      : assignReviewerId
+                    const expertOptions = [
+                      { value: '', label: '— ยังไม่ได้มอบหมาย —' },
+                      ...expertProfiles.map((p) => ({
+                        value: p.id,
+                        label: `${p.full_name || p.email} (${formatUserRolesText(p.role)}${(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`,
+                        sublabel: p.full_name ? p.email : undefined,
+                      }))
+                    ]
 
                     return (
-                      <Select
-                        value={assignReviewerId || 'unassigned'}
-                        onValueChange={(val) => setAssignReviewerId(val === 'unassigned' ? '' : val ?? '')}
-                      >
-                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                          <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ...">
-                            {labelText}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
-                          <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
-                          {expertProfiles.map((p) => {
-                            const nameText = p.full_name ? `${p.full_name} (${p.email})` : p.email
-                            return (
-                              <SelectItem key={p.id} value={p.id}>
-                                {nameText} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={assignReviewerId}
+                        onValueChange={(val) => setAssignReviewerId(val)}
+                        placeholder="เลือกผู้ทรงคุณวุฒิ..."
+                        searchPlaceholder="พิมพ์ชื่อ หรือ อีเมล เพื่อค้นหา..."
+                        options={expertOptions}
+                        triggerClassName="bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl"
+                      />
                     )
                   })()}
                 </div>
@@ -1574,36 +1578,24 @@ export const EthicsSubmissions: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-bold text-[#0F172A] mb-1.5">ผู้ทรงคุณวุฒิท่านที่ 2 (ถ้ามี)</label>
                   {(() => {
-                    const selectedProfile2 = expertProfiles.find((p) => p.id === assignReviewerId2)
-                    const displayName2 = selectedProfile2 ? (selectedProfile2.full_name || selectedProfile2.email) : ''
-                    const labelText2 = selectedProfile2
-                      ? `${displayName2} (${formatUserRolesText(selectedProfile2.role)}${(selectedProfile2 as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`
-                      : assignReviewerId2 === 'unassigned' || !assignReviewerId2
-                      ? '— ยังไม่ได้มอบหมาย —'
-                      : assignReviewerId2
+                    const expertOptions2 = [
+                      { value: '', label: '— ยังไม่ได้มอบหมาย —' },
+                      ...expertProfiles.map((p) => ({
+                        value: p.id,
+                        label: `${p.full_name || p.email} (${formatUserRolesText(p.role)}${(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})`,
+                        sublabel: p.full_name ? p.email : undefined,
+                      }))
+                    ]
 
                     return (
-                      <Select
-                        value={assignReviewerId2 || 'unassigned'}
-                        onValueChange={(val) => setAssignReviewerId2(val === 'unassigned' ? '' : val ?? '')}
-                      >
-                        <SelectTrigger className="w-full bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl">
-                          <SelectValue placeholder="เลือกผู้ทรงคุณวุฒิ...">
-                            {labelText2}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-[#E2E8F0] text-[#0F172A] rounded-2xl text-xs">
-                          <SelectItem value="unassigned">— ยังไม่ได้มอบหมาย —</SelectItem>
-                          {expertProfiles.map((p) => {
-                            const nameText = p.full_name ? `${p.full_name} (${p.email})` : p.email
-                            return (
-                              <SelectItem key={p.id} value={p.id}>
-                                {nameText} ({formatUserRolesText(p.role)}{(p as any).is_temp_account ? ' · บัญชีชั่วคราว' : ''})
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={assignReviewerId2}
+                        onValueChange={(val) => setAssignReviewerId2(val)}
+                        placeholder="เลือกผู้ทรงคุณวุฒิ..."
+                        searchPlaceholder="พิมพ์ชื่อ หรือ อีเมล เพื่อค้นหา..."
+                        options={expertOptions2}
+                        triggerClassName="bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-2xl"
+                      />
                     )
                   })()}
 

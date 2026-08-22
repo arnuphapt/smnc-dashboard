@@ -90,6 +90,8 @@ export const MasterdataPanel: React.FC = () => {
   const [metaDept, setMetaDept] = useState('')
   const [metaSubtype, setMetaSubtype] = useState('')
   const [metaYear, setMetaYear] = useState('')
+  const [metaFiscalYear, setMetaFiscalYear] = useState('')
+  const [metaAcademicYear, setMetaAcademicYear] = useState('')
   const [metaJournal, setMetaJournal] = useState('')
   const [metaRegNum, setMetaRegNum] = useState('')
   const [metaRegDate, setMetaRegDate] = useState('')
@@ -312,6 +314,8 @@ export const MasterdataPanel: React.FC = () => {
     setMetaDept('')
     setMetaSubtype('')
     setMetaYear('')
+    setMetaFiscalYear('')
+    setMetaAcademicYear('')
     setMetaJournal('')
     setMetaRegNum('')
     setMetaRegDate('')
@@ -355,7 +359,9 @@ export const MasterdataPanel: React.FC = () => {
       item.metadata.award_level ||
       item.metadata.utilization_type || ''
     )
-    setMetaYear(item.metadata.year || '')
+    setMetaYear(item.metadata.year || item.metadata.year_be || '')
+    setMetaFiscalYear(item.metadata.fiscal_year || '')
+    setMetaAcademicYear(item.metadata.academic_year || '')
     setMetaJournal(item.metadata.journal_name || '')
     setMetaRegNum(item.metadata.registration_number || '')
     setMetaRegDate(item.metadata.registration_date || '')
@@ -420,7 +426,9 @@ export const MasterdataPanel: React.FC = () => {
 
       const metadata: any = {
         department: metaDept,
-        year: metaYear
+        year: metaYear,
+        fiscal_year: metaFiscalYear,
+        academic_year: metaAcademicYear
       }
 
       if (formCategory === 'research') {
@@ -1118,6 +1126,10 @@ export const MasterdataPanel: React.FC = () => {
         setMetaSubtype={setMetaSubtype}
         metaYear={metaYear}
         setMetaYear={setMetaYear}
+        metaFiscalYear={metaFiscalYear}
+        setMetaFiscalYear={setMetaFiscalYear}
+        metaAcademicYear={metaAcademicYear}
+        setMetaAcademicYear={setMetaAcademicYear}
         metaJournal={metaJournal}
         setMetaJournal={setMetaJournal}
         metaRegNum={metaRegNum}
