@@ -582,7 +582,7 @@ export const EthicsSubmissions: React.FC = () => {
     // 1st reviewer's already-derived-or-stale value instead of their own answer.
     const ownEvaluation = (evaluationsBySubmission[sub.id] || []).find((ev) => ev.reviewer_id === user?.id)
     setReviewStatus(ownEvaluation && validStatuses.includes(ownEvaluation.status) ? ownEvaluation.status : 'อนุมัติ')
-    const parsed = parseReviewerNotes(sub.reviewer_notes || '')
+    const parsed = parseReviewerNotes(ownEvaluation?.reviewer_notes || sub.reviewer_notes || '')
     setScores(parsed.scores)
     setRevisionDetails(parsed.revisionDetails || { obj: '', method: '', privacy: '', consent: '', risk: '', benefit: '' })
     setRiskLevel(parsed.riskLevel)
@@ -1031,6 +1031,8 @@ export const EthicsSubmissions: React.FC = () => {
             {(() => {
               const cleanNotes = (notesText: string) => notesText
                 .replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/, '')
+                .replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*$/, '')
+                .replace(/===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/, '')
                 .replace(/\[.*?\]/g, '')
                 .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
                 .trim()
@@ -1052,19 +1054,91 @@ export const EthicsSubmissions: React.FC = () => {
 
               return Array.from({ length: slotCount }).map((_, idx) => {
                 const ev = evaluationSource[idx]
-                return (
-                  <div key={idx}>
-                    <p className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#00796B] mb-1">
-                      ผู้ประเมินที่ {idx + 1}
-                    </p>
-                    {ev ? (
-                      <p className="text-xs font-semibold text-[#334155] whitespace-pre-wrap leading-relaxed">
-                        {cleanNotes(ev.reviewer_notes || '') || '—'}
+                if (!ev) {
+                  return (
+                    <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                      <p className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-[#00796B] mb-1">
+                        ผู้ประเมินที่ {idx + 1}
                       </p>
-                    ) : (
                       <p className="text-xs font-semibold text-[#94A3B8]">
                         ผู้ประเมินที่ {idx + 1} ยังไม่ได้ประเมิน
                       </p>
+                    </div>
+                  )
+                }
+
+                const parsed = parseReviewerNotes(ev.reviewer_notes || '')
+                const cleanComm = cleanNotes(parsed.comments)
+                const riskLabel = RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย'
+                const intervalLabel = REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)'
+
+                const criteriaItems = [
+                  { label: '1. วัตถุประสงค์และการออกแบบการวิจัย', val: parsed.scores.obj, rev: parsed.revisionDetails?.obj },
+                  { label: '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง', val: parsed.scores.method, rev: parsed.revisionDetails?.method },
+                  { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', val: parsed.scores.privacy, rev: parsed.revisionDetails?.privacy },
+                  { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', val: parsed.scores.consent, rev: parsed.revisionDetails?.consent },
+                  { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', val: parsed.scores.risk, rev: parsed.revisionDetails?.risk },
+                  { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit, rev: parsed.revisionDetails?.benefit },
+                ]
+
+                return (
+                  <div key={idx} className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <p className="text-xs font-mono font-black uppercase tracking-wider text-[#00796B]">
+                        ผู้ประเมินที่ {idx + 1}
+                      </p>
+                      {ev.status && (
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          ev.status === 'อนุมัติ' ? 'bg-green-100 text-green-700 border border-green-200' :
+                          ev.status === 'ส่งกลับแก้ไข' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          'bg-red-100 text-red-700 border border-red-200'
+                        }`}>
+                          {translateEvaluationStatus(ev.status)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] bg-white p-2.5 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="font-extrabold text-slate-500">ระดับความเสี่ยง: </span>
+                        <span className="font-bold text-slate-800">{riskLabel}</span>
+                      </div>
+                      <div>
+                        <span className="font-extrabold text-slate-500">รอบรายงาน: </span>
+                        <span className="font-bold text-slate-800">{intervalLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-extrabold text-slate-600">ผลการประเมินรายเกณฑ์:</p>
+                      <div className="space-y-1.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                        {criteriaItems.map((c, cIdx) => (
+                          <div key={cIdx} className="text-xs pb-1.5 border-b border-slate-100 last:border-0 last:pb-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-slate-700">{c.label}</span>
+                              <span className={`font-bold shrink-0 text-[11px] ${
+                                c.val === 'pass' ? 'text-green-600' : c.val === 'fail' ? 'text-amber-600' : 'text-slate-400'
+                              }`}>
+                                {c.val === 'pass' ? '✓ ผ่าน' : c.val === 'fail' ? '✗ แก้ไข' : '- N/A'}
+                              </span>
+                            </div>
+                            {c.rev && (
+                              <div className="mt-1 text-[11px] text-amber-800 bg-amber-50/80 p-2 rounded-lg border border-amber-200/80 leading-relaxed font-medium">
+                                <strong className="font-bold text-amber-900">ข้อเสนอแนะ:</strong> {c.rev}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {cleanComm && (
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-extrabold text-slate-600">ข้อเสนอแนะเพิ่มเติม:</p>
+                        <div className="text-xs font-semibold text-[#334155] whitespace-pre-wrap leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200">
+                          {cleanComm}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )

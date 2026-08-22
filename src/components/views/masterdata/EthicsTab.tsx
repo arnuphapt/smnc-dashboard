@@ -6,6 +6,7 @@ import { DataTable, DataTableColumn } from '@/components/DataTable'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { supabase, getMediaUrl } from '@/services/supabase'
+import { buildDocumentHtml } from './EvaluationPdfTemplate'
 
 // Core research ethics criteria checklist
 export const EVALUATION_CRITERIA = [
@@ -86,18 +87,24 @@ export const parseReviewerNotes = (notesText: string) => {
   }
   let riskLevel = '1'
   let progressReportInterval = '12'
-  let comments = notesText
+  let comments = notesText || ''
 
   const riskMatch = comments.match(/\[riskLevel:(1|2|3|4)\]/)
   if (riskMatch) {
     riskLevel = riskMatch[1]
     comments = comments.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/, '')
+  } else {
+    const plainRisk = comments.match(/ระดับความเสี่ยง:\s*([1-4])/)
+    if (plainRisk) riskLevel = plainRisk[1]
   }
 
   const intervalMatch = comments.match(/\[progressReportInterval:(6|12)\]/)
   if (intervalMatch) {
     progressReportInterval = intervalMatch[1]
     comments = comments.replace(/\[progressReportInterval:(?:6|12)\]\s*/, '')
+  } else {
+    const plainInt = comments.match(/ระยะเวลารายงานความก้าวหน้า:\s*(?:ทุก\s*)?(6|12)\s*เดือน/)
+    if (plainInt) progressReportInterval = plainInt[1]
   }
 
   const revMatch = comments.match(/\[revisionDetails:([^\]]+)\]/)
@@ -119,8 +126,39 @@ export const parseReviewerNotes = (notesText: string) => {
     scores.benefit = match[6] as any
     
     comments = comments.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/, '')
-    comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/, '')
   }
+
+  // Fallback parsing from text block if revision details / scores are present in text
+  const keyMap: Record<string, string> = {
+    '1': 'obj',
+    '2': 'method',
+    '3': 'privacy',
+    '4': 'consent',
+    '5': 'risk',
+    '6': 'benefit',
+  }
+
+  const lines = (notesText || '').split('\n')
+  for (const line of lines) {
+    const m = line.match(/^(\d)\.\s*([^:]+):\s*(?:\[(ผ่าน|แก้ไข|ไม่เกี่ยวข้อง|pass|fail|na)\])?\s*(?:\((?:รายละเอียดการแก้ไข|ข้อเสนอแนะ):\s*(.*?)\))?$/)
+    if (m) {
+      const k = keyMap[m[1]]
+      if (k) {
+        if (m[3]) {
+          if (m[3] === 'ผ่าน' || m[3] === 'pass') scores[k] = 'pass'
+          else if (m[3] === 'แก้ไข' || m[3] === 'fail') scores[k] = 'fail'
+          else if (m[3] === 'ไม่เกี่ยวข้อง' || m[3] === 'na') scores[k] = 'na'
+        }
+        if (m[4] && !revisionDetails[k]) {
+          revisionDetails[k] = m[4].trim()
+        }
+      }
+    }
+  }
+
+  comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/, '')
+  comments = comments.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*$/, '')
+
   return { scores, revisionDetails, riskLevel, progressReportInterval, comments }
 }
 
@@ -169,28 +207,25 @@ interface ExportEvaluation {
   updated_at: string
 }
 
-// Generate printable/exportable PDF layout window — Thai IRB official form style (Anonymous Expert Evaluation)
-// Renders one scorecard block per evaluation passed in `evaluations` — each
-// assigned reviewer's evaluation is isolated (ethics_evaluations table), so a
-// submission with 2 completed reviews now shows both scorecards, not just one.
-// Labeled generically by array order ("ผู้ประเมินที่ 1" / "ผู้ประเมินที่ 2") — not by
-// real name, preserving the existing anonymity-from-submitter pattern.
-export const handleExportEvaluation = (sub: any, submitterName: string, evaluations: ExportEvaluation[] = []) => {
-  const printWindow = window.open('', '_blank')
-  if (!printWindow) return
-
+// Generate printable/exportable PDF layout via html2pdf.js — Thai IRB official form style
+// Renders one scorecard block per evaluation passed in `evaluations` and opens
+// the generated PDF Blob directly in the browser's native PDF Viewer tab.
+export const handleExportEvaluation = async (sub: any, submitterName: string, evaluations: ExportEvaluation[] = []) => {
   const translateScore = (s: string) => {
-    if (s === 'pass') return '<span style="color:#16a34a;font-weight:700;">✓ ผ่าน</span>'
-    if (s === 'fail') return '<span style="color:#b45309;font-weight:700;">✗ ต้องแก้ไข</span>'
-    return '<span style="color:#64748b;font-weight:700;">- N/A (ไม่เกี่ยวข้อง)</span>'
+    if (s === 'pass') return '<strong>&#10003; ผ่าน</strong>'
+    if (s === 'fail') return '<strong>&#10007; ต้องแก้ไข</strong>'
+    return '<strong>- N/A</strong>'
   }
 
   const cleanNotesText = (notesText: string) => {
-    let cleanNotes = notesText
+    let cleanNotes = notesText || ''
     cleanNotes = cleanNotes.replace(/\[riskLevel:(?:1|2|3|4)\]\s*/g, '')
     cleanNotes = cleanNotes.replace(/\[progressReportInterval:(?:6|12)\]\s*/g, '')
+    cleanNotes = cleanNotes.replace(/\[revisionDetails:[^\]]+\]\s*/g, '')
     cleanNotes = cleanNotes.replace(/\[obj:(?:pass|fail|na)\]\[method:(?:pass|fail|na)\]\[privacy:(?:pass|fail|na)\]\[consent:(?:pass|fail|na)\]\[risk:(?:pass|fail|na)\]\[benefit:(?:pass|fail|na)\]\s*\n*/g, '')
-    cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?=== ความเห็นและข้อเสนอแนะเพิ่มเติม ===\s*\n*/g, '')
+    cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*?===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/g, '')
+    cleanNotes = cleanNotes.replace(/=== ผลการประเมินรายเกณฑ์ ===[\s\S]*$/g, '')
+    cleanNotes = cleanNotes.replace(/===\s*(?:ความเห็นและข้อเสนอแนะเพิ่มเติม|ข้อเสนอแนะเพิ่มเติม)\s*===\s*\n*/g, '')
     cleanNotes = cleanNotes
       .replace(/\[.*?\]/g, '')
       .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
@@ -199,70 +234,31 @@ export const handleExportEvaluation = (sub: any, submitterName: string, evaluati
     return cleanNotes
   }
 
-  // Fall back to the legacy single-evaluator source (sub.reviewer_notes) when no
-  // ethics_evaluations rows are available yet (e.g. pre-migration data that wasn't
-  // backfilled because assigned_reviewer_id was null on that submission).
+  // Fall back to legacy single-evaluator source if no ethics_evaluations rows exist
   const evaluationSource = evaluations.length > 0
     ? evaluations
     : (sub.reviewer_notes ? [{ reviewer_notes: sub.reviewer_notes } as ExportEvaluation] : [])
 
-  const evaluatorBlocksHtml = evaluationSource.map((ev, idx) => {
+  const evaluatorBlocks = evaluationSource.map((ev, idx) => {
     const parsed = parseReviewerNotes(ev.reviewer_notes || '')
     const cleanNotes = cleanNotesText(parsed.comments)
-    const riskLabelEv = RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย'
-    const intervalLabelEv = REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)'
+    return {
+      index: idx,
+      verdictLabel: ev.status ? translateEvaluationStatus(ev.status) : 'ยังไม่ได้ประเมิน',
+      riskLabel: RISK_LEVEL_OPTIONS.find(r => r.value === parsed.riskLevel)?.label || 'ไม่เกินความเสี่ยงเล็กน้อย',
+      intervalLabel: REPORT_INTERVAL_OPTIONS.find(i => i.value === parsed.progressReportInterval)?.label || 'ทุก 12 เดือน (1 ปี)',
+      cleanNotes,
+      criteria: [
+        { label: '1. วัตถุประสงค์และการออกแบบการวิจัย', scoreHtml: translateScore(parsed.scores.obj), revisionDetail: parsed.revisionDetails?.obj },
+        { label: '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง', scoreHtml: translateScore(parsed.scores.method), revisionDetail: parsed.revisionDetails?.method },
+        { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', scoreHtml: translateScore(parsed.scores.privacy), revisionDetail: parsed.revisionDetails?.privacy },
+        { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', scoreHtml: translateScore(parsed.scores.consent), revisionDetail: parsed.revisionDetails?.consent },
+        { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', scoreHtml: translateScore(parsed.scores.risk), revisionDetail: parsed.revisionDetails?.risk },
+        { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', scoreHtml: translateScore(parsed.scores.benefit), revisionDetail: parsed.revisionDetails?.benefit },
+      ],
+    }
+  })
 
-    const criteriaEv = [
-      { label: '1. วัตถุประสงค์และการออกแบบการวิจัย', val: parsed.scores.obj },
-      { label: '2. ความเหมาะสมของระเบียบวิธีวิจัยและกลุ่มตัวอย่าง', val: parsed.scores.method },
-      { label: '3. การปกป้องสิทธิ์ ความเป็นส่วนตัว และข้อมูลส่วนบุคคล', val: parsed.scores.privacy },
-      { label: '4. ความสมบูรณ์ของแบบชี้แจงและใบยินยอม (Informed Consent)', val: parsed.scores.consent },
-      { label: '5. มาตรการป้องกันและลดความเสี่ยงต่ออาสาสมัคร', val: parsed.scores.risk },
-      { label: '6. สัดส่วนประโยชน์ที่ได้รับเทียบกับความเสี่ยงมีความเหมาะสม', val: parsed.scores.benefit },
-    ]
-
-    const criTableRowsEv = criteriaEv.map((c) => `
-      <tr>
-        <td style="border:1px solid #000;padding:6px 10px;font-size:13px;">${c.label}</td>
-        <td style="border:1px solid #000;padding:6px 10px;text-align:center;font-size:13px;">${translateScore(c.val)}</td>
-      </tr>`).join('')
-
-    const verdictLabelEv = ev.status ? translateEvaluationStatus(ev.status) : 'ยังไม่ได้ประเมิน'
-
-    return `
-  <div class="evaluator-block" style="${idx > 0 ? 'margin-top:24px;page-break-before:always;' : ''}">
-    <div class="section-title">ผู้ประเมินที่ ${idx + 1}</div>
-    <table class="info-table">
-      <tr>
-        <td class="lbl">ผลการประเมิน:</td>
-        <td colspan="3"><strong>${verdictLabelEv}</strong></td>
-      </tr>
-      <tr>
-        <td class="lbl">ระดับความเสี่ยง:</td>
-        <td>☑ ${riskLabelEv}</td>
-        <td class="lbl">รอบรายงานความก้าวหน้า:</td>
-        <td>${intervalLabelEv}</td>
-      </tr>
-    </table>
-    <table class="criteria-table">
-      <thead>
-        <tr>
-          <th style="width:78%;text-align:left;">เกณฑ์การพิจารณา</th>
-          <th style="width:22%;">ผลการพิจารณา</th>
-        </tr>
-      </thead>
-      <tbody>${criTableRowsEv}</tbody>
-    </table>
-    <div class="section-title" style="margin-top:10px;">ข้อเสนอแนะเพิ่มเติมจากผู้ประเมินที่ ${idx + 1}</div>
-    <div class="notes-box">${(cleanNotes || 'ไม่มีข้อเสนอแนะเพิ่มเติม').replace(/\n/g, '<br/>')}</div>
-  </div>`
-  }).join('')
-
-  // Overall conclusion is derived from the submission-level `status` field, which
-  // is now recomputed by `deriveSubmissionStatus` (see EthicsTab.tsx) rather than
-  // last-write-wins. The submission-level enum has only 4 values (ยื่นแล้ว /
-  // กำลังตรวจ / อนุมัติ / ไม่อนุมัติ) — "รอแก้ไข" was removed as a submission-level
-  // status, so this aggregate stays a 2-way check (เห็นชอบ / ไม่เห็นชอบ).
   const statusLabel = sub.status === 'อนุมัติ'
     ? '☐ ไม่เห็นชอบ &nbsp;&nbsp;&nbsp; ☑ เห็นชอบ'
     : sub.status === 'ไม่อนุมัติ'
@@ -273,121 +269,81 @@ export const handleExportEvaluation = (sub: any, submitterName: string, evaluati
   const thaiDate = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   const submittedDate = new Date(sub.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  // Calculate expiry for reporting: interval months from today, based on the
-  // first evaluator's reported interval (each evaluator's own interval is
-  // still shown individually within their own scorecard block below).
   const firstParsed = evaluationSource.length > 0 ? parseReviewerNotes(evaluationSource[0].reviewer_notes || '') : null
   const intervalMonths = parseInt(firstParsed?.progressReportInterval || '12')
   const expiryDate = new Date(today)
   expiryDate.setMonth(expiryDate.getMonth() + intervalMonths)
   const thaiExpiryDate = expiryDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  const docHtml = `<!DOCTYPE html><html lang="th"><head>
-<meta charset="UTF-8"/>
-<title>แบบประเมินโครงร่างวิจัย — ${sub.project_title}</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;800&display=swap');
-@page { size: A4 portrait; margin: 15mm 15mm; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Sarabun', 'TH Sarabun New', serif; font-size: 13px; color: #000; background: #fff; padding: 10px 20px; line-height: 1.5; }
-.page { max-width: 730px; margin: 0 auto; }
-.doc-header { text-align: center; margin-top: 12px; margin-bottom: 16px; }
-.doc-header .org-name { font-size: 18px; font-weight: 800; }
-.doc-header .org-sub { font-size: 13.5px; }
-.doc-header .form-title { font-size: 15px; font-weight: 700; margin-top: 6px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; }
-.ref-row { display: flex; justify-content: space-between; font-size: 13px; margin: 12px 0 8px 0; }
-.info-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px 0; }
-.info-table td { padding: 6px 8px; font-size: 12.5px; vertical-align: top; border: 1px solid #cbd5e1; }
-.info-table .lbl { width: 135px; font-weight: 700; background: #f8fafc; color: #0f172a; }
-.underline-fill { border-bottom: 1px solid #555; display: inline-block; min-width: 200px; padding: 0 4px; }
-.section-title { font-weight: 700; font-size: 13.5px; margin: 16px 0 6px 0; border-bottom: 1.5px solid #000; padding-bottom: 3px; }
-.criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-.criteria-table th { border: 1px solid #000; padding: 6px 10px; font-size: 12.5px; background: #f0f0f0; text-align: center; }
-.criteria-table td { border: 1px solid #000; padding: 6px 10px; font-size: 12.5px; }
-.notes-box { border: 1px solid #555; min-height: 65px; padding: 8px 12px; font-size: 12.5px; white-space: pre-wrap; margin-top: 4px; }
-.bottom-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 22px; gap: 20px; page-break-inside: avoid; }
-.conclusion-block { flex: 1; }
-.checkbox-row { font-size: 12.5px; line-height: 1.8; margin-top: 5px; }
-.sign-block { width: 240px; text-align: center; shrink: 0; }
-.sign-line { border-bottom: 1px solid #000; margin: 45px auto 6px; width: 90%; }
-.sign-label { font-size: 12.5px; font-weight: 500; }
-.footer-note { font-size: 10.5px; color: #64748b; margin-top: 22px; border-top: 1px dashed #cbd5e1; padding-top: 6px; text-align: center; }
-@media print {
-  body { padding: 0; }
-  .no-print { display: none !important; }
+  const container = document.createElement('div')
+  container.style.position = 'fixed'
+  container.style.top = '0px'
+  container.style.left = '0px'
+  container.style.width = '794px'
+  container.style.backgroundColor = '#ffffff'
+  container.style.zIndex = '-9999'
+  container.style.pointerEvents = 'none'
+  container.innerHTML = buildDocumentHtml({
+    thaiDate,
+    submittedDate,
+    thaiExpiryDate,
+    projectTitle: sub.project_title,
+    submitterName,
+    statusLabel,
+    evaluatorBlocks,
+  })
+
+  document.body.appendChild(container)
+
+  try {
+    if (document.fonts) {
+      await document.fonts.ready
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf')
+    ])
+
+    const pageElements = container.querySelectorAll<HTMLElement>('.pdf-page')
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+
+    const marginX = 8
+    const marginY = 8
+    const imgWidth = pageWidth - (marginX * 2)
+
+    for (let i = 0; i < pageElements.length; i++) {
+      if (i > 0) {
+        pdf.addPage()
+      }
+      const pageEl = pageElements[i]
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 794
+      })
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      pdf.addImage(imgData, 'JPEG', marginX, marginY, imgWidth, Math.min(imgHeight, pageHeight - (marginY * 2)))
+    }
+
+    const pdfBlob: Blob = pdf.output('blob')
+    const blobUrl = URL.createObjectURL(pdfBlob)
+    window.open(blobUrl, '_blank')
+  } catch (err) {
+    console.error('Error generating PDF with html2canvas/jsPDF:', err)
+  } finally {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container)
+    }
+  }
 }
-</style>
-</head><body>
-<div class="page">
-
-  <!-- Print Button -->
-  <div class="no-print" style="text-align:right;margin-bottom:8px;">
-    <button onclick="window.print()" style="padding:6px 16px;font-family:inherit;font-size:12px;font-weight:700;background:#0B1D3A;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨 พิมพ์ / บันทึก PDF (1 หน้า)</button>
-  </div>
-
-  <!-- Header -->
-  <div class="doc-header">
-    <div class="org-name">วิทยาลัยพยาบาลศรีมหาสารคาม</div>
-    <div class="org-sub">สถาบันพระบรมราชชนก กระทรวงสาธารณสุข</div>
-    <div class="form-title">แบบประเมินโครงร่างวิจัย · คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (IRB)</div>
-  </div>
-
-  <!-- Reference / Date -->
-  <div class="ref-row">
-    <span>เลขที่หนังสือ: <span class="underline-fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
-    <span>วันที่ประเมิน: <strong>${thaiDate}</strong></span>
-  </div>
-
-  <!-- Project Info Combined Grid -->
-  <div class="section-title">ข้อมูลโครงการและขอบเขตการพิจารณา</div>
-  <table class="info-table">
-    <tr>
-      <td class="lbl">ชื่อโครงการวิจัย:</td>
-      <td colspan="3"><strong>${sub.project_title}</strong></td>
-    </tr>
-    <tr>
-      <td class="lbl">ผู้วิจัย / ผู้ยื่นคำขอ:</td>
-      <td>${submitterName}</td>
-      <td class="lbl">วันที่ยื่นคำขอ:</td>
-      <td>${submittedDate}</td>
-    </tr>
-    <tr>
-      <td class="lbl">กำหนดส่งรายงานความก้าวหน้า:</td>
-      <td colspan="3">${thaiExpiryDate}</td>
-    </tr>
-  </table>
-
-  <!-- Evaluator Scorecards (one block per assigned reviewer who has evaluated) -->
-  <div class="section-title">เกณฑ์การพิจารณาจริยธรรมการวิจัย และความเห็นผู้ประเมิน</div>
-  ${evaluatorBlocksHtml || '<div class="notes-box">ยังไม่มีผลการประเมิน</div>'}
-
-  <!-- Bottom Section: Conclusion (Left) & Signature (Right) -->
-  <div class="bottom-section">
-    <div class="conclusion-block">
-      <div class="section-title" style="margin-top:0;">ผลการพิจารณาโดยรวม</div>
-      <div class="checkbox-row">${statusLabel}</div>
-    </div>
-    <div class="sign-block">
-      <div class="sign-line"></div>
-      <div class="sign-label"><strong>ประธานคณะกรรมการ IRB</strong></div>
-      <div class="sign-label">วันที่ ...... / ...... / ......</div>
-    </div>
-  </div>
-
-  <div class="footer-note">
-    พิมพ์จากระบบคลังปัญญา SMNC — วิทยาลัยพยาบาลศรีมหาสารคาม | วันที่พิมพ์: ${thaiDate}
-  </div>
-</div>
-<script>
-window.onload = function() { setTimeout(function() { window.print(); }, 600); }
-</script>
-</body></html>`
-
-  printWindow.document.write(docHtml)
-  printWindow.document.close()
-  printWindow.focus()
-}
-
 
 const CATEGORY_OPTIONS: { value: 'ethics' | 'ip' | 'utilization'; label: string; badgeClass: string }[] = [
   { value: 'ethics', label: 'จริยธรรมการวิจัย (Ethics)', badgeClass: 'bg-[#F3E8FF] text-[#7C3AED] border-[#DDD6FE]' },
