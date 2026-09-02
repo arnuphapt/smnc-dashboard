@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2, BookOpen, Lock, User as UserIcon, FlaskConical } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, Shield, Edit2, Plus, X, Key, Clock, Copy, Sparkles, CheckCircle2, BookOpen, Lock, User as UserIcon, FlaskConical, Eye, EyeOff } from 'lucide-react'
 import { DataTableColumn } from '@/components/DataTable'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { Profile } from '@/context/AuthContext'
@@ -54,6 +54,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState('')
   const [resettingPassword, setResettingPassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [savingUser, setSavingUser] = useState(false)
 
   const [tempCredentialResult, setTempCredentialResult] = useState<{
     email: string
@@ -87,6 +90,47 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
       alert(err.message || 'เกิดข้อผิดพลาดในการยืนยันสิทธิ์บัญชีผู้ใช้')
     } finally {
       setConfirmingId(null)
+    }
+  }
+
+  const handleSaveUserProfile = async () => {
+    if (!selectedProfile) return
+    if (newPassword && newPassword.trim().length < 6) {
+      toast.error('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร')
+      return
+    }
+
+    setSavingUser(true)
+    try {
+      // 1. Update role & name
+      await onUpdateRole(selectedProfile.id, newRole, newFullName)
+
+      // 2. If password is specified, update password
+      if (newPassword && newPassword.trim()) {
+        const res = await fetch('/api/admin/reset-temp-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: selectedProfile.id,
+            customPassword: newPassword.trim()
+          })
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          const msg = typeof data.error === 'string' ? data.error : (data.error?.message || JSON.stringify(data.error))
+          throw new Error(msg || 'ไม่สามารถตั้งรหัสผ่านใหม่ได้')
+        }
+        setSelectedProfile(null)
+        setTempCredentialResult(data)
+        toast.success('บันทึกข้อมูลและเปลี่ยนรหัสผ่านเรียบร้อยแล้ว')
+      } else {
+        setSelectedProfile(null)
+        toast.success('บันทึกข้อมูลผู้ใช้เรียบร้อยแล้ว')
+      }
+    } catch (err: any) {
+      alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    } finally {
+      setSavingUser(false)
     }
   }
 
@@ -246,11 +290,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
               setSelectedProfile(p)
               setNewRole(p.role)
               setNewFullName(p.full_name || '')
+              setNewPassword('')
+              setShowNewPassword(false)
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-200 hover:-translate-y-0.5 shadow-xs cursor-pointer bg-[#F0F7FF] text-[#0EA5A0] border-[#DAEEFF]"
           >
             <Edit2 className="w-3.5 h-3.5" />
-            แก้ไขสิทธิ์/ชื่อ
+            แก้ไขสิทธิ์/ชื่อ/รหัสผ่าน
           </button>
         </div>
       ),
@@ -534,10 +580,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
         document.body
       )}
 
-      {/* Modal for editing role and profile */}
+      {/* Modal for editing role, profile, and password */}
       {selectedProfile && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 flex flex-col gap-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <div>
               <h3 className="text-sm font-black text-slate-800">จัดการข้อมูลและสิทธิ์ผู้ใช้งาน</h3>
               <p className="text-[11px] text-slate-500 mt-1">
@@ -606,23 +652,76 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 mt-2">
+            {/* Custom password section */}
+            <div className="space-y-1.5 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5A0] flex items-center gap-1">
+                  <Key className="w-3.5 h-3.5 text-[#0EA5A0]" />
+                  เปลี่ยนรหัสผ่านใหม่ (กำหนดเองได้)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+                    let pwd = ''
+                    for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)]
+                    setNewPassword(pwd)
+                    setShowNewPassword(true)
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0EA5A0] hover:underline cursor-pointer bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 transition hover:bg-teal-100"
+                >
+                  <Sparkles className="w-3 h-3 text-teal-600" />
+                  <span>สุ่มรหัสอัตโนมัติ</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="พิมพ์รหัสผ่านใหม่ที่ต้องการ (เว้นว่างไว้ถ้าไม่เปลี่ยน)..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] pr-10 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title={showNewPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="text-[10px]">
+                {newPassword ? (
+                  newPassword.length < 6 ? (
+                    <span className="text-red-500 font-bold">⚠️ รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร</span>
+                  ) : (
+                    <span className="text-teal-700 font-bold">✓ รหัสผ่านมีความยาว {newPassword.length} ตัวอักษร (จะอัปเดตลงระบบทันทีเมื่อกดบันทึก)</span>
+                  )
+                ) : (
+                  <span className="text-slate-400">กรอกรหัสผ่านที่ต้องการตั้ง หรือกดปุ่ม &quot;สุ่มรหัสอัตโนมัติ&quot;</span>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 mt-2">
               <button
                 type="button"
                 onClick={() => setSelectedProfile(null)}
+                disabled={savingUser}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  onUpdateRole(selectedProfile.id, newRole, newFullName)
-                  setSelectedProfile(null)
-                }}
-                className="btn-primary text-xs !py-2 !px-4 h-auto cursor-pointer"
+                onClick={handleSaveUserProfile}
+                disabled={savingUser || (!!newPassword && newPassword.length < 6)}
+                className="btn-primary text-xs !py-2 !px-5 h-auto cursor-pointer disabled:opacity-50"
               >
-                บันทึกข้อมูล
+                {savingUser ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
               </button>
             </div>
           </div>

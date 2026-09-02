@@ -13,10 +13,14 @@ function generateTempPassword(): string {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await request.json()
+    const { userId, customPassword } = await request.json()
 
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json({ error: 'กรุณาระบุ User ID' }, { status: 400 })
+    }
+
+    if (customPassword && typeof customPassword === 'string' && customPassword.trim().length < 6) {
+      return NextResponse.json({ error: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' }, { status: 400 })
     }
 
     // Confirm caller is an authenticated admin
@@ -49,7 +53,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ' }, { status: 404 })
     }
 
-    const newPassword = generateTempPassword()
+    const newPassword = customPassword && typeof customPassword === 'string' && customPassword.trim()
+      ? customPassword.trim()
+      : generateTempPassword()
 
     // 2. Update auth user password
     const { error: updateError } = await admin.auth.admin.updateUserById(userId, {

@@ -46,42 +46,99 @@ export async function POST(request: Request) {
     const password = generateTempPassword()
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString()
 
-    // 1. Create temporary user in auth.users
-    const { data: createdUser, error: createError } = await admin.auth.admin.createUser({
-      email: email.trim(),
-      password,
-      email_confirm: true,
-      user_metadata: { role: 'expert', created_by_admin: true }
-    })
+    let userId: string
 
-    if (createError || !createdUser?.user) {
-      console.error('Create temp user error:', createError)
-      const errMsg = createError?.message || (typeof createError === 'object' ? JSON.stringify(createError) : String(createError))
-      return NextResponse.json({ error: errMsg || 'ไม่สามารถสร้างบัญชีชั่วคราวได้' }, { status: 400 })
-    }
-
-    // 2. Insert/Upsert matching profile record
-    const { error: profileError } = await admin
+    // Check if profile/user already exists
+    const { data: existingProfile } = await admin
       .from('profiles')
-      .upsert({
-        id: createdUser.user.id,
-        email: email.trim(),
-        role: 'expert',
-        is_temp_account: true,
-        temp_expires_at: expiresAt,
-        temp_target_submission_id: targetSubmissionId,
+      .select('id, role')
+      .ilike('email', email.trim())
+      .maybeSingle()
+
+    if (existingProfile) {
+      userId = existingProfile.id
+
+      // 1. Update password for existing user in auth.users
+      const { error: updateAuthError } = await admin.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
       })
 
-    if (profileError) {
-      console.error('Upsert temp profile error:', profileError)
-      return NextResponse.json({ error: profileError.message || 'ไม่สามารถบันทึกโปรไฟล์ผู้ใช้ชั่วคราวได้' }, { status: 500 })
+      if (updateAuthError) {
+        console.error('Update existing user password error:', updateAuthError)
+        return NextResponse.json({ error: updateAuthError.message || 'ไม่สามารถอัปเดตรหัสผ่านผู้ใช้เดิมได้' }, { status: 500 })
+      }
+
+      // Ensure expert role is included in their role
+      const currentRoles = (existingProfile.role || '').split(',').map((r: string) => r.trim()).filter(Boolean)
+      if (!currentRoles.includes('expert')) {
+        currentRoles.push('expert')
+      }
+
+      const { error: profileError } = await admin
+        .from('profiles')
+        .update({
+          role: currentRoles.join(','),
+          is_temp_account: true,
+          temp_expires_at: expiresAt,
+          temp_target_submission_id: targetSubmissionId,
+        })
+        .eq('id', userId)
+
+      if (profileError) {
+        console.error('Update temp profile error:', profileError)
+        return NextResponse.json({ error: profileError.message || 'ไม่สามารถบันทึกโปรไฟล์ผู้ใช้ชั่วคราวได้' }, { status: 500 })
+      }
+    } else {
+      // 1. Create temporary user in auth.users
+      const { data: createdUser, error: createError } = await admin.auth.admin.createUser({
+        email: email.trim(),
+        password,
+        email_confirm: true,
+        user_metadata: { role: 'expert', created_by_admin: true }
+      })
+
+      if (createError) {
+        // Fallback: If user exists in auth.users but not in profiles table
+        const { data: userList } = await admin.auth.admin.listUsers()
+        const matchedUser = userList?.users?.find((u: any) => u.email?.toLowerCase() === email.trim().toLowerCase())
+        if (matchedUser) {
+          userId = matchedUser.id
+          await admin.auth.admin.updateUserById(userId, { password, email_confirm: true })
+        } else {
+          console.error('Create temp user error:', createError)
+          const errMsg = createError?.message || (typeof createError === 'object' ? JSON.stringify(createError) : String(createError))
+          return NextResponse.json({ error: errMsg || 'ไม่สามารถสร้างบัญชีชั่วคราวได้' }, { status: 400 })
+        }
+      } else if (createdUser?.user) {
+        userId = createdUser.user.id
+      } else {
+        return NextResponse.json({ error: 'ไม่สามารถสร้างบัญชีชั่วคราวได้' }, { status: 400 })
+      }
+
+      // 2. Insert/Upsert matching profile record
+      const { error: profileError } = await admin
+        .from('profiles')
+        .upsert({
+          id: userId,
+          email: email.trim(),
+          role: 'expert',
+          is_temp_account: true,
+          temp_expires_at: expiresAt,
+          temp_target_submission_id: targetSubmissionId,
+        })
+
+      if (profileError) {
+        console.error('Upsert temp profile error:', profileError)
+        return NextResponse.json({ error: profileError.message || 'ไม่สามารถบันทึกโปรไฟล์ผู้ใช้ชั่วคราวได้' }, { status: 500 })
+      }
     }
 
     // 3. Assign reviewer in ethics_submissions IF targetSubmissionId is provided
     if (targetSubmissionId) {
       const { error: assignError } = await admin
         .from('ethics_submissions')
-        .update({ assigned_reviewer_id: createdUser.user.id })
+        .update({ assigned_reviewer_id: userId })
         .eq('id', targetSubmissionId)
 
       if (assignError) {
