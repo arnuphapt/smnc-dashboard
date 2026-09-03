@@ -852,11 +852,9 @@ export const EthicsSubmissions: React.FC = () => {
         }
 
         // "ส่งกลับแก้ไข": once both assigned reviewers have evaluated (regardless
-        // of outcome — อนุมัติ/ไม่อนุมัติ doesn't matter), admin/reviewers can send
-        // the submission back to the submitter for revision. Same visibility rule
-        // as "พิจารณาผล"/"รายงานผล" above (isReviewTabVisible), gated additionally
-        // on the same 2/2-complete condition as the export button.
-        if (isReviewTabVisible && exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount) {
+        // of outcome — อนุมัติ/ไม่อนุมัติ doesn't matter), can send the submission
+        // back to the submitter for revision. Gated on the 2/2-complete condition.
+        if (exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount) {
           actionButtons.push({
             key: 'send_back',
             label: 'ส่งกลับแก้ไข',
