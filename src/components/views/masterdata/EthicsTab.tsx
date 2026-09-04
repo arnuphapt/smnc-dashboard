@@ -42,29 +42,17 @@ export const translateEvaluationStatus = (status: string): string =>
 
 // Derives submission-level status (ยื่นแล้ว / กำลังตรวจ / อนุมัติ / ไม่อนุมัติ) from the
 // full set of per-reviewer evaluations for a submission, plus the assigned-reviewer
-// count. Pure function — no Supabase access — so it can be reused from any future
-// call site (e.g. an admin bulk-edit tool) without duplicating this logic.
-//
-// Rule (per user-confirmed Option A): "ส่งกลับแก้ไข" (send back for revision) is
-// treated identically to "ไม่อนุมัติ" (reject) for derivation purposes — either
-// non-approve value blocks the submission from ever reaching "อนุมัติ". There is no
-// submission-level status for "ส่งกลับแก้ไข" — the enum stays exactly 4 values.
+// When all assigned reviewers have submitted their evaluation, the submission
+// status transitions to "รออนุมัติ" (Awaiting Admin Decision) rather than directly
+// auto-approving or auto-rejecting, allowing the Admin to make the final determination.
 export const deriveSubmissionStatus = (
   evaluations: { status: string }[],
   assignedCount: number
 ): string => {
   if (evaluations.length === 0) return 'ยื่นแล้ว'
   if (evaluations.length < assignedCount) return 'กำลังตรวจ'
-  // all assigned reviewers have submitted their evaluation
-  const hasNonApprove = evaluations.some(
-    (ev) => ev.status === 'ไม่อนุมัติ' || ev.status === 'ส่งกลับแก้ไข'
-  )
-  if (hasNonApprove) return 'ไม่อนุมัติ'
-  const allApprove = evaluations.every((ev) => ev.status === 'อนุมัติ')
-  if (allApprove) return 'อนุมัติ'
-  // defensive fallback — should be unreachable once evaluation status is
-  // constrained to {อนุมัติ, ไม่อนุมัติ, ส่งกลับแก้ไข} only
-  return 'กำลังตรวจ'
+  // All assigned reviewers have submitted their evaluation -> wait for Admin decision
+  return 'รออนุมัติ'
 }
 
 // Parse structured tag in notes

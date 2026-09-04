@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -15,13 +15,35 @@ import {
   Calendar,
   Clipboard,
   Award,
-  Zap
+  Zap,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
   const { profile, isPageAllowed } = useAuth()
   const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('smnc_sidebar_collapsed')
+      if (saved === 'true') {
+        setIsCollapsed(true)
+      }
+    } catch {}
+  }, [])
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('smnc_sidebar_collapsed', String(next))
+      } catch {}
+      return next
+    })
+  }
 
   const sidebarLinkClass = (active: boolean) =>
     `px-4 py-3 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center gap-3 ${
@@ -144,109 +166,168 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="hidden md:flex md:flex-col w-64 shrink-0 bg-white border-r border-[#E2E8F0] min-h-screen justify-between p-4 shadow-sm">
-        <div className="space-y-4">
+      <aside
+        className={`hidden md:flex md:flex-col shrink-0 bg-white border-r border-[#E2E8F0] min-h-screen justify-between shadow-xs transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-20 p-3 items-center' : 'w-64 p-4'
+        }`}
+      >
+        <div className={`space-y-4 ${isCollapsed ? 'w-full flex flex-col items-center' : 'w-full'}`}>
           {/* Brand Logo Header */}
-          <Link href="/" className="flex items-center gap-3 h-14 px-2 cursor-pointer select-none group">
-            <img
-              src="/smnc_logo.png"
-              alt="SMNC Logo"
-              className="w-10 h-10 rounded-2xl object-cover shadow-md shrink-0 border border-teal-100 group-hover:scale-105 transition-transform"
-            />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-black text-[#0F172A] leading-none tracking-tight">คลังปัญญา SMNC</span>
-              </div>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#64748B] block mt-1">
-                DIGITAL RESEARCH WORKSPACE
-              </span>
+          {isCollapsed ? (
+            <div className="flex flex-col items-center justify-center w-full h-14 select-none">
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                title="คลิกที่โลโก้เพื่อขยายแถบเมนู (Expand Sidebar)"
+                className="cursor-pointer group relative p-1 rounded-2xl hover:bg-slate-100 hover:ring-2 hover:ring-[#00796B]/30 transition-all focus:outline-none"
+              >
+                <img
+                  src="/smnc_logo.png"
+                  alt="SMNC Logo"
+                  className="w-10 h-10 rounded-2xl object-cover shadow-md shrink-0 border border-teal-100 group-hover:scale-105 transition-transform"
+                />
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#00796B] text-white rounded-full flex items-center justify-center text-[10px] shadow-xs group-hover:scale-110 transition-transform font-bold">
+                  ›
+                </span>
+              </button>
             </div>
-          </Link>
-
+          ) : (
+            <div className="flex items-center gap-3 h-14 px-2 select-none">
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                title="คลิกที่โลโก้เพื่อย่อแถบเมนู (Collapse Sidebar)"
+                className="cursor-pointer group relative shrink-0 p-0.5 rounded-2xl hover:ring-2 hover:ring-[#00796B]/40 hover:scale-105 active:scale-95 transition-all focus:outline-none"
+              >
+                <img
+                  src="/smnc_logo.png"
+                  alt="SMNC Logo"
+                  className="w-10 h-10 rounded-2xl object-cover shadow-md shrink-0 border border-teal-100 transition-transform"
+                />
+              </button>
+              <Link href="/" className="min-w-0 flex-1 hover:opacity-85 transition-opacity" title="กลับหน้าหลัก">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-black text-[#0F172A] leading-none tracking-tight">คลังปัญญา SMNC</span>
+                </div>
+                <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#64748B] block mt-1">
+                  DIGITAL RESEARCH WORKSPACE
+                </span>
+              </Link>
+            </div>
+          )}
 
           {/* Navigation Items */}
-          <nav className="space-y-1.5 pt-2">
-            {navItems.map((item) => {
-              if (!item.children) {
-                return (
-                  <Link key={item.key} href={item.to} className={sidebarLinkClass(item.active)}>
-                    {item.icon}
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                )
-              }
-
-              const expanded = isGroupExpanded(item)
-              return (
-                <div key={item.key} className="space-y-1">
-                  <div
-                    className={`flex items-center justify-between rounded-full transition-all duration-200 ${
-                      item.active
-                        ? 'bg-[#00796B] text-white shadow-md shadow-[#00796B]/20'
-                        : 'text-[#0F172A] hover:bg-[#F1F5F9] hover:text-[#00796B]'
-                    }`}
-                  >
-                    <Link
-                      href={item.to}
-                      className="px-4 py-3 text-xs font-extrabold flex items-center gap-3 flex-1 min-w-0"
-                    >
+          {isCollapsed ? (
+            <nav className="space-y-2 pt-2 flex flex-col items-center w-full">
+              {navItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.to}
+                  title={item.label}
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    item.active
+                      ? 'bg-[#00796B] text-white shadow-md shadow-[#00796B]/20 scale-105'
+                      : 'text-[#0F172A] hover:text-[#00796B] hover:bg-[#F1F5F9]'
+                  }`}
+                >
+                  {item.icon}
+                </Link>
+              ))}
+            </nav>
+          ) : (
+            <nav className="space-y-1.5 pt-2">
+              {navItems.map((item) => {
+                if (!item.children) {
+                  return (
+                    <Link key={item.key} href={item.to} className={sidebarLinkClass(item.active)}>
                       {item.icon}
                       <span className="truncate">{item.label}</span>
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(item.key, expanded)}
-                      aria-label={expanded ? 'ย่อเมนูย่อย' : 'ขยายเมนูย่อย'}
-                      className={`pr-3.5 pl-1 shrink-0 flex items-center justify-center cursor-pointer ${
-                        item.active ? 'text-white' : 'text-[#94A3B8] hover:text-[#0F172A]'
+                  )
+                }
+
+                const expanded = isGroupExpanded(item)
+                return (
+                  <div key={item.key} className="space-y-1">
+                    <div
+                      className={`flex items-center justify-between rounded-full transition-all duration-200 ${
+                        item.active
+                          ? 'bg-[#00796B] text-white shadow-md shadow-[#00796B]/20'
+                          : 'text-[#0F172A] hover:bg-[#F1F5F9] hover:text-[#00796B]'
                       }`}
                     >
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
-                    </button>
-                  </div>
-
-                  {expanded && (
-                    <div className="mt-1.5 ml-5 pl-4 space-y-1.5 border-l-2 border-[#E2E8F0]">
-                      {item.children.map((child, cIdx) => {
-                        if (child.isHeader) {
-                          return (
-                            <div key={`header-${cIdx}`} className="pt-2 pb-1 text-[9px] font-black uppercase tracking-wider text-[#94A3B8]">
-                              {child.label}
-                            </div>
-                          )
-                        }
-                        return (
-                          <Link
-                            key={child.to}
-                            href={child.to}
-                            className={`block px-4 py-2.5 rounded-full text-xs transition-all duration-200 ${
-                              child.active
-                                ? 'text-[#D97706] bg-[#FFF8E7] border border-[#FCD34D] font-black shadow-xs'
-                                : 'text-[#0F172A] font-extrabold hover:text-[#00796B] hover:bg-[#F1F5F9]'
-                            }`}
-                          >
-                            {child.label}
-                          </Link>
-                        )
-                      })}
+                      <Link
+                        href={item.to}
+                        className="px-4 py-3 text-xs font-extrabold flex items-center gap-3 flex-1 min-w-0"
+                      >
+                        {item.icon}
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(item.key, expanded)}
+                        aria-label={expanded ? 'ย่อเมนูย่อย' : 'ขยายเมนูย่อย'}
+                        className={`pr-3.5 pl-1 shrink-0 flex items-center justify-center cursor-pointer ${
+                          item.active ? 'text-white' : 'text-[#94A3B8] hover:text-[#0F172A]'
+                        }`}
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+                      </button>
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
+
+                    {expanded && (
+                      <div className="mt-1.5 ml-5 pl-4 space-y-1.5 border-l-2 border-[#E2E8F0]">
+                        {item.children.map((child, cIdx) => {
+                          if (child.isHeader) {
+                            return (
+                              <div key={`header-${cIdx}`} className="pt-2 pb-1 text-[9px] font-black uppercase tracking-wider text-[#94A3B8]">
+                                {child.label}
+                              </div>
+                            )
+                          }
+                          return (
+                            <Link
+                              key={child.to}
+                              href={child.to}
+                              className={`block px-4 py-2.5 rounded-full text-xs transition-all duration-200 ${
+                                child.active
+                                  ? 'text-[#D97706] bg-[#FFF8E7] border border-[#FCD34D] font-black shadow-xs'
+                                  : 'text-[#0F172A] font-extrabold hover:text-[#00796B] hover:bg-[#F1F5F9]'
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </nav>
+          )}
         </div>
 
         {/* Bottom Action CTA */}
         {isPageAllowed('clinic_request') && (
-          <div className="pt-4 border-t border-[#E2E8F0]">
-            <Link
-              href="/clinic"
-              className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3"
-            >
-              <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
-              <span>ขอคำปรึกษาด่วน</span>
-            </Link>
+          <div className={`pt-4 border-t border-[#E2E8F0] ${isCollapsed ? 'w-full flex justify-center' : ''}`}>
+            {isCollapsed ? (
+              <Link
+                href="/clinic"
+                title="ขอคำปรึกษาด่วน"
+                className="w-11 h-11 btn-gold rounded-2xl flex items-center justify-center p-0"
+              >
+                <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
+              </Link>
+            ) : (
+              <Link
+                href="/clinic"
+                className="w-full btn-gold text-xs flex items-center justify-center gap-2 !py-3"
+              >
+                <Zap className="w-4 h-4 fill-[#0F172A] stroke-[#0F172A]" />
+                <span>ขอคำปรึกษาด่วน</span>
+              </Link>
+            )}
           </div>
         )}
       </aside>
