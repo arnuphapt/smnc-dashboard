@@ -108,7 +108,8 @@ export const AdminDecisionDialog: React.FC<AdminDecisionDialogProps> = ({
         .from('ethics_submissions')
         .update({
           status: newStatus,
-          reviewer_notes: newNotes
+          reviewer_notes: newNotes,
+          updated_at: new Date().toISOString()
         })
         .eq('id', submission.id)
 

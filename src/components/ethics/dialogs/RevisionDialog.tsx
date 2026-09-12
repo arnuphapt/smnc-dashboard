@@ -94,7 +94,8 @@ export const RevisionDialog: React.FC<RevisionDialogProps> = ({
 
       const { error: updateError } = await supabase.from('ethics_submissions').update({
         status: 'ยื่นแล้ว',
-        reviewer_notes: newReviewerNotes
+        reviewer_notes: newReviewerNotes,
+        updated_at: new Date().toISOString()
       }).eq('id', submission.id)
 
       if (updateError) throw updateError

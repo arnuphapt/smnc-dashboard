@@ -163,6 +163,16 @@ export const EthicsSubmissions: React.FC = () => {
     }
   }, [user, profile, queryClient])
 
+  useEffect(() => {
+    const onFocus = () => {
+      fetchReviewSubmissions()
+      fetchEvaluationCounts()
+      queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [user, profile, queryClient])
+
   const handleDownloadFile = async (path: string) => {
     try {
       const { data, error } = await supabase.storage.from('wisdom-private').createSignedUrl(path, 60)
@@ -300,7 +310,18 @@ export const EthicsSubmissions: React.FC = () => {
     const byId = new Map<string, EthicsSubmission>()
     reviewSubmissions.forEach((sub) => byId.set(sub.id, sub))
     submissions.forEach((sub) => {
-      if (!byId.has(sub.id)) byId.set(sub.id, sub)
+      const existing = byId.get(sub.id)
+      if (!existing) {
+        byId.set(sub.id, sub)
+      } else {
+        const existingTime = new Date(existing.updated_at || existing.created_at).getTime()
+        const subTime = new Date(sub.updated_at || sub.created_at).getTime()
+        if (subTime >= existingTime) {
+          byId.set(sub.id, { ...existing, ...sub })
+        } else {
+          byId.set(sub.id, { ...sub, ...existing })
+        }
+      }
     })
     return Array.from(byId.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -330,6 +351,11 @@ export const EthicsSubmissions: React.FC = () => {
     isReviewTabVisible,
     expertProfiles,
     evaluationsBySubmission,
+    attachments,
+    onOpenAttachmentsModal: (sub) => {
+      setSelectedSubForAttachments(sub)
+      setAttachmentsModalOpen(true)
+    },
     onOpenNotesModal: handleOpenNotesModal,
     onOpenAdminDecision: (sub) => {
       setSelectedSubForAdminDecision(sub)
@@ -387,6 +413,22 @@ export const EthicsSubmissions: React.FC = () => {
             iconColor: 'text-[#7C3AED]',
           },
           {
+            key: 'pending_approval',
+            count: pendingApprovalCount,
+            label: 'รออนุมัติ',
+            icon: <Clock className="w-5 h-5" />,
+            iconBg: 'bg-[#FEF9C3]',
+            iconColor: 'text-[#A16207]',
+          },
+          {
+            key: 'sent_back',
+            count: sentBackCount,
+            label: 'ส่งกลับแก้ไข',
+            icon: <FileEdit className="w-5 h-5" />,
+            iconBg: 'bg-[#FEF3C7]',
+            iconColor: 'text-[#B45309]',
+          },
+          {
             key: 'approved',
             count: approvedCount,
             label: 'อนุมัติแล้ว',
@@ -402,21 +444,14 @@ export const EthicsSubmissions: React.FC = () => {
             iconBg: 'bg-[#FEE2E2]',
             iconColor: 'text-[#DC2626]',
           },
-          {
-            key: 'sent_back',
-            count: sentBackCount,
-            label: 'ส่งกลับแก้ไข',
-            icon: <FileEdit className="w-5 h-5" />,
-            iconBg: 'bg-[#FEF3C7]',
-            iconColor: 'text-[#B45309]',
-          },
         ]}
         tabs={[
           { id: 'all', label: 'ทั้งหมด', count: mergedSubmissions.length },
           { id: 'submitted', label: 'ยื่นแล้ว / รอตรวจ', count: waitingCount },
           { id: 'reviewing', label: 'กำลังตรวจ', count: reviewingCount },
-          { id: 'approved', label: 'อนุมัติแล้ว', count: approvedCount },
+          { id: 'pending_approval', label: 'รออนุมัติ', count: pendingApprovalCount },
           { id: 'sent_back', label: 'ส่งกลับแก้ไข', count: sentBackCount },
+          { id: 'approved', label: 'อนุมัติแล้ว', count: approvedCount },
           { id: 'rejected', label: 'ไม่อนุมัติ', count: rejectedCount },
         ]}
         activeTab={activeQueueTab}

@@ -22,6 +22,7 @@ export interface EthicsSubmission {
   assigned_reviewer_id?: string
   reviewer_notes?: string
   created_at: string
+  updated_at?: string
   profiles?: {
     email?: string
   }

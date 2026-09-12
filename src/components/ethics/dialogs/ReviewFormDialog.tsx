@@ -125,7 +125,10 @@ export const ReviewFormDialog: React.FC<ReviewFormDialogProps> = ({
 
       const { error: subError } = await supabase
         .from('ethics_submissions')
-        .update({ status: derivedStatus })
+        .update({
+          status: derivedStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', submission.id)
       if (subError) throw subError
 

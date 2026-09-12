@@ -89,7 +89,8 @@ export const SendBackDialog: React.FC<SendBackDialogProps> = ({
         .from('ethics_submissions')
         .update({
           status: 'ส่งกลับแก้ไข',
-          reviewer_notes: newReviewerNotes || submission.reviewer_notes
+          reviewer_notes: newReviewerNotes || submission.reviewer_notes,
+          updated_at: new Date().toISOString()
         })
         .eq('id', submission.id)
 

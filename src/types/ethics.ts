@@ -8,6 +8,7 @@ export interface EthicsSubmission {
   submitter_id?: string
   reviewer_notes?: string
   created_at: string
+  updated_at?: string
   profiles?: {
     email?: string
     full_name?: string
