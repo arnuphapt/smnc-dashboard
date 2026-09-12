@@ -195,7 +195,7 @@ interface ExportEvaluation {
   updated_at: string
 }
 
-// Generate printable/exportable PDF layout via html2pdf.js — Thai IRB official form style
+// Generate printable/exportable PDF layout via html2canvas + jsPDF — Thai IRB official form style
 // Renders one scorecard block per evaluation passed in `evaluations` and opens
 // the generated PDF Blob directly in the browser's native PDF Viewer tab.
 export const handleExportEvaluation = async (sub: any, submitterName: string, evaluations: ExportEvaluation[] = []) => {

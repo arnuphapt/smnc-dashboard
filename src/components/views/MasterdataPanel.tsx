@@ -9,7 +9,6 @@ const supabase = createClient()
 import { useMasters } from '@/context/MasterContext'
 import { getTableForCategory, getValueFieldForCategory } from '@/utils/masterTables'
 import { Calendar, Award, Clipboard } from 'lucide-react'
-import { Profile } from '@/context/AuthContext'
 import { PageHeader } from '@/components/PageHeader'
 import { OverviewTab } from './masterdata/OverviewTab'
 import { ItemsTab } from './masterdata/ItemsTab'
@@ -25,6 +24,7 @@ import { useMasterdataItems } from '@/hooks/masterdata/useMasterdataItems'
 import { useMasterdataClinic } from '@/hooks/masterdata/useMasterdataClinic'
 import { useMasterdataForms } from '@/hooks/masterdata/useMasterdataForms'
 import { useMasterdataIP } from '@/hooks/masterdata/useMasterdataIP'
+import { useProfiles } from '@/hooks/queries/useProfiles'
 
 export const MasterdataPanel: React.FC = () => {
   const { options, getOptionsByCategory, refreshOptions } = useMasters()
@@ -80,8 +80,7 @@ export const MasterdataPanel: React.FC = () => {
   }
 
   // Users & Profiles State
-  const [profiles, setProfiles] = useState<Profile[]>([])
-  const [usersLoading, setUsersLoading] = useState(false)
+  const { profiles, isFetching: usersLoading, refetchProfiles: fetchProfiles } = useProfiles()
 
   // Ethics & Attachments for Overview desk
   const [ethicsSubmissions, setEthicsSubmissions] = useState<any[]>([])
@@ -115,22 +114,8 @@ export const MasterdataPanel: React.FC = () => {
     }
   }
 
-  const fetchProfiles = async () => {
-    setUsersLoading(true)
-    try {
-      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      if (error) throw error
-      setProfiles(data || [])
-    } catch (err: any) {
-      triggerAlert('เกิดข้อผิดพลาด', `ไม่สามารถดึงข้อมูลผู้ใช้ได้: ${err.message}`, 'danger')
-    } finally {
-      setUsersLoading(false)
-    }
-  }
-
   useEffect(() => {
     itemsHook.fetchItems()
-    fetchProfiles()
     clinicHook.fetchAppointments()
     clinicHook.fetchClinicEvents()
     clinicHook.fetchClinicDesc()

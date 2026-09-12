@@ -62,18 +62,6 @@ const monthNamesThai = ['มกราคม','กุมภาพันธ์','�
 
 export const Clinic: React.FC = () => {
   const { user, isPageAllowed } = useAuth()
-
-  if (!isPageAllowed('clinic_request')) {
-    return (
-      <div className="flex-1 space-y-6 animate-fadeIn">
-        <EmptyState
-          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
-          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
-          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้าขอรับคำปรึกษาคลินิกวิจัย กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
-        />
-      </div>
-    )
-  }
   const queryClient = useQueryClient()
 
   const { data: clinicDesc = 'ยินดีต้อนรับสู่ คลินิกวิจัย (SMNC Research Clinic) แหล่งรวมข้อมูลและบริการคำปรึกษางานวิจัย' } = useClinicInfo()
@@ -256,6 +244,18 @@ export const Clinic: React.FC = () => {
 
   const inputBase = "w-full text-sm px-4 py-2.5 rounded-xl focus:outline-none transition-all duration-200"
   const inputBorder = { border: '1.5px solid #CBD5E1' }
+
+  if (!isPageAllowed('clinic_request')) {
+    return (
+      <div className="flex-1 space-y-6 animate-fadeIn">
+        <EmptyState
+          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
+          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
+          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้าขอรับคำปรึกษาคลินิกวิจัย กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-6 animate-fadeIn">

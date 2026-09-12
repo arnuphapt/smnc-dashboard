@@ -52,36 +52,27 @@ export function useClinicEvents(userId?: string) {
     queryFn: async () => {
       const { data: eventsData, error: eventsError } = await supabase
         .from('clinic_events')
-        .select('*')
+        .select('*, event_registrations(count)')
         .order('event_date', { ascending: true })
       if (eventsError) throw eventsError
 
       const events = eventsData || []
-      const enriched = await Promise.all(
-        events.map(async (ev) => {
-          const { count } = await supabase
-            .from('event_registrations')
-            .select('*', { count: 'exact', head: true })
-            .eq('event_id', ev.id)
 
-          let userReg = false
-          if (userId) {
-            const { data: regData } = await supabase
-              .from('event_registrations')
-              .select('id')
-              .eq('event_id', ev.id)
-              .eq('user_id', userId)
-              .maybeSingle()
-            userReg = !!regData
-          }
-          return {
-            ...ev,
-            registered_count: count || 0,
-            user_registered: userReg,
-          }
-        })
-      )
-      return enriched
+      let registeredEventIds = new Set<string>()
+      if (userId) {
+        const { data: regData, error: regError } = await supabase
+          .from('event_registrations')
+          .select('event_id')
+          .eq('user_id', userId)
+        if (regError) throw regError
+        registeredEventIds = new Set((regData || []).map((r) => r.event_id))
+      }
+
+      return events.map((ev: any) => ({
+        ...ev,
+        registered_count: ev.event_registrations?.[0]?.count || 0,
+        user_registered: userId ? registeredEventIds.has(ev.id) : false,
+      }))
     },
   })
 }

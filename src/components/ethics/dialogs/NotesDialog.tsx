@@ -174,15 +174,10 @@ export const NotesDialog: React.FC<NotesDialogProps> = ({
       <DialogContent className="max-w-3xl lg:max-w-4xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden bg-white border border-[#E2E8F0] rounded-3xl shadow-2xl w-full">
         {/* HEADER */}
         <DialogHeader className="px-6 pt-5 pb-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
-          <div className="flex items-center justify-between gap-3">
+          <div>
             <p className="text-[10px] font-mono font-extrabold uppercase tracking-[0.15em] text-[#00796B]">
               ผลการพิจารณาจริยธรรม • REVIEWER NOTES
             </p>
-            {submission.status && (
-              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-teal-50 text-[#00796B] border border-teal-200">
-                สถานะรวม: {submission.status}
-              </span>
-            )}
           </div>
           <DialogTitle className="header-display text-base font-black text-[#0F172A] leading-snug mt-1">
             {submission.project_title}

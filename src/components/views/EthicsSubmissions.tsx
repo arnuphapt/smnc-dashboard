@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useAuth, Profile } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 import { useMasters } from '@/context/MasterContext'
 import { hasRole } from '@/utils/roleHelper'
 import { UploadCloud, Clock, CheckCircle, AlertCircle, FileEdit, FileCheck, Clipboard } from 'lucide-react'
@@ -14,6 +14,8 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { handleExportEvaluation } from './masterdata/EthicsTab'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEthicsAttachments, useEthicsSubmissions } from '@/hooks/queries/useEthics'
+import { useProfiles } from '@/hooks/queries/useProfiles'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 import { EthicsSubmission, EthicsEvaluation } from '@/types/ethics'
 import { createEthicsTableColumns } from '@/components/ethics/EthicsTableColumns'
 import { AdminDecisionDialog } from '@/components/ethics/dialogs/AdminDecisionDialog'
@@ -33,8 +35,9 @@ export const EthicsSubmissions: React.FC = () => {
 
   const { data: submissions = [] } = useEthicsSubmissions(user?.id)
   const { data: attachments = [] } = useEthicsAttachments()
+  const { profiles } = useProfiles()
+  const expertProfiles = profiles.filter((p) => hasRole(p.role, 'expert'))
   const [reviewSubmissions, setReviewSubmissions] = useState<any[]>([])
-  const [expertProfiles, setExpertProfiles] = useState<Profile[]>([])
   const [evaluationsBySubmission, setEvaluationsBySubmission] = useState<Record<string, EthicsEvaluation[]>>({})
 
   const [activeQueueTab, setActiveQueueTab] = useState<
@@ -98,17 +101,6 @@ export const EthicsSubmissions: React.FC = () => {
     }
   }
 
-  const fetchExpertProfiles = async () => {
-    try {
-      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      if (error) throw error
-      const experts = ((data as Profile[]) || []).filter((p) => hasRole(p.role, 'expert'))
-      setExpertProfiles(experts)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
   const fetchEvaluationCounts = async () => {
     try {
       const { data, error } = await supabase
@@ -132,36 +124,19 @@ export const EthicsSubmissions: React.FC = () => {
       fetch('/api/admin/cleanup-temp-experts', { method: 'POST' }).catch(() => {})
     }
     fetchReviewSubmissions()
-    fetchExpertProfiles()
     fetchEvaluationCounts()
   }, [user, profile])
 
-  useEffect(() => {
-    const s = supabase
-      .channel('ethics-list-sub-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => {
-        fetchReviewSubmissions()
-        queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
-      })
-      .subscribe()
-    const a = supabase
-      .channel('ethics-list-att-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_attachments' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['ethics_attachments'] })
-      })
-      .subscribe()
-    const e = supabase
-      .channel('ethics-list-eval-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_evaluations' }, () => {
-        fetchEvaluationCounts()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(s)
-      supabase.removeChannel(a)
-      supabase.removeChannel(e)
-    }
-  }, [user, profile, queryClient])
+  useSupabaseRealtime([
+    {
+      channelName: 'ethics-list-sub-rt',
+      table: 'ethics_submissions',
+      queryKeys: [['ethics_submissions']],
+      onEvent: fetchReviewSubmissions,
+    },
+    { channelName: 'ethics-list-att-rt', table: 'ethics_attachments', queryKeys: [['ethics_attachments']] },
+    { channelName: 'ethics-list-eval-rt', table: 'ethics_evaluations', onEvent: fetchEvaluationCounts },
+  ])
 
   useEffect(() => {
     const onFocus = () => {

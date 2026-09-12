@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
 import { useDashboardData } from '@/hooks/queries/useDashboard'
 import { useQueryClient } from '@tanstack/react-query'
+import { getMediaUrl } from '@/services/supabase'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 
 const supabase = createClient()
 import {
@@ -148,26 +150,10 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
   const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'ethics' | 'ip' | 'utilization' | 'repository'>('all')
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState<number | null>(null)
 
-  useEffect(() => {
-    const channel1 = supabase
-      .channel('wisdom-items-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wisdom_items' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      })
-      .subscribe()
-
-    const channel2 = supabase
-      .channel('downloadable-forms-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'downloadable_forms' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel1)
-      supabase.removeChannel(channel2)
-    }
-  }, [queryClient])
+  useSupabaseRealtime([
+    { channelName: 'wisdom-items-dashboard', table: 'wisdom_items', queryKeys: [['dashboard']] },
+    { channelName: 'downloadable-forms-dashboard', table: 'downloadable_forms', queryKeys: [['dashboard']] },
+  ])
 
   const getCategoryLabel = (catKey: string) => {
     switch (catKey) {
@@ -178,14 +164,6 @@ export const Dashboard: React.FC<{ onNavigate?: (tab: string) => void; userRole?
       case 'utilization': return 'การนำไปใช้ประโยชน์'
       default: return catKey
     }
-  }
-
-  const getMediaUrl = (urlOrPath: string, isPublic: boolean) => {
-    if (!urlOrPath) return ''
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) return urlOrPath
-    const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
-    const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
-    return data.publicUrl
   }
 
   // 6-Month Knowledge Growth Trend Chart (Exactly as in Screenshot 2: ก.พ. 69 -> ก.ค. 69)

@@ -5,7 +5,6 @@ import { DataTableColumn } from '@/components/DataTable'
 import { MasterDataTable } from '@/components/MasterDataTable'
 import { Profile } from '@/context/AuthContext'
 import { getUserRoles, fetchRoleOptions, RoleOption } from '@/utils/roleHelper'
-import { parseAuthors } from '@/utils/authorHelper'
 import { WisdomItem } from '../Dashboard'
 import { toast } from 'sonner'
 
@@ -153,33 +152,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({ profiles, usersLoading, item
     } finally {
       setResettingPassword(false)
     }
-  }
-
-  // Calculate user contributions across all items
-  const getUserContributions = (userProfile: Profile) => {
-    const userEmail = (userProfile.email || '').toLowerCase().trim()
-    const userName = (userProfile.full_name || '').toLowerCase().trim()
-
-    const counts: Record<string, number> = {}
-    let totalItems = 0
-
-    items.forEach((item) => {
-      const authors = parseAuthors(item.authors)
-      const matched = authors.find((a) => {
-        const nameLower = a.name.toLowerCase().trim()
-        return (userEmail && nameLower === userEmail) || (userName && nameLower === userName)
-      })
-
-      if (matched) {
-        totalItems++
-        const roles = matched.contribution ? matched.contribution.split(',').map((s) => s.trim()) : ['Co author']
-        roles.forEach((r) => {
-          counts[r] = (counts[r] || 0) + 1
-        })
-      }
-    })
-
-    return { counts, totalItems }
   }
 
   const columns: DataTableColumn<Profile>[] = [

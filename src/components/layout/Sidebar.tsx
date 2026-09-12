@@ -28,7 +28,7 @@ export const Sidebar: React.FC = () => {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('smnc_sidebar_collapsed')
+      const saved = localStorage.getItem('smnc_sidebar_collapsed:v1')
       if (saved === 'true') {
         setIsCollapsed(true)
       }
@@ -39,7 +39,7 @@ export const Sidebar: React.FC = () => {
     setIsCollapsed((prev) => {
       const next = !prev
       try {
-        localStorage.setItem('smnc_sidebar_collapsed', String(next))
+        localStorage.setItem('smnc_sidebar_collapsed:v1', String(next))
       } catch {}
       return next
     })

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { hasExactRole } from '@/utils/roleHelper'
+
+const ROLE_KEY_PATTERN = /^[a-z][a-z0-9_]*$/
 
 const pages = [
   'dashboard',
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       .eq('id', requester.id)
       .single()
 
-    if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 
@@ -106,7 +109,7 @@ export async function PUT(request: Request) {
       .eq('id', requester.id)
       .single()
 
-    if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 
@@ -115,6 +118,10 @@ export async function PUT(request: Request) {
 
     if (!key || !label || !short_label) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 })
+    }
+
+    if (typeof key !== 'string' || !ROLE_KEY_PATTERN.test(key)) {
+      return NextResponse.json({ error: 'key ของระดับสิทธิ์ไม่ถูกต้อง' }, { status: 400 })
     }
 
     const admin = createAdminClient()
@@ -156,7 +163,7 @@ export async function DELETE(request: Request) {
       .eq('id', requester.id)
       .single()
 
-    if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 
@@ -165,6 +172,10 @@ export async function DELETE(request: Request) {
 
     if (!key) {
       return NextResponse.json({ error: 'กรุณาระบุ key ของระดับสิทธิ์ที่ต้องการลบ' }, { status: 400 })
+    }
+
+    if (!ROLE_KEY_PATTERN.test(key)) {
+      return NextResponse.json({ error: 'key ของระดับสิทธิ์ไม่ถูกต้อง' }, { status: 400 })
     }
 
     if (['admin', 'teacher', 'expert', 'assistant_admin'].includes(key)) {

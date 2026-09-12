@@ -1,11 +1,8 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
-
-const supabase = createClient()
 import {
   FileText,
   UploadCloud,
@@ -46,29 +43,16 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ethicsSubmissionSchema, EthicsSubmissionFormValues } from '@/schemas/ethicsSchema'
 import { useEthicsForms, useEthicsSubmissions, useSubmitEthics } from '@/hooks/queries/useEthics'
-import { useQueryClient } from '@tanstack/react-query'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 
 const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
 export const EthicsSubmit: React.FC = () => {
   const { user, isPageAllowed } = useAuth()
-  const queryClient = useQueryClient()
   const { data: forms = [] } = useEthicsForms()
   const { data: submissions = [] } = useEthicsSubmissions(user?.id)
   const submitEthicsMutation = useSubmitEthics()
-
-  if (!isPageAllowed('ethics_submit')) {
-    return (
-      <div className="flex-1 space-y-6 animate-fadeIn">
-        <EmptyState
-          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
-          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
-          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้ายื่นโครงร่างวิจัย (IRB) กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
-        />
-      </div>
-    )
-  }
 
   const {
     register,
@@ -87,18 +71,11 @@ export const EthicsSubmit: React.FC = () => {
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
 
-  useEffect(() => {
-    if (!user) return
-    const s = supabase
-      .channel('ethics-submit-sub-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ethics_submissions' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['ethics_submissions'] })
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(s)
-    }
-  }, [user, queryClient])
+  useSupabaseRealtime(
+    user
+      ? [{ channelName: 'ethics-submit-sub-rt', table: 'ethics_submissions', queryKeys: [['ethics_submissions']] }]
+      : []
+  )
 
   const onSubmit = async (values: EthicsSubmissionFormValues) => {
     if (!user) return
@@ -124,6 +101,18 @@ export const EthicsSubmit: React.FC = () => {
 
   const pendingCount = submissions.filter(s => s.status === 'ยื่นแล้ว' || s.status === 'กำลังตรวจ').length
   const approvedCount = submissions.filter(s => s.status === 'อนุมัติ').length
+
+  if (!isPageAllowed('ethics_submit')) {
+    return (
+      <div className="flex-1 space-y-6 animate-fadeIn">
+        <EmptyState
+          icon={<ShieldAlert className="w-10 h-10 text-slate-400" />}
+          title="ไม่มีสิทธิ์เข้าถึงหน้านี้"
+          body="บัญชีของคุณไม่ได้รับสิทธิ์เข้าถึงหน้ายื่นโครงร่างวิจัย (IRB) กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์การใช้งาน"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-6 animate-fadeIn">

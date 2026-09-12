@@ -85,6 +85,7 @@ const TimelineSteps: React.FC<{ status: string }> = ({ status }) => {
 }
 
 import { useIPApplications } from '@/hooks/queries/useIP'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 import { useQueryClient } from '@tanstack/react-query'
 
 export const IPApplicationList: React.FC = () => {
@@ -146,18 +147,11 @@ export const IPApplicationList: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    if (!user) return
-    const s = supabase
-      .channel('ip-list-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_applications' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['ip_applications'] })
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(s)
-    }
-  }, [user, queryClient])
+  useSupabaseRealtime(
+    user
+      ? [{ channelName: 'ip-list-rt', table: 'ip_applications', queryKeys: [['ip_applications']] }]
+      : []
+  )
 
   const waitingCount = applications.filter(a => a.status === 'ยื่นคำขอ').length
   const reviewingCount = applications.filter(a => a.status === 'กำลังตรวจสอบ').length

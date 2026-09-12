@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useAuth, Profile } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 import { hasRole } from '@/utils/roleHelper'
 
 const supabase = createClient()
@@ -42,11 +42,13 @@ interface Appointment {
 }
 
 import { useAppointments, useUpdateAppointmentStatus } from '@/hooks/queries/useClinic'
+import { useProfiles } from '@/hooks/queries/useProfiles'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 import { useQueryClient } from '@tanstack/react-query'
 
 export const ClinicAppointments: React.FC = () => {
   const { user, profile, isPageAllowed } = useAuth()
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  const { profiles } = useProfiles()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all')
 
@@ -69,30 +71,11 @@ export const ClinicAppointments: React.FC = () => {
   const { data: appointments = [] } = useAppointments(isStaff ? undefined : user?.id)
   const updateStatusMutation = useUpdateAppointmentStatus()
 
-  const fetchProfiles = async () => {
-    try {
-      const { data } = await supabase.from('profiles').select('*')
-      if (data) setProfiles(data as Profile[])
-    } catch (err) {
-      console.error('Error fetching profiles:', err)
-    }
-  }
-
-  useEffect(() => {
-    fetchProfiles()
-
-    if (!user) return
-    const channel = supabase
-      .channel('clinic-appointments-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user, profile, queryClient])
+  useSupabaseRealtime(
+    user
+      ? [{ channelName: 'clinic-appointments-rt', table: 'appointments', queryKeys: [['appointments']] }]
+      : []
+  )
 
   const handleUpdateStatus = async () => {
     if (!editingApp) return

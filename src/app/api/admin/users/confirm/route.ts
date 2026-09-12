@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { hasExactRole } from '@/utils/roleHelper'
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,6 +9,23 @@ export async function POST(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'Missing userId parameter' }, { status: 400 })
+    }
+
+    // Confirm caller is an authenticated admin
+    const requesterClient = await createServerClient()
+    const { data: { user: requester } } = await requesterClient.auth.getUser()
+    if (!requester) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
+
+    const { data: requesterProfile } = await requesterClient
+      .from('profiles')
+      .select('role')
+      .eq('id', requester.id)
+      .single()
+
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 
     const admin = createAdminClient()

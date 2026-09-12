@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useMasters } from '@/context/MasterContext'
 import { useAuth } from '@/context/AuthContext'
+import { getMediaUrl } from '@/services/supabase'
 
 const supabase = createClient()
 import { FileText, Download, X, FileCheck, Eye, FileDown, User, Calendar, Building2, Tag, Award, BookOpen, Globe, Bookmark } from 'lucide-react'
@@ -22,17 +23,17 @@ import { formatAuthorsForDisplay, parseAuthors } from '@/utils/authorHelper'
 const VALID_CATEGORIES = ['research', 'innovation', 'intellectual_property', 'award', 'utilization']
 
 import { useWisdomItems } from '@/hooks/queries/useWisdomItems'
-import { useQueryClient } from '@tanstack/react-query'
+import { useProfiles } from '@/hooks/queries/useProfiles'
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 
 export const Repositories: React.FC = () => {
   const { user } = useAuth()
   const { getOptionsByCategory } = useMasters()
   const { category } = useParams<{ category: string }>()
-  const queryClient = useQueryClient()
 
   const activeCategory = category && VALID_CATEGORIES.includes(category) ? category : 'research'
   const { data: items = [], isLoading: loading } = useWisdomItems(activeCategory)
-  const [profiles, setProfiles] = useState<any[]>([])
+  const { profiles } = useProfiles()
 
   // Dynamic filter states
   const [search, setSearch] = useState('')
@@ -57,33 +58,14 @@ export const Repositories: React.FC = () => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [signedUrlLoading, setSignedUrlLoading] = useState(false)
 
-  const fetchProfiles = async () => {
-    try {
-      const { data } = await supabase.from('profiles').select('email, full_name')
-      if (data) setProfiles(data)
-    } catch (err) {
-      console.error('Error fetching profiles:', err)
-    }
-  }
-
-  useEffect(() => {
-    fetchProfiles()
-
-    const channel = supabase
-      .channel(`wisdom-items-category-${activeCategory}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'wisdom_items', filter: `category=eq.${activeCategory}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['wisdom_items', activeCategory] })
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [activeCategory, queryClient])
+  useSupabaseRealtime([
+    {
+      channelName: `wisdom-items-category-${activeCategory}`,
+      table: 'wisdom_items',
+      filter: `category=eq.${activeCategory}`,
+      queryKeys: [['wisdom_items', activeCategory]],
+    },
+  ])
 
   // Reset filters when activeCategory changes
   useEffect(() => {
@@ -114,7 +96,7 @@ export const Repositories: React.FC = () => {
     return Array.from(new Set(vals)).sort()
   }
 
-  const getUniqueAuthors = () => {
+  const uniqueAuthors = useMemo(() => {
     const authorSet = new Set<string>()
     items.forEach((item) => {
       if (!item.authors) return
@@ -127,7 +109,7 @@ export const Repositories: React.FC = () => {
       })
     })
     return Array.from(authorSet).sort((a, b) => a.localeCompare(b, 'th'))
-  }
+  }, [items, profiles])
 
   const getSubtypeCategory = () => {
     switch (activeCategory) {
@@ -151,7 +133,7 @@ export const Repositories: React.FC = () => {
   }
 
   // Filtering Logic
-  const filteredItems = items.filter((item) => {
+  const filteredItems = useMemo(() => items.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(search.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(search.toLowerCase())) ||
@@ -193,7 +175,22 @@ export const Repositories: React.FC = () => {
       matchesUtType &&
       matchesPublic
     )
-  })
+  }), [
+    items,
+    search,
+    selectedYear,
+    selectedAuthor,
+    selectedScope,
+    selectedRank,
+    selectedStatus,
+    selectedIpType,
+    selectedCreatorType,
+    selectedInnoType,
+    selectedAwardLevel,
+    selectedUtType,
+    showOnlyPublic,
+    profiles,
+  ])
 
   // Sorting Handler
   const handleSort = (field: string) => {
@@ -212,7 +209,7 @@ export const Repositories: React.FC = () => {
     return item.metadata?.[field] || ''
   }
 
-  const sortedItems = [...filteredItems].sort((a, b) => {
+  const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
     let valA = resolveFieldValue(a, sortField)
     let valB = resolveFieldValue(b, sortField)
 
@@ -226,7 +223,7 @@ export const Repositories: React.FC = () => {
     if (valA < valB) return sortAsc ? -1 : 1
     if (valA > valB) return sortAsc ? 1 : -1
     return 0
-  })
+  }), [filteredItems, sortField, sortAsc])
 
   const linkColumn: DataTableColumn<WisdomItem> = {
     key: '__actions',
@@ -350,7 +347,7 @@ export const Repositories: React.FC = () => {
         value: selectedAuthor,
         onChange: setSelectedAuthor,
         placeholder: 'นักวิจัยทั้งหมด',
-        options: getUniqueAuthors().map((auth) => ({ value: auth, label: auth })),
+        options: uniqueAuthors.map((auth) => ({ value: auth, label: auth })),
         className: 'min-w-[140px]',
       },
     ]
@@ -466,16 +463,6 @@ export const Repositories: React.FC = () => {
         setSignedUrlLoading(false)
       }
     }
-  }
-
-  const getMediaUrl = (urlOrPath: string, isPublic: boolean) => {
-    if (!urlOrPath) return ''
-    if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
-      return urlOrPath
-    }
-    const bucket = isPublic ? 'wisdom-public' : 'wisdom-private'
-    const { data } = supabase.storage.from(bucket).getPublicUrl(urlOrPath)
-    return data.publicUrl
   }
 
   const categories = [

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cleanupExpiredTempAccounts } from '@/lib/tempAccountCleanup'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { hasExactRole } from '@/utils/roleHelper'
 
 export async function POST() {
   try {
@@ -17,7 +18,7 @@ export async function POST() {
       .eq('id', requester.id)
       .single()
 
-    if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 

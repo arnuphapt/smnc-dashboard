@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { hasExactRole } from '@/utils/roleHelper'
 
 function generateTempPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       .eq('id', requester.id)
       .single()
 
-    if (!requesterProfile || !String(requesterProfile.role).includes('admin')) {
+    if (!requesterProfile || !hasExactRole(requesterProfile.role, 'admin')) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการนี้' }, { status: 403 })
     }
 

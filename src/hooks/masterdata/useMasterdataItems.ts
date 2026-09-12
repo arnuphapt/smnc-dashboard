@@ -202,12 +202,12 @@ export function useMasterdataItems({ triggerConfirm, triggerAlert }: UseMasterda
       let imageUrl = editingItem?.image_url || ''
       let fileUrl = editingItem?.file_url || ''
 
-      if (imageFile) {
-        imageUrl = await uploadFile(imageFile, 'images', formIsPublic)
-      }
-      if (docFile) {
-        fileUrl = await uploadFile(docFile, 'files', formIsPublic)
-      }
+      const [uploadedImageUrl, uploadedFileUrl] = await Promise.all([
+        imageFile ? uploadFile(imageFile, 'images', formIsPublic) : Promise.resolve(imageUrl),
+        docFile ? uploadFile(docFile, 'files', formIsPublic) : Promise.resolve(fileUrl),
+      ])
+      imageUrl = uploadedImageUrl
+      fileUrl = uploadedFileUrl
 
       const metadata: any = {
         department: metaDept,
