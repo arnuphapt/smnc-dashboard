@@ -144,8 +144,9 @@ export function createEthicsTableColumns({
       render: (sub) => {
         const assignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
         const subEvaluations = evaluationsBySubmission[sub.id] || []
-        const evaluatedCount = subEvaluations.length
-        const slotCount = Math.max(assignedCount, evaluatedCount)
+        const completedEvaluations = subEvaluations.filter((e) => e.status !== 'ร่าง')
+        const evaluatedCount = completedEvaluations.length
+        const slotCount = Math.max(assignedCount, subEvaluations.length)
         return (
           <div className="flex flex-col gap-1 items-start">
             <StatusBadge status={sub.status} size="sm" />
@@ -175,7 +176,7 @@ export function createEthicsTableColumns({
       header: 'ความเห็นผู้ทรงคุณวุฒิ',
       align: 'center',
       render: (sub) => {
-        const hasEvaluations = evaluationsBySubmission[sub.id] && evaluationsBySubmission[sub.id].length > 0
+        const hasEvaluations = (evaluationsBySubmission[sub.id] || []).filter((e) => e.status !== 'ร่าง').length > 0
         const hasNotes = Boolean(sub.reviewer_notes || hasEvaluations)
         return hasNotes ? (
           <button
@@ -205,7 +206,7 @@ export function createEthicsTableColumns({
         const isOwner = sub.submitter_id === user?.id
         const canAdmin = canAssign
         const exportAssignedCount = [sub.assigned_reviewer_id, sub.assigned_reviewer_id_2].filter(Boolean).length
-        const exportEvaluatedCount = (evaluationsBySubmission[sub.id] || []).length
+        const exportEvaluatedCount = (evaluationsBySubmission[sub.id] || []).filter((e) => e.status !== 'ร่าง').length
         const allExpertsEvaluated = exportAssignedCount > 0 && exportEvaluatedCount >= exportAssignedCount
         const hasPriorEvaluations = exportEvaluatedCount > 0
         const isResubmitted = sub.status === 'ยื่นแล้ว' && hasPriorEvaluations
@@ -215,7 +216,7 @@ export function createEthicsTableColumns({
           sub.status !== 'ไม่อนุมัติ' &&
           sub.status !== 'อนุมัติ' &&
           (sub.status === 'รออนุมัติ' || (allExpertsEvaluated && sub.status === 'กำลังตรวจ') || isResubmitted)
-        const hasOwnEvaluated = (evaluationsBySubmission[sub.id] || []).some((ev) => ev.reviewer_id === user?.id)
+        const hasOwnEvaluated = (evaluationsBySubmission[sub.id] || []).some((ev) => ev.reviewer_id === user?.id && ev.status !== 'ร่าง')
         const canDelete = isOwner || canAdmin
 
         // Determine the single Primary Contextual Action
@@ -230,7 +231,7 @@ export function createEthicsTableColumns({
         if (isOwner && sub.status === 'ส่งกลับแก้ไข') {
           primaryAction = {
             key: 'resubmit',
-            label: 'ยื่นอีกรอบ',
+            label: 'ยื่นฉบับแก้ไข',
             icon: <UploadCloud className="w-3.5 h-3.5" />,
             onClick: () => onOpenRevisionModal(sub),
             className:

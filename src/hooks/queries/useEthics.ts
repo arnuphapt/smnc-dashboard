@@ -97,7 +97,7 @@ export function useSubmitEthics() {
       submitter_id: string
       project_title: string
       project_description?: string
-      files?: FileList | null
+      files?: FileList | File[] | { file: File; customName?: string }[] | null
     }) => {
       const { data: subData, error: subError } = await supabase
         .from('ethics_submissions')
@@ -113,23 +113,40 @@ export function useSubmitEthics() {
       if (subError) throw subError
       const submissionId = subData.id
 
-      if (files && files.length > 0) {
+      // Normalize files into { file: File; customName?: string }[]
+      const fileItems: { file: File; customName?: string }[] = []
+      if (files) {
+        if (files instanceof FileList) {
+          for (let i = 0; i < files.length; i++) {
+            fileItems.push({ file: files[i] })
+          }
+        } else if (Array.isArray(files)) {
+          for (const item of files) {
+            if (item instanceof File) {
+              fileItems.push({ file: item })
+            } else if (item && typeof item === 'object' && 'file' in item) {
+              fileItems.push(item)
+            }
+          }
+        }
+      }
+
+      if (fileItems.length > 0) {
         const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]
-          if (file.size > MAX_FILE_SIZE) {
-            throw new Error(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินกำหนด (${(file.size / (1024 * 1024)).toFixed(1)} MB) ขนาดสูงสุดที่รองรับคือ 50 MB ต่อไฟล์`)
+        for (const item of fileItems) {
+          if (item.file.size > MAX_FILE_SIZE) {
+            throw new Error(`ไฟล์ "${item.file.name}" มีขนาดใหญ่เกินกำหนด (${(item.file.size / (1024 * 1024)).toFixed(1)} MB) ขนาดสูงสุดที่รองรับคือ 50 MB ต่อไฟล์`)
           }
         }
 
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]
+        for (let i = 0; i < fileItems.length; i++) {
+          const { file, customName } = fileItems[i]
           const extIndex = file.name.lastIndexOf('.')
           const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
           const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
           const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
           const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
-          const storagePath = `ethics/${submitter_id}/${Date.now()}_${safeName}${ext}`
+          const storagePath = `ethics/${submitter_id}/${Date.now()}_${i}_${safeName}${ext}`
 
           const { error: uploadError } = await supabase.storage
             .from('wisdom-private')
@@ -139,7 +156,7 @@ export function useSubmitEthics() {
           const { error: attachError } = await supabase.from('ethics_attachments').insert({
             submission_id: submissionId,
             file_url: storagePath,
-            file_name: file.name,
+            file_name: customName || file.name,
             file_type: file.type,
           })
           if (attachError) throw attachError

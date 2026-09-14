@@ -35,6 +35,7 @@ export const EVALUATION_STATUS_LABELS: Record<string, string> = {
   'อนุมัติ': 'เห็นชอบ',
   'ไม่อนุมัติ': 'ไม่อนุมัติ',
   'ส่งกลับแก้ไข': 'ส่งกลับแก้ไข',
+  'ร่าง': 'บันทึกร่าง',
 }
 
 export const translateEvaluationStatus = (status: string): string =>
@@ -49,8 +50,12 @@ export const deriveSubmissionStatus = (
   evaluations: { status: string }[],
   assignedCount: number
 ): string => {
-  if (evaluations.length === 0) return 'ยื่นแล้ว'
-  if (evaluations.length < assignedCount) return 'กำลังตรวจ'
+  const completedEvaluations = evaluations.filter((e) => e.status !== 'ร่าง')
+  if (completedEvaluations.length === 0) {
+    if (evaluations.length > 0) return 'กำลังตรวจ'
+    return 'ยื่นแล้ว'
+  }
+  if (completedEvaluations.length < assignedCount) return 'กำลังตรวจ'
   // All assigned reviewers have submitted their evaluation -> wait for Admin decision
   return 'รออนุมัติ'
 }

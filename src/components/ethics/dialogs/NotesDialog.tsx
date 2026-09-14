@@ -76,15 +76,13 @@ export const NotesDialog: React.FC<NotesDialogProps> = ({
     const assignedId = assignedReviewerIds[idx]
     const expert = expertProfiles.find((p) => p.id === assignedId)
     const ev = evaluationSource.find((e) => e.reviewer_id && e.reviewer_id === assignedId) || evaluationSource[idx]
-    const reviewerName = expert?.full_name || expert?.email || `ผู้ทรงคุณวุฒิ ท่านที่ ${idx + 1}`
-    const reviewerEmail = expert?.email
+    const reviewerName = `ผู้ทรงคุณวุฒิคนที่ ${idx + 1}`
 
     return {
       index: idx,
       assignedId,
       expert,
       reviewerName,
-      reviewerEmail,
       evaluation: ev,
       status: ev?.status || null,
     }
@@ -275,9 +273,6 @@ export const NotesDialog: React.FC<NotesDialogProps> = ({
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-black text-slate-900">{currentSlot.reviewerName}</h4>
-                      {currentSlot.reviewerEmail && (
-                        <span className="text-[11px] text-slate-500">({currentSlot.reviewerEmail})</span>
-                      )}
                     </div>
                     {currentEvaluation.updated_at && (
                       <p className="text-[10px] text-slate-500 mt-0.5">

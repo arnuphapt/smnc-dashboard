@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, ChevronLeft, ChevronRight, Download, FileEdit, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Download, FileEdit, Save, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,31 +72,114 @@ export const ReviewFormDialog: React.FC<ReviewFormDialogProps> = ({
     benefit: '',
   })
   const [saving, setSaving] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
+
+  const prevOpenRef = React.useRef(false)
+  const prevSubIdRef = React.useRef<string | null>(null)
 
   useEffect(() => {
-    if (!open || !submission) return
-    setReviewStep(1)
-    setReviewFiles(null)
-    setSaving(false)
+    if (!open || !submission) {
+      prevOpenRef.current = false
+      return
+    }
 
-    const validStatuses = ['อนุมัติ', 'ไม่อนุมัติ', 'ส่งกลับแก้ไข']
-    const ownEvaluation = evaluations.find((ev) => ev.reviewer_id === currentUserId)
-    setReviewStatus(ownEvaluation && validStatuses.includes(ownEvaluation.status) ? ownEvaluation.status : 'อนุมัติ')
+    const isFirstOpen = !prevOpenRef.current || prevSubIdRef.current !== submission.id
+    prevOpenRef.current = true
+    prevSubIdRef.current = submission.id
 
-    const parsed = parseReviewerNotes(ownEvaluation?.reviewer_notes || submission.reviewer_notes || '')
-    setScores(parsed.scores)
-    setRevisionDetails(parsed.revisionDetails || { obj: '', method: '', privacy: '', consent: '', risk: '', benefit: '' })
-    setRiskLevel(parsed.riskLevel)
-    setProgressReportInterval(parsed.progressReportInterval)
+    if (isFirstOpen) {
+      setReviewStep(1)
+      setReviewFiles(null)
+      setSaving(false)
+      setSavingDraft(false)
+      setDraftSaved(false)
 
-    let cleanComments = parsed.comments
-      .replace(/\[.*?\]/g, '')
-      .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
-      .trim()
-    setReviewNotes(cleanComments)
+      const validStatuses = ['อนุมัติ', 'ไม่อนุมัติ', 'ส่งกลับแก้ไข']
+      const ownEvaluation = evaluations.find((ev) => ev.reviewer_id === currentUserId)
+      setReviewStatus(ownEvaluation && validStatuses.includes(ownEvaluation.status) ? ownEvaluation.status : 'อนุมัติ')
+
+      const parsed = parseReviewerNotes(ownEvaluation?.reviewer_notes || submission.reviewer_notes || '')
+      setScores(parsed.scores)
+      setRevisionDetails(parsed.revisionDetails || { obj: '', method: '', privacy: '', consent: '', risk: '', benefit: '' })
+      setRiskLevel(parsed.riskLevel)
+      setProgressReportInterval(parsed.progressReportInterval)
+
+      let cleanComments = parsed.comments
+        .replace(/\[.*?\]/g, '')
+        .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
+        .trim()
+      setReviewNotes(cleanComments)
+    }
   }, [open, submission, currentUserId, evaluations])
 
   if (!submission) return null
+
+  const handleSaveDraft = async () => {
+    if (!currentUserId || !submission) {
+      triggerAlert('เกิดข้อผิดพลาด', 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่', 'danger')
+      return
+    }
+    setSavingDraft(true)
+    try {
+      const serialized = serializeReviewerNotes(scores, reviewNotes, riskLevel, progressReportInterval, revisionDetails)
+
+      const { error: evalError } = await supabase
+        .from('ethics_evaluations')
+        .upsert(
+          {
+            submission_id: submission.id,
+            reviewer_id: currentUserId,
+            status: 'ร่าง',
+            reviewer_notes: serialized,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'submission_id,reviewer_id' }
+        )
+      if (evalError) throw evalError
+
+      if (submission.status === 'ยื่นแล้ว') {
+        await supabase
+          .from('ethics_submissions')
+          .update({
+            status: 'กำลังตรวจ',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', submission.id)
+      }
+
+      if (reviewFiles && reviewFiles.length > 0) {
+        for (let i = 0; i < reviewFiles.length; i++) {
+          const file = reviewFiles[i]
+          const extIndex = file.name.lastIndexOf('.')
+          const ext = extIndex !== -1 ? file.name.substring(extIndex) : ''
+          const base = extIndex !== -1 ? file.name.substring(0, extIndex) : file.name
+          const sanitizedBase = base.replace(/[^a-zA-Z0-9-_]/g, '_')
+          const safeName = /[a-zA-Z0-9]/.test(sanitizedBase) ? sanitizedBase : 'doc'
+          const storagePath = `ethics/${currentUserId || 'eval'}/draft_${Date.now()}_${safeName}${ext}`
+
+          const { error: uploadError } = await supabase.storage.from('wisdom-private').upload(storagePath, file)
+          if (!uploadError) {
+            await supabase.from('ethics_attachments').insert({
+              submission_id: submission.id,
+              file_url: storagePath,
+              file_name: `[เอกสารร่าง] ${file.name}`,
+              file_type: file.type,
+            })
+          }
+        }
+      }
+
+      setDraftSaved(true)
+      toast.success('บันทึกแบบร่างเรียบร้อยแล้ว')
+      onSuccess()
+      setTimeout(() => setDraftSaved(false), 3000)
+    } catch (err: any) {
+      triggerAlert('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถบันทึกแบบร่างได้', 'danger')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!currentUserId) {
@@ -612,32 +696,59 @@ export const ReviewFormDialog: React.FC<ReviewFormDialogProps> = ({
             variant="outline"
             onClick={() => setReviewStep((s) => Math.max(1, s - 1))}
             disabled={reviewStep === 1}
-            className="rounded-full text-xs font-bold gap-1"
+            className="rounded-full text-xs font-bold gap-1 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             ย้อนกลับ
           </Button>
 
-          {reviewStep < 3 ? (
+          <div className="flex items-center gap-2">
             <Button
               type="button"
-              onClick={() => setReviewStep((s) => Math.min(3, s + 1))}
-              className="btn-primary rounded-full text-xs font-extrabold gap-1"
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={savingDraft || saving}
+              className={`rounded-full text-xs font-bold gap-1.5 transition cursor-pointer ${
+                draftSaved
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+              title="บันทึกแบบร่างสิ่งที่พิมพ์ไว้เพื่อกลับมาทำต่อภายหลัง"
             >
-              ถัดไป
-              <ChevronRight className="w-4 h-4" />
+              {draftSaved ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                  <span>บันทึกร่างแล้ว!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{savingDraft ? 'กำลังบันทึกร่าง...' : 'บันทึกแบบร่าง'}</span>
+                </>
+              )}
             </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="btn-primary rounded-full text-xs font-extrabold gap-1"
-            >
-              <Check className="w-4 h-4" />
-              {saving ? 'กำลังบันทึก...' : 'บันทึกผลการประเมิน'}
-            </Button>
-          )}
+
+            {reviewStep < 3 ? (
+              <Button
+                type="button"
+                onClick={() => setReviewStep((s) => Math.min(3, s + 1))}
+                className="btn-primary rounded-full text-xs font-extrabold gap-1 cursor-pointer"
+              >
+                ถัดไป
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || savingDraft}
+                className="btn-primary rounded-full text-xs font-extrabold gap-1 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                {saving ? 'กำลังบันทึก...' : 'บันทึกผลการประเมิน'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

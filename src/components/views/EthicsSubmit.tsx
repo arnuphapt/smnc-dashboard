@@ -15,6 +15,7 @@ import {
   Download,
   ClipboardList,
   ShieldAlert,
+  X,
 } from 'lucide-react'
 import { PageHeader, ContentPanel, SectionHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -48,6 +49,86 @@ import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime'
 const inputBase = "w-full text-sm px-4 py-2.5 rounded-2xl focus:outline-none transition-all duration-200"
 const inputSty = { border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#0F172A' }
 
+interface SingleFileSlotProps {
+  id: string
+  code: string
+  title: string
+  required?: boolean
+  file: File | null
+  onFileChange: (file: File | null) => void
+}
+
+const SingleFileSlot: React.FC<SingleFileSlotProps> = ({
+  id,
+  code,
+  title,
+  required = false,
+  file,
+  onFileChange,
+}) => (
+  <div
+    className={`p-3.5 rounded-2xl border transition-all ${
+      file
+        ? 'bg-emerald-50/40 border-emerald-200'
+        : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-slate-300'
+    }`}
+  >
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+        <span className="px-2.5 py-1 rounded-xl bg-[#E8F6F5] text-[#00796B] border border-[#BCE5E2] font-mono text-[11px] font-black shrink-0">
+          {code}
+        </span>
+        <span className="text-xs font-extrabold text-[#0F172A] leading-snug">
+          {title} {required && <span className="text-rose-600">*</span>}
+        </span>
+      </div>
+
+      {!file ? (
+        <label
+          htmlFor={id}
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold text-[#00796B] bg-white border border-[#BCE5E2] hover:bg-[#E8F6F5] cursor-pointer transition shadow-2xs shrink-0 self-start sm:self-center"
+        >
+          <UploadCloud className="w-3.5 h-3.5" />
+          <span>เลือกไฟล์</span>
+          <input
+            id={id}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onFileChange(f)
+              e.target.value = ''
+            }}
+          />
+        </label>
+      ) : null}
+    </div>
+
+    {file && (
+      <div className="mt-2.5 flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="text-xs font-bold text-slate-800 truncate" title={file.name}>
+            {file.name}
+          </span>
+          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+            ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFileChange(null)}
+          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+          title="ลบไฟล์นี้"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    )}
+  </div>
+)
+
 export const EthicsSubmit: React.FC = () => {
   const { user, isPageAllowed } = useAuth()
   const { data: forms = [] } = useEthicsForms()
@@ -67,7 +148,13 @@ export const EthicsSubmit: React.FC = () => {
     },
   })
 
-  const [files, setFiles] = useState<FileList | null>(null)
+  // 5 distinct upload slots
+  const [fileEC02, setFileEC02] = useState<File | null>(null)
+  const [fileEC03, setFileEC03] = useState<File | null>(null)
+  const [fileEC04, setFileEC04] = useState<File | null>(null)
+  const [fileEC05, setFileEC05] = useState<File | null>(null)
+  const [otherFiles, setOtherFiles] = useState<File[]>([])
+
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
 
@@ -77,23 +164,74 @@ export const EthicsSubmit: React.FC = () => {
       : []
   )
 
+  const handleAddOtherFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const added = Array.from(e.target.files)
+      setOtherFiles((prev) => [...prev, ...added])
+      e.target.value = ''
+    }
+  }
+
+  const removeOtherFile = (index: number) => {
+    setOtherFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const onSubmit = async (values: EthicsSubmissionFormValues) => {
     if (!user) return
     setFormError('')
     setFormSuccess('')
+
+    if (!fileEC02) {
+      setFormError('กรุณาแนบไฟล์ "SMNC EC 02 แบบเสนอโครงการวิจัยเพื่อรับการพิจารณาจริยธรรมการวิจัยในมนุษย์"')
+      return
+    }
+
+    const allFilesToUpload: { file: File; customName: string }[] = []
+    if (fileEC02) {
+      allFilesToUpload.push({
+        file: fileEC02,
+        customName: `[SMNC EC 02] ${fileEC02.name}`,
+      })
+    }
+    if (fileEC03) {
+      allFilesToUpload.push({
+        file: fileEC03,
+        customName: `[SMNC EC 03] ${fileEC03.name}`,
+      })
+    }
+    if (fileEC04) {
+      allFilesToUpload.push({
+        file: fileEC04,
+        customName: `[SMNC EC 04] ${fileEC04.name}`,
+      })
+    }
+    if (fileEC05) {
+      allFilesToUpload.push({
+        file: fileEC05,
+        customName: `[SMNC EC 05] ${fileEC05.name}`,
+      })
+    }
+    otherFiles.forEach((f) => {
+      allFilesToUpload.push({
+        file: f,
+        customName: `[อื่นๆ] ${f.name}`,
+      })
+    })
 
     try {
       await submitEthicsMutation.mutateAsync({
         submitter_id: user.id,
         project_title: values.project_title,
         project_description: values.project_description,
-        files,
+        files: allFilesToUpload,
       })
       setFormSuccess('ยื่นคำขอรับการพิจารณาจริยธรรมเรียบร้อยแล้ว!')
       reset()
-      setFiles(null)
-      const fileInput = document.getElementById('ethics-files') as HTMLInputElement
-      if (fileInput) fileInput.value = ''
+      setFileEC02(null)
+      setFileEC03(null)
+      setFileEC04(null)
+      setFileEC05(null)
+      setOtherFiles([])
     } catch (err: any) {
       setFormError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     }
@@ -225,20 +363,143 @@ export const EthicsSubmit: React.FC = () => {
                     style={inputSty}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-extrabold mb-1.5 text-[#0F172A]">อัปโหลดเอกสารประกอบ * <span className="font-normal text-[#64748B]">(เลือกได้หลายไฟล์)</span></label>
-                  <Input type="file" id="ethics-files" multiple required accept=".pdf,.doc,.docx" onChange={(e) => setFiles(e.target.files)} className={inputBase + ' h-auto'} style={inputSty} />
-                  <p className="text-[10px] mt-1 text-[#64748B] font-semibold">รองรับ PDF, Word เท่านั้น — ขนาดสูงสุดไม่เกิน 50 MB ต่อไฟล์</p>
+
+                {/* 5 UPLOAD SLOTS */}
+                <div className="space-y-3 pt-2">
+                  <div className="border-b border-slate-200 pb-2">
+                    <label className="block text-xs font-black text-[#0F172A] uppercase tracking-wider">
+                      เอกสารประกอบการยื่นขอรับรองจริยธรรม (5 ช่องรายการ)
+                    </label>
+                    <p className="text-[10px] text-[#64748B] font-semibold mt-0.5">
+                      รองรับไฟล์ PDF, Word (.doc, .docx) — ขนาดสูงสุดไม่เกิน 50 MB ต่อไฟล์
+                    </p>
+                  </div>
+
+                  {/* Slot 1: SMNC EC 02 */}
+                  <SingleFileSlot
+                    id="slot-ec-02"
+                    code="SMNC EC 02"
+                    title="แบบเสนอโครงการวิจัยเพื่อรับการพิจารณาจริยธรรมการวิจัยในมนุษย์"
+                    required
+                    file={fileEC02}
+                    onFileChange={setFileEC02}
+                  />
+
+                  {/* Slot 2: SMNC EC 03 */}
+                  <SingleFileSlot
+                    id="slot-ec-03"
+                    code="SMNC EC 03"
+                    title="แบบฟอร์มประวัติผู้วิจัย"
+                    file={fileEC03}
+                    onFileChange={setFileEC03}
+                  />
+
+                  {/* Slot 3: SMNC EC 04 */}
+                  <SingleFileSlot
+                    id="slot-ec-04"
+                    code="SMNC EC 04"
+                    title="เอกสารชี้แจงข้อมูลรายละเอียดโครงการิจัยสำหรับอาสาสมัครวิจัย"
+                    file={fileEC04}
+                    onFileChange={setFileEC04}
+                  />
+
+                  {/* Slot 4: SMNC EC 05 */}
+                  <SingleFileSlot
+                    id="slot-ec-05"
+                    code="SMNC EC 05"
+                    title="เอกสารแสดงความยินยอมโดยได้รับการบอกกล่าว"
+                    file={fileEC05}
+                    onFileChange={setFileEC05}
+                  />
+
+                  {/* Slot 5: อื่นๆ (แนบได้หลายไฟล์) */}
+                  <div
+                    className={`p-3.5 rounded-2xl border transition-all ${
+                      otherFiles.length > 0
+                        ? 'bg-slate-50 border-slate-300'
+                        : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                        <span className="px-2.5 py-1 rounded-xl bg-slate-200 text-slate-700 font-mono text-[11px] font-black shrink-0">
+                          อื่นๆ
+                        </span>
+                        <div>
+                          <span className="text-xs font-extrabold text-[#0F172A] leading-snug block">
+                            อื่นๆ (แนบได้หลายไฟล์)
+                          </span>
+                          <span className="text-[10px] text-[#64748B] font-medium block">
+                            เช่น เครื่องมือวิจัย แบบสอบถาม เอกสารยินยอมจากหน่วยงาน ฯลฯ
+                          </span>
+                        </div>
+                      </div>
+
+                      <label
+                        htmlFor="slot-other-files"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer transition shadow-2xs shrink-0 self-start sm:self-center"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5 text-slate-500" />
+                        <span>เลือกไฟล์ (หลายไฟล์)</span>
+                        <input
+                          id="slot-other-files"
+                          type="file"
+                          multiple
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={handleAddOtherFiles}
+                        />
+                      </label>
+                    </div>
+
+                    {otherFiles.length > 0 && (
+                      <div className="mt-2.5 space-y-1.5">
+                        {otherFiles.map((f, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <FileText className="w-4 h-4 text-slate-500 shrink-0" />
+                              <span className="text-xs font-bold text-slate-800 truncate" title={f.name}>
+                                {f.name}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                ({(f.size / (1024 * 1024)).toFixed(2)} MB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeOtherFile(idx)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="ลบไฟล์นี้"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                disabled={submitEthicsMutation.isPending}
-                className="w-full sm:w-auto py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 mt-2 btn-primary px-8"
-              >
-                {submitEthicsMutation.isPending ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
-              </Button>
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs font-bold text-[#64748B]">
+                  รวมเอกสารที่เลือกทั้งหมด:{' '}
+                  <span className="font-extrabold text-[#00796B]">
+                    {(fileEC02 ? 1 : 0) + (fileEC03 ? 1 : 0) + (fileEC04 ? 1 : 0) + (fileEC05 ? 1 : 0) + otherFiles.length} ไฟล์
+                  </span>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submitEthicsMutation.isPending}
+                  className="w-full sm:w-auto py-2.5 h-auto rounded-full text-sm font-extrabold disabled:opacity-50 btn-primary px-8 cursor-pointer"
+                >
+                  {submitEthicsMutation.isPending ? 'กำลังอัปโหลดเอกสาร...' : 'ส่งคำขอยื่นจริยธรรม →'}
+                </Button>
+              </div>
             </form>
           )}
         </div>
